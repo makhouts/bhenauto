@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#d91c1c",
+                        "background-light": "#f8f6f6",
+                        "background-dark": "#211111",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden">
+<header class="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md px-6 md:px-10 py-4">
+<div class="max-w-7xl mx-auto flex items-center justify-between">
+<div class="flex items-center gap-12">
+<div class="flex items-center gap-2">
+<div class="text-primary">
+<svg class="w-8 h-8" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 0.757355L47.2426 24L24 47.2426L0.757355 24L24 0.757355ZM21 35.7574V12.2426L9.24264 24L21 35.7574Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-xl font-black tracking-tight uppercase">BhenAuto</h2>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Inventory</a>
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Sell Your Car</a>
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Financing</a>
+<a class="text-sm font-semibold hover:text-primary transition-colors" href="#">Contact</a>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden lg:flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-1.5 border border-transparent focus-within:border-primary/30 transition-all">
+<span class="material-symbols-outlined text-slate-500 text-lg">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48 placeholder:text-slate-400" placeholder="Search models..." type="text"/>
+</div>
+<button class="flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 p-2">
+<span class="material-symbols-outlined">person</span>
+</button>
+</div>
+</div>
+</header>
+<main class="max-w-7xl mx-auto w-full px-6 md:px-10 py-8">
+<div class="flex flex-col gap-2 mb-8">
+<div class="flex items-center gap-2 text-xs font-medium text-slate-500 uppercase tracking-widest">
+<a class="hover:text-primary" href="#">Home</a>
+<span class="material-symbols-outlined text-[10px]">chevron_right</span>
+<span class="text-slate-900 dark:text-slate-100">Inventory</span>
+</div>
+<h1 class="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-slate-100">Our Collection</h1>
+<p class="text-slate-500 max-w-2xl">Discover premium pre-owned vehicles maintained to the highest standards. Experience performance and luxury.</p>
+</div>
+<div class="flex flex-col lg:flex-row gap-10">
+<aside class="w-full lg:w-72 flex-shrink-0 space-y-8">
+<div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-bold text-lg">Filters</h3>
+<button class="text-xs font-semibold text-primary hover:underline">Reset All</button>
+</div>
+<div class="space-y-6">
+<div>
+<label class="block text-sm font-bold mb-3">Brand</label>
+<div class="space-y-2">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100">Porsche</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input checked="" class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100">BMW</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100">Mercedes-Benz</span>
+</label>
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-100">Audi</span>
+</label>
+</div>
+</div>
+<div>
+<label class="block text-sm font-bold mb-3">Vehicle Type</label>
+<div class="grid grid-cols-2 gap-2">
+<button class="py-2 px-3 text-xs font-bold rounded-lg border border-primary bg-primary/10 text-primary">SUV</button>
+<button class="py-2 px-3 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-primary/50">Sedan</button>
+<button class="py-2 px-3 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-primary/50">Coupe</button>
+<button class="py-2 px-3 text-xs font-bold rounded-lg border border-slate-200 dark:border-slate-800 hover:border-primary/50">Electric</button>
+</div>
+</div>
+<div>
+<label class="block text-sm font-bold mb-3">Price Range</label>
+<input class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary" type="range"/>
+<div class="flex justify-between mt-2">
+<span class="text-xs font-medium text-slate-500">€20k</span>
+<span class="text-xs font-medium text-slate-500">€250k+</span>
+</div>
+</div>
+<div>
+<label class="block text-sm font-bold mb-3">Fuel Type</label>
+<select class="w-full rounded-lg border-slate-200 dark:border-slate-800 bg-transparent text-sm focus:border-primary focus:ring-primary">
+<option>All Types</option>
+<option>Petrol</option>
+<option>Diesel</option>
+<option>Hybrid</option>
+<option>Electric</option>
+</select>
+</div>
+</div>
+</div>
+<div class="bg-primary p-6 rounded-xl text-white relative overflow-hidden group">
+<div class="relative z-10">
+<h4 class="text-xl font-black mb-2 leading-tight">Can't find your car?</h4>
+<p class="text-sm text-white/80 mb-4">We can source the specific model you're looking for.</p>
+<button class="bg-white text-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-100 transition-colors">Personal Request</button>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+<span class="material-symbols-outlined text-[120px]">directions_car</span>
+</div>
+</div>
+</aside>
+<section class="flex-1">
+<div class="flex items-center justify-between mb-6">
+<p class="text-sm font-medium text-slate-500"><span class="text-slate-900 dark:text-slate-100 font-bold">24</span> vehicles found</p>
+<div class="flex items-center gap-3">
+<span class="text-sm text-slate-500">Sort by:</span>
+<select class="border-none bg-transparent text-sm font-bold focus:ring-0 cursor-pointer">
+<option>Newest Arrivals</option>
+<option>Price: Low to High</option>
+<option>Price: High to Low</option>
+<option>Mileage: Lowest</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<div class="absolute top-3 left-3 z-10 flex gap-2">
+<span class="bg-primary text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider">New</span>
+<span class="bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black px-2 py-1 rounded uppercase tracking-wider">Premium</span>
+</div>
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Silver Porsche 911 Carrera on a scenic road" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCSJy4Klqu3CXq0hRG4yhzCJP_Zo4IiXMBkmYXAZYVkFD85YYSHr44X8s14_GzSKBXOo6Lwm-52l1P7zlsTgjZtR-83gDzDi_cEOdYWyhkpN7SHWUTbrRXjExreT1zn2f6mCKIxjyQ_HOy2Bpv5HGKhNFriejUiBMUCP-FtdTmAoCb1OLtK_BhxDddEA2-Am0qZwWw6F71injdYT8Na0lJumZuEWStl057hoOjw5oEDA8Who2Km2GhApRJ9-Lnan-Hikon3lG0Dlg"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Porsche</p>
+<h3 class="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">911 Carrera S</h3>
+</div>
+<div class="text-right">
+<p class="text-xl font-black text-primary">€142,500</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 py-4 border-y border-slate-100 dark:border-slate-800 my-4">
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">calendar_today</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">2023</span>
+</div>
+<div class="flex flex-col items-center gap-1 border-x border-slate-100 dark:border-slate-800">
+<span class="material-symbols-outlined text-slate-400 text-lg">speed</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">12,400 KM</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">settings</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Auto</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    View Details
+                                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Black BMW M4 parked in a modern city" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAolsKdg1OfiqIJjTNQnOANjrOTpObJMH_fmxX0EOfvH2XPp2f-MDyANFqPG0c1Z9lyuRgDGZJKt9M-UuhktRM4wp24Rv_0ZsPVCAwsfoitTFU3Kq8O22luVy1bVVmL3B2i3hgbFbv5C-tO1pdPCFMM9D4Ez6E8YAtBqBIG_oP84wUz9W-XITukzU5-z98cRcWBNWTZUlhXPjaGHCV25mv5MsPhDr6ygssa-oVjv09o1ynWZFA857KQRiYfhg5OYqgLLVfj-XyWrHg"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-tighter">BMW</p>
+<h3 class="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">M4 Competition</h3>
+</div>
+<div class="text-right">
+<p class="text-xl font-black text-primary">€98,900</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 py-4 border-y border-slate-100 dark:border-slate-800 my-4">
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">calendar_today</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">2022</span>
+</div>
+<div class="flex flex-col items-center gap-1 border-x border-slate-100 dark:border-slate-800">
+<span class="material-symbols-outlined text-slate-400 text-lg">speed</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">28,000 KM</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">settings</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Auto</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    View Details
+                                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Blue Audi RS6 Avant side view" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXse2hOXhN6Cfi-0KXqjhm8BWVQANyfSS-BPC0ctJNW7unJjZ3oFcns7oqZaWcbH5tk3sweIOjp9omHojWcx2nBxEg2CjdsfnV6xGPTwZrZzoxvy0fYDeNEYsNDZUzBmDo6jbeGVtZJAfigv7PFMQqI7i0T_Q6vCcSizbvBKhzSsnSmuBqTbq7SEluQmOe5iQjW1faG8WHdmdYMaLHzfKlcmDCM74F7V10HfwqPfZMk5yaxiWbTan8A61Fg4uDlLtUP3JqAxDywZw"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Audi</p>
+<h3 class="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">RS6 Avant</h3>
+</div>
+<div class="text-right">
+<p class="text-xl font-black text-primary">€118,000</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 py-4 border-y border-slate-100 dark:border-slate-800 my-4">
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">calendar_today</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">2021</span>
+</div>
+<div class="flex flex-col items-center gap-1 border-x border-slate-100 dark:border-slate-800">
+<span class="material-symbols-outlined text-slate-400 text-lg">speed</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">45,600 KM</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">settings</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Auto</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    View Details
+                                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="White Mercedes G-Wagon in a studio setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhswz32h128_bHjezrnOZM81lB0_MUcTObnYN9-K2tKv3pDlqGm5AQ4RxbHlWzyspliAbActDdAmDL30uVVLAhjqx2hyT9R7o9B_WIUEJdOVbTd_TE_nvZogz3qevFdLtIVeCA-EikkEIDj0ppOAQUzxCGqLoOHaJaC-98eKlFawcR4thqp2yhPd7T17v64vSf4vRa06UaeQczRYc67CwVKf3bfm3uQxkEaQQE5Xgj8_iBB4A7vzos1qp4Q07mA-S7icWKbOkf36w"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Mercedes-Benz</p>
+<h3 class="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">G 63 AMG</h3>
+</div>
+<div class="text-right">
+<p class="text-xl font-black text-primary">€189,900</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 py-4 border-y border-slate-100 dark:border-slate-800 my-4">
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">calendar_today</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">2022</span>
+</div>
+<div class="flex flex-col items-center gap-1 border-x border-slate-100 dark:border-slate-800">
+<span class="material-symbols-outlined text-slate-400 text-lg">speed</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">15,000 KM</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">settings</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Auto</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    View Details
+                                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Grey Range Rover Autobiography parked in nature" src="https://lh3.googleusercontent.com/aida-public/AB6AXuASKO0bzurjnQBJKCH7sxDpbYoJH-bSz9BXlcHQx4v2hvWKiAC0pTD22cx5zd2OwEtvIBKprTHRAgszzBXlPr8MNhrj-XUCbbvjzQIqpUA45YQmci1XwuGWUX3wjE02WoBsTGSCwt_-VT4Lub_dKJ078wJHmQftDZIejyOmuQB1vdXdpgmdRVzLwlPywef8ON4nnu9Gtwi9tot66vTThNTez51CK45I2x_KmdtPXhnrNKBxwRmHK6QHTr_iLm7lqZELefJa6n95DTg"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Land Rover</p>
+<h3 class="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">Range Rover</h3>
+</div>
+<div class="text-right">
+<p class="text-xl font-black text-primary">€156,000</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 py-4 border-y border-slate-100 dark:border-slate-800 my-4">
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">calendar_today</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">2023</span>
+</div>
+<div class="flex flex-col items-center gap-1 border-x border-slate-100 dark:border-slate-800">
+<span class="material-symbols-outlined text-slate-400 text-lg">speed</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">8,900 KM</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">settings</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Auto</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    View Details
+                                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+<div class="relative aspect-[4/3] overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="Orange Lamborghini Huracan on a track" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXqTc4MILeaoDocStuMCQtqAAasMpG6DpXOCDauotpAe0NX-jOlxlF4Nr0ND0oYeht1dpgQUQ6uCrVrlXITbb12weJEr1StI4xazbwqqoZmIyEvZcad5r6XG2yxGkHLXIDp-h6EcCdQmUYSpZCL5a15hOI3HWw-GBUb7RUig6ugLO-syMkCVxNUZ9F-TS_G_FXCKBQnPL0ldT1ae_qLqAxZIt5tkfp9IySLijGSODWH8hzRg2gQFpEbMA9Baz0zVghCc79vyr3BgI"/>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-xs font-bold text-slate-400 uppercase tracking-tighter">Lamborghini</p>
+<h3 class="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">Huracan STO</h3>
+</div>
+<div class="text-right">
+<p class="text-xl font-black text-primary">€345,000</p>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4 py-4 border-y border-slate-100 dark:border-slate-800 my-4">
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">calendar_today</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">2022</span>
+</div>
+<div class="flex flex-col items-center gap-1 border-x border-slate-100 dark:border-slate-800">
+<span class="material-symbols-outlined text-slate-400 text-lg">speed</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">2,100 KM</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-slate-400 text-lg">settings</span>
+<span class="text-[10px] font-bold text-slate-500 uppercase">Auto</span>
+</div>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    View Details
+                                    <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<div class="mt-12 flex justify-center">
+<nav class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg bg-primary text-white font-bold">1</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 transition-colors font-bold">2</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 transition-colors font-bold">3</button>
+<span class="mx-1 text-slate-400 font-bold">...</span>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 transition-colors font-bold">8</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 transition-colors">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</nav>
+</div>
+</section>
+</div>
+</main>
+<footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-20 py-12">
+<div class="max-w-7xl mx-auto px-6 md:px-10 grid grid-cols-1 md:grid-cols-4 gap-12">
+<div class="space-y-4">
+<div class="flex items-center gap-2">
+<div class="text-primary">
+<svg class="w-6 h-6" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 0.757355L47.2426 24L24 47.2426L0.757355 24L24 0.757355ZM21 35.7574V12.2426L9.24264 24L21 35.7574Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<h2 class="text-lg font-black uppercase">BhenAuto</h2>
+</div>
+<p class="text-sm text-slate-500">Premium vehicle dealership specialized in high-performance and luxury cars. Excellence in every drive.</p>
+</div>
+<div>
+<h5 class="font-bold mb-4">Inventory</h5>
+<ul class="space-y-2 text-sm text-slate-500">
+<li><a class="hover:text-primary" href="#">All Cars</a></li>
+<li><a class="hover:text-primary" href="#">New Arrivals</a></li>
+<li><a class="hover:text-primary" href="#">Performance</a></li>
+<li><a class="hover:text-primary" href="#">SUVs</a></li>
+</ul>
+</div>
+<div>
+<h5 class="font-bold mb-4">Company</h5>
+<ul class="space-y-2 text-sm text-slate-500">
+<li><a class="hover:text-primary" href="#">About Us</a></li>
+<li><a class="hover:text-primary" href="#">Our Showroom</a></li>
+<li><a class="hover:text-primary" href="#">Contact</a></li>
+<li><a class="hover:text-primary" href="#">Privacy Policy</a></li>
+</ul>
+</div>
+<div>
+<h5 class="font-bold mb-4">Newsletter</h5>
+<p class="text-xs text-slate-500 mb-3">Stay updated with our latest luxury stock.</p>
+<div class="flex gap-2">
+<input class="flex-1 rounded-lg border-slate-200 text-sm focus:ring-primary focus:border-primary" placeholder="Email address" type="email"/>
+<button class="bg-primary text-white p-2 rounded-lg">
+<span class="material-symbols-outlined text-sm">send</span>
+</button>
+</div>
+</div>
+</div>
+<div class="max-w-7xl mx-auto px-6 md:px-10 mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
+<p class="text-xs text-slate-400">© 2024 BhenAuto. All rights reserved. Designed for performance.</p>
+</div>
+</footer>
+</div>
+</body></html>
