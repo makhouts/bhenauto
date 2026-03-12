@@ -17,9 +17,9 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "bhenauto | Luxury Secondhand Dealership",
-  description: "Discover our curated collection of premium and luxury secondhand vehicles. Fast, reliable, and trustworthy dealership.",
-  keywords: ["premium cars", "luxury cars", "secondhand dealership", "used cars", "luxury vehicles"],
+  title: "bhenauto | Premium Tweedehands Voertuigen",
+  description: "Ontdek onze zorgvuldig geselecteerde collectie van premium en luxe tweedehands voertuigen. Betrouwbare en deskundige dealer.",
+  keywords: ["premium auto's", "luxe auto's", "tweedehands dealer", "occasions", "exclusieve voertuigen"],
 };
 
 export default function RootLayout({
@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="nl" className="scroll-smooth">
       <body
         className={`${inter.variable} ${playfair.variable} antialiased min-h-screen flex flex-col bg-background-light text-slate-900`}
       >

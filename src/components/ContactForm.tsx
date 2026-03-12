@@ -78,7 +78,7 @@ export default function ContactForm() {
                         required
                         disabled={isSubmitting}
                         className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] transition-colors disabled:opacity-50 font-medium placeholder-slate-400"
-                        placeholder="John Doe"
+                        placeholder="Jan Modaal"
                     />
                 </div>
                 <div>
@@ -89,7 +89,7 @@ export default function ContactForm() {
                         name="phone"
                         disabled={isSubmitting}
                         className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] transition-colors disabled:opacity-50 font-medium placeholder-slate-400"
-                        placeholder="+1 (555) 000-0000"
+                        placeholder="+32 400 00 00 00"
                     />
                 </div>
             </div>
@@ -103,7 +103,7 @@ export default function ContactForm() {
                     required
                     disabled={isSubmitting}
                     className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] transition-colors disabled:opacity-50 font-medium placeholder-slate-400"
-                    placeholder="john@example.com"
+                    placeholder="jan@voorbeeld.be"
                 />
             </div>
 

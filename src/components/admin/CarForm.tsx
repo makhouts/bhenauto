@@ -112,11 +112,11 @@ export default function CarForm({ initialData }: CarFormProps) {
 
             {/* Basic Info */}
             <div className="space-y-6">
-                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Vehicle Identity</h3>
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Voertuig Identiteit</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Internal Title</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Interne Titel</label>
                         <input
                             type="text"
                             name="title"
@@ -127,7 +127,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">URL Slug (Optional)</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">URL Slug (Optioneel)</label>
                         <input
                             type="text"
                             name="slug"
@@ -140,7 +140,7 @@ export default function CarForm({ initialData }: CarFormProps) {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Make / Brand</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Merk</label>
                         <input
                             type="text"
                             name="brand"
@@ -162,7 +162,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Year</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Bouwjaar</label>
                         <input
                             type="number"
                             name="year"
@@ -178,11 +178,11 @@ export default function CarForm({ initialData }: CarFormProps) {
 
             {/* Specifications */}
             <div className="space-y-6 pt-4">
-                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Specifications</h3>
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Specificaties</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Price ($)</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Prijs (€)</label>
                         <input
                             type="number"
                             name="price"
@@ -193,7 +193,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Mileage</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Kilometerstand</label>
                         <input
                             type="number"
                             name="mileage"
@@ -204,7 +204,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Horsepower</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Vermogen</label>
                         <input
                             type="number"
                             name="horsepower"
@@ -215,7 +215,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Color</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Kleur</label>
                         <input
                             type="text"
                             name="color"
@@ -226,29 +226,29 @@ export default function CarForm({ initialData }: CarFormProps) {
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Fuel Type</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Brandstoftype</label>
                         <select
                             name="fuel_type"
                             defaultValue={initialData?.fuel_type || "Gasoline"}
                             className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
                         >
-                            <option value="Gasoline">Gasoline</option>
+                            <option value="Benzine">Benzine</option>
                             <option value="Diesel">Diesel</option>
-                            <option value="Electric">Electric</option>
-                            <option value="Hybrid">Hybrid</option>
-                            <option value="Plug-in Hybrid">Plug-in Hybrid</option>
+                            <option value="Elektrisch">Elektrisch</option>
+                            <option value="Hybride">Hybride</option>
+                            <option value="Plug-in Hybride">Plug-in Hybride</option>
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Transmission</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Transmissie</label>
                         <select
                             name="transmission"
-                            defaultValue={initialData?.transmission || "Automatic"}
+                            defaultValue={initialData?.transmission || "Automatisch"}
                             className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
                         >
-                            <option value="Automatic">Automatic</option>
-                            <option value="Manual">Manual</option>
-                            <option value="Dual-Clutch">Dual-Clutch</option>
+                            <option value="Automatisch">Automatisch</option>
+                            <option value="Handgeschakeld">Handgeschakeld</option>
+                            <option value="Dubbele Koppeling">Dubbele Koppeling</option>
                         </select>
                     </div>
                 </div>
@@ -256,9 +256,9 @@ export default function CarForm({ initialData }: CarFormProps) {
 
             {/* Description */}
             <div className="space-y-6 pt-4">
-                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Overview</h3>
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Overzicht</h3>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Vehicle Description</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Voertuigbeschrijving</label>
                     <textarea
                         name="description"
                         defaultValue={initialData?.description}
@@ -272,7 +272,7 @@ export default function CarForm({ initialData }: CarFormProps) {
 
             {/* Image Gallery Manager */}
             <div className="space-y-6 pt-4">
-                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Media Gallery</h3>
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Media Galerij</h3>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {/* Existing Images */}
@@ -315,7 +315,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                             disabled={isSubmitting}
                         />
                         <ImagePlus size={24} className="mb-2" />
-                        <span className="text-xs uppercase tracking-widest font-bold">Add Photos</span>
+                        <span className="text-xs uppercase tracking-widest font-bold">Foto's Toevoegen</span>
                     </label>
                 </div>
             </div>
@@ -327,7 +327,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                     disabled={isSubmitting}
                     className="px-6 py-3 border border-slate-300 rounded-lg text-slate-600 uppercase tracking-widest text-xs font-bold hover:bg-slate-50 hover:text-slate-900 transition-colors"
                 >
-                    Cancel
+                    Annuleren
                 </button>
                 <button
                     type="submit"
@@ -337,12 +337,12 @@ export default function CarForm({ initialData }: CarFormProps) {
                     {isSubmitting ? (
                         <>
                             <Loader2 size={16} className="animate-spin mr-2" />
-                            Saving...
+                            Opslaan...
                         </>
                     ) : (
                         <>
                             <Save size={16} className="mr-2" />
-                            Save Vehicle
+                            Voertuig Opslaan
                         </>
                     )}
                 </button>

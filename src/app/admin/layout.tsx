@@ -31,7 +31,7 @@ export default function AdminLayout({
                         className="flex items-center px-4 py-3 text-slate-600 font-bold hover:bg-slate-50 hover:text-[#d91c1c] rounded-lg transition-colors uppercase tracking-widest text-xs"
                     >
                         <Car size={18} className="mr-3" />
-                        Cars Inventory
+                        Voorraad
                     </Link>
 
                     <Link
@@ -39,7 +39,7 @@ export default function AdminLayout({
                         className="flex items-center px-4 py-3 text-slate-600 font-bold hover:bg-slate-50 hover:text-[#d91c1c] rounded-lg transition-colors uppercase tracking-widest text-xs"
                     >
                         <MessageSquare size={18} className="mr-3" />
-                        Inquiries
+                        Aanvragen
                     </Link>
                 </nav>
 
@@ -54,7 +54,7 @@ export default function AdminLayout({
                             className="flex items-center w-full px-4 py-3 text-red-600 font-bold hover:bg-red-50 rounded-lg transition-colors uppercase tracking-widest text-xs"
                         >
                             <LogOut size={18} className="mr-3" />
-                            Sign Out
+                            Uitloggen
                         </button>
                     </form>
                 </div>

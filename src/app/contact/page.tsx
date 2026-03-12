@@ -5,8 +5,8 @@ import { Mail, MapPin, Phone, Clock } from "lucide-react";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-    title: "Contact Us | bhenauto",
-    description: "Get in touch with our concierge team to schedule a viewing or inquire about our premium vehicle collection.",
+    title: "Contact | bhenauto",
+    description: "Neem contact op met ons conciërgeteam om een bezichtiging in te plannen of te informeren naar onze premium voertuigencollectie.",
 };
 
 export default function ContactPage() {
@@ -26,9 +26,9 @@ export default function ContactPage() {
                 </div>
 
                 <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-8">
-                    <h1 className="text-4xl md:text-6xl font-headings text-slate-900 mb-6 uppercase tracking-wider font-black">Contact Concierge</h1>
+                    <h1 className="text-4xl md:text-6xl font-headings text-slate-900 mb-6 uppercase tracking-wider font-black">Contacteer Conciërge</h1>
                     <p className="text-slate-200 max-w-2xl mx-auto text-lg font-medium drop-shadow-md">
-                        Experience exceptional service from the first inquiry. Our dedicated team is ready to assist you in discovering your next masterpiece.
+                        Ervaar uitzonderlijke service vanaf de eerste aanvraag. Ons toegewijde team staat klaar om u te helpen uw volgende droomwagen te ontdekken.
                     </p>
                 </div>
             </div>
@@ -39,15 +39,15 @@ export default function ContactPage() {
                     {/* Contact Info Sidebar */}
                     <div className="space-y-12 pr-0 lg:pr-8">
                         <div>
-                            <h2 className="text-2xl font-headings text-slate-900 mb-8 uppercase tracking-wide border-b border-slate-200 pb-4 inline-block font-bold">Visit Our Showroom</h2>
+                            <h2 className="text-2xl font-headings text-slate-900 mb-8 uppercase tracking-wide border-b border-slate-200 pb-4 inline-block font-bold">Bezoek Onze Showroom</h2>
                             <div className="space-y-6">
                                 <div className="flex items-start">
                                     <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mr-6 shrink-0 border border-slate-200 shadow-sm">
                                         <MapPin size={24} className="text-[#d91c1c]" />
                                     </div>
                                     <div>
-                                        <h3 className="text-slate-900 font-bold uppercase tracking-widest text-sm mb-2">Location</h3>
-                                        <p className="text-slate-600 leading-relaxed font-medium">123 Luxury Avenue<br />Beverly Hills, CA 90210<br />United States</p>
+                                        <h3 className="text-slate-900 font-bold uppercase tracking-widest text-sm mb-2">Locatie</h3>
+                                        <p className="text-slate-600 leading-relaxed font-medium">123 Luxury Avenue<br />Beverly Hills, CA 90210<br />Verenigde Staten</p>
                                     </div>
                                 </div>
 
@@ -56,7 +56,7 @@ export default function ContactPage() {
                                         <Phone size={24} className="text-[#d91c1c]" />
                                     </div>
                                     <div>
-                                        <h3 className="text-slate-900 font-bold uppercase tracking-widest text-sm mb-2">Direct Line</h3>
+                                        <h3 className="text-slate-900 font-bold uppercase tracking-widest text-sm mb-2">Directe Lijn</h3>
                                         <p className="text-slate-600 leading-relaxed font-medium">+1 (555) 123-4567</p>
                                     </div>
                                 </div>
@@ -66,7 +66,7 @@ export default function ContactPage() {
                                         <Mail size={24} className="text-[#d91c1c]" />
                                     </div>
                                     <div>
-                                        <h3 className="text-slate-900 font-bold uppercase tracking-widest text-sm mb-2">Electronic Mail</h3>
+                                        <h3 className="text-slate-900 font-bold uppercase tracking-widest text-sm mb-2">E-mail</h3>
                                         <p className="text-slate-600 leading-relaxed font-medium">concierge@bhenauto.com</p>
                                     </div>
                                 </div>
@@ -76,11 +76,11 @@ export default function ContactPage() {
                                         <Clock size={24} className="text-[#d91c1c]" />
                                     </div>
                                     <div>
-                                        <h3 className="text-slate-900 font-bold uppercase tracking-widest text-sm mb-2">Hours of Operation</h3>
+                                        <h3 className="text-slate-900 font-bold uppercase tracking-widest text-sm mb-2">Openingstijden</h3>
                                         <p className="text-slate-600 leading-relaxed font-medium">
-                                            Mon - Fri: 9:00 AM - 7:00 PM<br />
-                                            Saturday: 10:00 AM - 5:00 PM<br />
-                                            Sunday: By Appointment Only
+                                            Ma - Vrij: 09:00 - 19:00<br />
+                                            Zaterdag: 10:00 - 17:00<br />
+                                            Zondag: Enkel op afspraak
                                         </p>
                                     </div>
                                 </div>
@@ -93,10 +93,10 @@ export default function ContactPage() {
                         {/* Subtle decor */}
                         <div className="absolute top-0 right-0 w-32 h-32 border-t-2 border-r-2 border-[#d91c1c]/20 -ml-10 -mt-2 rounded-tr-3xl"></div>
 
-                        <h2 className="text-3xl font-headings text-slate-900 font-bold mb-2">Send an Inquiry</h2>
-                        <p className="text-slate-500 font-medium mb-8">We aim to respond to all inquiries within two hours during regular business hours.</p>
+                        <h2 className="text-3xl font-headings text-slate-900 font-bold mb-2">Stuur een Aanvraag</h2>
+                        <p className="text-slate-500 font-medium mb-8">Wij streven ernaar om alle aanvragen binnen twee uur te beantwoorden tijdens reguliere kantooruren.</p>
 
-                        <Suspense fallback={<div className="h-64 flex items-center justify-center text-slate-400">Loading form...</div>}>
+                        <Suspense fallback={<div className="h-64 flex items-center justify-center text-slate-400">Formulier laden...</div>}>
                             <ContactForm />
                         </Suspense>
                     </div>

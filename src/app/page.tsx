@@ -1,190 +1,253 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Shield, Award, Calendar, CheckCircle } from "lucide-react";
+import { ArrowRight, CheckCircle } from "lucide-react";
 
 // Placeholder data for featured cars (to be replaced by DB fetch later)
 const featuredCars = [
   {
     id: "1",
     title: "2023 Porsche 911 Carrera S",
-    price: "$135,000",
-    mileage: "4,500 miles",
+    price: "€135.000",
+    mileage: "4.500 km",
     image: "https://images.unsplash.com/photo-1503376760367-1b61b3699c27?q=80&w=2070&auto=format&fit=crop",
   },
   {
     id: "2",
     title: "2022 Mercedes-Benz G-Class",
-    price: "$165,000",
-    mileage: "12,000 miles",
+    price: "€165.000",
+    mileage: "12.000 km",
     image: "https://images.unsplash.com/photo-1520031441872-265e4ff70366?q=80&w=1974&auto=format&fit=crop",
   },
   {
     id: "3",
     title: "2024 Audi RS e-tron GT",
-    price: "$145,000",
-    mileage: "1,200 miles",
+    price: "€145.000",
+    mileage: "1.200 km",
     image: "https://images.unsplash.com/photo-1620882863868-b3ee58b45688?q=80&w=2070&auto=format&fit=crop",
   },
 ];
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-[#f8f6f6]">
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 z-0">
+      <section className="relative h-screen flex items-center overflow-hidden bg-[#e6e6e6]">
+        {/* We use a solid light/gradient background to let the car pop, similar to the mockup */}
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#f0f0f0] to-[#e0e0e0]">
           <Image
-            src="https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2070&auto=format&fit=crop"
-            alt="Luxury Car Dark Hero"
+            src="https://images.unsplash.com/photo-1503376760367-1b61b3699c27?q=80&w=2070&auto=format&fit=crop"
+            alt="Luxury Showcase"
             fill
-            className="object-cover object-center scale-105"
+            className="object-cover mix-blend-multiply opacity-50"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-background"></div>
         </div>
 
-        <div className="relative z-10 text-center px-4 max-w-5xl mx-auto animate-fade-in">
-          <h1 className="text-5xl md:text-7xl font-headings text-white mb-6 leading-tight tracking-tight font-black">
-            Ontdek Compromisloze <br />
-            <span className="text-[#d91c1c] italic pr-2">Uitmuntendheid</span>
+        <div className="relative z-10 px-4 sm:px-6 lg:px-12 w-full max-w-7xl mx-auto flex flex-col items-start animate-fade-in pt-20">
+          <h1 className="text-6xl md:text-8xl font-headings text-slate-900 mb-2 leading-tight tracking-tighter font-black">
+            Ervaar <br />
+            <span className="text-[#d91c1c]">Uitmuntendheid.</span>
           </h1>
-          <p className="text-lg md:text-xl text-white/90 mb-10 max-w-2xl mx-auto font-medium tracking-wide">
-            Uw bestemming voor 's werelds meest exclusieve tweedehands voertuigen.
-            Met precisie geselecteerd, met prestige geleverd.
+          <p className="text-lg md:text-xl text-slate-800 mb-10 max-w-xl font-medium tracking-wide">
+            Premium Auto's & Professionele Carrosserie in België.
+            Ontdek onze zorgvuldig geselecteerde collectie high-performance voertuigen.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
             <Link
               href="/inventory"
-              className="px-8 py-4 bg-[#d91c1c] text-white font-bold rounded-lg hover:bg-[#b91515] hover:shadow-lg hover:shadow-[#d91c1c]/20 transition-all duration-300 uppercase tracking-widest text-sm w-full sm:w-auto text-center"
+              className="px-8 py-3.5 bg-[#d91c1c] text-white font-bold rounded hover:bg-[#b91515] transition-colors w-full sm:w-auto text-center"
             >
-              Verken de Collectie
+              Bekijk Onze Voorraad
             </Link>
             <Link
               href="/contact"
-              className="px-8 py-4 bg-white/10 backdrop-blur-md text-white border border-white/30 font-bold rounded-lg hover:bg-white hover:text-slate-900 transition-all duration-300 uppercase tracking-widest text-sm w-full sm:w-auto text-center"
+              className="px-8 py-3.5 bg-transparent text-slate-900 border border-slate-900 font-bold rounded hover:bg-slate-900 hover:text-white transition-colors w-full sm:w-auto text-center"
             >
-              Contacteer de Conciërge
+              Maak een Carrosserie Afspraak
             </Link>
-          </div>
-        </div>
-
-        <div className="absolute bottom-10 left-1/2 flex min-w-[32px] min-h-[32px] -translate-x-1/2 justify-center z-10 animate-bounce">
-          <div className="w-[30px] h-[50px] border-2 border-white/50 rounded-full flex justify-center p-2">
-            <div className="w-[4px] h-[8px] bg-white rounded-full mt-1"></div>
-          </div>
-        </div>
-      </section>
-
-      {/* Philosophy Section */}
-      <section className="py-24 bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-sm uppercase tracking-[0.3em] font-bold text-[#d91c1c] mb-4">Onze Filosofie</h2>
-          <h3 className="text-3xl md:text-5xl font-headings font-black text-slate-900 mb-16">De Kunst van Auto-uitmuntendheid</h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-5xl mx-auto">
-            <div className="flex flex-col items-center p-6 bg-slate-50 rounded-2xl hover:shadow-lg transition-shadow border border-slate-100">
-              <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mb-6">
-                <Award className="text-[#d91c1c]" size={28} />
-              </div>
-              <h4 className="text-xl font-headings font-bold text-slate-900 mb-3">Gecureerde Selectie</h4>
-              <p className="text-slate-600 text-sm leading-relaxed text-center font-medium">
-                Elk voertuig in onze showroom wordt minutieus geïnspecteerd en geselecteerd om te voldoen aan de hoogste eisen van luxe en prestaties.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center p-6 bg-slate-50 rounded-2xl hover:shadow-lg transition-shadow border border-slate-100">
-              <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mb-6">
-                <Shield className="text-[#d91c1c]" size={28} />
-              </div>
-              <h4 className="text-xl font-headings font-bold text-slate-900 mb-3">Gecertificeerde Kwaliteit</h4>
-              <p className="text-slate-600 text-sm leading-relaxed text-center font-medium">
-                Onze rigoureuze inspectie op 150 punten garandeert dat uw investering solide, veilig en klaar is voor de weg die voor u ligt.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center p-6 bg-slate-50 rounded-2xl hover:shadow-lg transition-shadow border border-slate-100">
-              <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center mb-6">
-                <Calendar className="text-[#d91c1c]" size={28} />
-              </div>
-              <h4 className="text-xl font-headings font-bold text-slate-900 mb-3">White-Glove Service</h4>
-              <p className="text-slate-600 text-sm leading-relaxed text-center font-medium">
-                Van uw eerste aanvraag tot de levering van uw voertuig, ervaar een ongeëvenaard niveau van persoonlijke aandacht.
-              </p>
-            </div>
           </div>
         </div>
       </section>
 
       {/* Featured Vehicles Section */}
-      <section className="py-24 bg-background-light">
+      <section className="py-24 bg-white/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end mb-12">
-            <div>
-              <h2 className="text-sm uppercase tracking-[0.3em] font-bold text-[#d91c1c] mb-4">Showroom</h2>
-              <h3 className="text-3xl md:text-5xl font-headings font-black text-slate-900">Uitgelichte Aanwinsten</h3>
-            </div>
-            <Link href="/inventory" className="hidden md:flex items-center text-sm uppercase tracking-widest font-bold text-slate-500 hover:text-[#d91c1c] group transition-colors">
-              Bekijk Alles <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+          <div className="flex justify-between items-end border-b-2 border-[#d91c1c] pb-2 mb-12">
+            <h3 className="text-2xl font-headings font-black text-slate-900">Uitgelichte Premium Voertuigen</h3>
+            <Link href="/inventory" className="flex items-center text-sm font-bold text-[#d91c1c] group transition-colors">
+              Bekijk Alles <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {featuredCars.map((car, index) => (
-              <div key={car.id} className="group cursor-pointer animate-fade-in bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300" style={{ animationDelay: `${index * 150}ms` }}>
-                <div className="relative h-[250px] w-full overflow-hidden">
+              <div key={car.id} className="group cursor-pointer animate-fade-in bg-white border border-slate-100 rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300" style={{ animationDelay: `${index * 150}ms` }}>
+                <div className="relative h-[220px] w-full overflow-hidden bg-slate-100">
                   <Image
                     src={car.image}
                     alt={car.title}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out"
+                    className="object-cover"
                   />
                 </div>
                 <div className="p-6">
-                  <h4 className="text-xl font-headings font-bold text-slate-900 mb-2 group-hover:text-[#d91c1c] transition-colors">{car.title}</h4>
-                  <div className="flex justify-between items-center text-sm mb-4">
-                    <span className="text-slate-500 font-medium">{car.mileage}</span>
-                    <span className="text-[#d91c1c] font-black text-lg">{car.price}</span>
+                  <div className="flex justify-between items-start mb-4">
+                    <h4 className="text-lg font-headings font-bold text-slate-900 leading-tight pr-4">{car.title}</h4>
+                    <span className="text-[#d91c1c] font-black">{car.price}</span>
                   </div>
-                  <div className="h-[1px] w-full bg-slate-100"></div>
-                  <div className="mt-4 text-center text-xs font-bold uppercase tracking-widest text-slate-400 group-hover:text-[#d91c1c] transition-colors">
-                    Bekijk Details
+                  <div className="flex gap-4 text-xs font-medium text-slate-500 mt-6">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 border border-slate-400 rounded-full flex items-center justify-center"><div className="w-1 h-1 bg-slate-400 rounded-full"></div></div>
+                      {car.mileage}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      Automaat
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
+        </div>
+      </section>
 
-          <div className="mt-12 text-center md:hidden">
-            <Link href="/inventory" className="inline-flex items-center text-sm uppercase tracking-widest font-bold text-slate-600 border border-slate-300 px-6 py-3 rounded-lg hover:bg-slate-50 transition-colors">
-              Bekijk Alle Voertuigen <ArrowRight size={16} className="ml-2" />
-            </Link>
+      {/* Why Choose BhenAuto */}
+      <section className="py-24 bg-white border-y border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h3 className="text-3xl font-headings font-black text-slate-900 mb-4">Waarom Kiezen Voor BhenAuto</h3>
+          <p className="text-slate-500 mb-16 max-w-2xl mx-auto">Ervaar ongeëvenaarde kwaliteit en service in de luxe automarkt.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 max-w-5xl mx-auto">
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-6">
+                <CheckCircle className="text-[#d91c1c]" size={24} />
+              </div>
+              <h4 className="text-lg font-headings font-bold text-slate-900 mb-3">Premium Selectie</h4>
+              <p className="text-slate-500 text-sm leading-relaxed text-center">
+                Alleen de beste, goed onderhouden luxe voertuigen komen in onze voorraad na een strenge inspectie.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-6">
+                <svg className="w-6 h-6 text-[#d91c1c]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </div>
+              <h4 className="text-lg font-headings font-bold text-slate-900 mb-3">Meester Carrosserie</h4>
+              <p className="text-slate-500 text-sm leading-relaxed text-center">
+                Deskundig schadeherstel en restauratiediensten met gebruik van de nieuwste technologie en spuittechnieken.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-6">
+                <svg className="w-6 h-6 text-[#d91c1c]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+              </div>
+              <h4 className="text-lg font-headings font-bold text-slate-900 mb-3">Ervaring Op Maat</h4>
+              <p className="text-slate-500 text-sm leading-relaxed text-center">
+                Persoonlijk advies om uw droomauto te vinden of uw klassieker perfect te restaureren.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="relative py-32 overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="https://images.unsplash.com/photo-1603584173870-7f23fdae1b7a?q=80&w=2069&auto=format&fit=crop"
-            alt="Find your next car"
-            fill
-            className="object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-black/80"></div>
-        </div>
+      {/* World-Class Carrosserie */}
+      <section className="py-24 bg-[#f8f6f6]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row rounded-2xl overflow-hidden shadow-2xl">
+            {/* Dark Left Side */}
+            <div className="bg-[#1e2333] p-12 lg:p-16 flex-1 text-white flex flex-col justify-center">
+              <div className="text-xs uppercase tracking-[0.2em] font-bold text-[#d91c1c] mb-4">EXPERT DIENSTEN</div>
+              <h3 className="text-3xl md:text-5xl font-headings font-black mb-6 leading-tight">Wereldklasse Carrosserie</h3>
+              <p className="text-slate-300 mb-10 text-sm leading-relaxed max-w-md">
+                Van kleine krasreparaties tot volledige carrosserierestauratie, onze gecertificeerde specialisten zorgen ervoor dat uw voertuig terugkeert naar zijn originele showroomstaat. We gebruiken ultra-precieze gereedschappen en premium materialen.
+              </p>
 
-        <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-4xl md:text-5xl font-headings font-black text-white mb-6">Klaar om het Buitengewone te Ervaren?</h2>
-          <p className="text-white/90 font-medium mb-10 text-lg sm:px-10">
-            Plan een privébezichtiging of spreek met een van onze autospecialisten om de perfecte aanvulling op uw collectie te vinden.
-          </p>
-          <Link
-            href="/contact"
-            className="inline-block px-10 py-5 bg-[#d91c1c] text-white font-bold rounded-lg hover:bg-[#b91515] hover:shadow-lg hover:shadow-[#d91c1c]/20 transition-all duration-300 uppercase tracking-widest text-sm"
-          >
-            Plan een Consultatie
-          </Link>
+              <ul className="space-y-4 mb-10 text-sm">
+                <li className="flex items-center gap-3">
+                  <CheckCircle size={18} className="text-[#d91c1c] shrink-0" />
+                  <span>Kleurscreening & Verfcorrectie</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <CheckCircle size={18} className="text-[#d91c1c] shrink-0" />
+                  <span>Structureel Chassisherstel</span>
+                </li>
+                <li className="flex items-center gap-3">
+                  <CheckCircle size={18} className="text-[#d91c1c] shrink-0" />
+                  <span>Keramische Coating & Bescherming</span>
+                </li>
+              </ul>
+
+              <div>
+                <Link
+                  href="/contact"
+                  className="inline-block px-8 py-3 bg-[#d91c1c] text-white font-bold rounded hover:bg-[#b91515] transition-colors"
+                >
+                  Boek Service
+                </Link>
+              </div>
+            </div>
+
+            {/* White/Image Right Side */}
+            <div className="bg-[#f0f0f0] flex-1 flex justify-center items-center p-8">
+              {/* We create a composite look of two vertical cards as seen in mockup */}
+              <div className="grid grid-cols-2 gap-4 h-full w-full max-w-sm">
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col items-center justify-center p-6 relative">
+                  <div className="text-center font-bold text-slate-800 tracking-widest text-[10px] mb-4 uppercase">Kleursysteem</div>
+                  <div className="w-16 h-24 bg-slate-200 rounded border border-slate-300"></div>
+                  <div className="w-full h-8 bg-slate-800 rounded mt-8"></div>
+                  <div className="absolute bottom-4 left-4 text-[10px] font-bold bg-slate-500 text-white px-2 py-0.5 rounded-full">VOOR</div>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col items-center justify-center p-6 relative relative">
+                  <div className="text-center mt-auto mb-4 w-12 h-24 bg-gradient-to-t from-slate-200 to-white rounded-t-xl border border-b-0 border-slate-300 relative">
+                    <div className="absolute top-0 w-full h-4 bg-slate-800 rounded-t-xl"></div>
+                  </div>
+                  <div className="absolute bottom-4 left-4 text-[10px] font-bold bg-[#d91c1c] text-white px-2 py-0.5 rounded-full">NA</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Client Experiences Section */}
+      <section className="py-24 bg-[#f8f6f6]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h3 className="text-3xl font-headings font-black text-slate-900 inline-block border-b-2 border-[#d91c1c] pb-2">Klantervaringen</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { name: "Marc Desmet", role: "Ondernemer", quote: `"De expertise die het BhenAuto team toonde tijdens de aankoop van mijn Porsche was opmerkelijk. Werkelijk de beste in België."` },
+              { name: "Sophie Dubois", role: "Architect", quote: `"Professioneel carrosseriewerk! Mijn auto ziet er weer uit alsof hij net uit de fabriek komt. Uitstekende kleurovereenkomst."` },
+              { name: "Jean-Luc Gerard", role: "Verzamelaar", quote: `"Een gespecialiseerde service voor bijzondere auto's. Ze begrijpen high-end voertuigen beter dan elke andere dealer die ik heb bezocht."` }
+            ].map((testimonial, i) => (
+              <div key={i} className="bg-white p-8 rounded-xl shadow-sm border border-slate-100 relative">
+                <div className="absolute top-6 right-6 text-red-100">
+                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" /></svg>
+                </div>
+                <div className="flex gap-1 text-[#d91c1c] mb-6">
+                  {Array(5).fill(0).map((_, j) => (
+                    <svg key={j} className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                  ))}
+                </div>
+                <p className="text-slate-500 text-sm italic mb-6 min-h-[60px]">
+                  {testimonial.quote}
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-slate-200 rounded-full overflow-hidden">
+                    <Image src={`https://i.pravatar.cc/150?img=${i + 11}`} width={40} height={40} alt={testimonial.name} />
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-bold text-slate-900">{testimonial.name}</h5>
+                    <p className="text-xs text-slate-400">{testimonial.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </div>

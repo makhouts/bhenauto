@@ -7,7 +7,8 @@
 
   --color-primary-red: #d91c1c;
   --color-primary-red-hover: #b91515;
-  --color-background-light: #f8f6f6;
+  --color-background-light: #fdfdfd;
+  /* Lighter white/gray */
   --color-background-dark: #211111;
   --color-surface-light: #ffffff;
   --color-surface-dark: #0f172a;
@@ -18,8 +19,8 @@
   /* Slate 800 */
   --color-text-base: #0f172a;
   /* Slate 900 */
-  --color-text-muted: #475569;
-  /* Slate 600 */
+  --color-text-muted: #64748b;
+  /* Slate 500 */
 }
 
 @layer base {

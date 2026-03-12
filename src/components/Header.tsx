@@ -9,15 +9,16 @@ export default function Header() {
 
     const navLinks = [
         { name: "Home", href: "/" },
-        { name: "Aanbod", href: "/inventory" },
+        { name: "Voorraad", href: "/inventory" },
+        { name: "Carrosserie", href: "/carrosserie" },
         { name: "Over Ons", href: "/about" },
         { name: "Contact", href: "/contact" },
     ];
 
     return (
-        <header className="fixed w-full z-50 transition-all duration-300 glassmorphism bg-white/80">
+        <header className="fixed w-full z-50 transition-all duration-300 bg-white shadow-sm">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center h-20">
+                <div className="flex justify-between items-center h-16">
                     {/* Logo */}
                     <div className="flex-shrink-0 flex items-center gap-2">
                         <div className="text-[#d91c1c]">
@@ -27,8 +28,8 @@ export default function Header() {
                                 <circle cx="16.5" cy="14.5" r="1.5" />
                             </svg>
                         </div>
-                        <Link href="/" className="text-2xl font-headings font-black text-slate-900 tracking-tighter">
-                            bhen<span className="text-[#d91c1c]">auto</span>
+                        <Link href="/" className="text-xl font-headings font-black text-slate-900 tracking-tighter uppercase mr-12">
+                            BHEN<span className="text-[#d91c1c]">AUTO</span>
                         </Link>
                     </div>
 
@@ -55,9 +56,14 @@ export default function Header() {
                         </button>
                     </div>
 
-                    {/* Desktop Book Now (from mockup) */}
-                    <div className="hidden lg:flex items-center">
-                        <button className="bg-[#d91c1c] text-white px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-[#b91515] transition-all shadow-lg shadow-[#d91c1c]/20">
+                    {/* Desktop Book Now & Search */}
+                    <div className="hidden lg:flex items-center gap-6">
+                        <button className="text-slate-600 hover:text-[#d91c1c] transition-colors">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </button>
+                        <button className="bg-[#d91c1c] text-white px-6 py-2 rounded font-bold text-sm hover:bg-[#b91515] transition-all">
                             Boek Nu
                         </button>
                     </div>

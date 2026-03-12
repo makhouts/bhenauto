@@ -15,7 +15,7 @@ export default async function AdminDashboardPage() {
 
     const stats = [
         {
-            name: "Total Fleet",
+            name: "Totale Voorraad",
             value: totalCars,
             icon: Car,
             color: "text-blue-500",
@@ -23,7 +23,7 @@ export default async function AdminDashboardPage() {
             borderColor: "border-blue-500/20",
         },
         {
-            name: "Sold Vehicles",
+            name: "Verkochte Voertuigen",
             value: soldCars,
             icon: CheckCircle,
             color: "text-green-500",
@@ -31,7 +31,7 @@ export default async function AdminDashboardPage() {
             borderColor: "border-green-500/20",
         },
         {
-            name: "Featured Cars",
+            name: "Uitgelichte Auto's",
             value: featuredCars,
             icon: Star,
             color: "text-[#d91c1c]",
@@ -39,7 +39,7 @@ export default async function AdminDashboardPage() {
             borderColor: "border-[#d91c1c]/20",
         },
         {
-            name: "Total Inquiries",
+            name: "Totale Aanvragen",
             value: totalInquiries,
             icon: MessageSquare,
             color: "text-purple-500",
@@ -50,7 +50,7 @@ export default async function AdminDashboardPage() {
 
     return (
         <div>
-            <h1 className="text-3xl font-headings text-slate-900 mb-8 font-black">Dashboard Overview</h1>
+            <h1 className="text-3xl font-headings text-slate-900 mb-8 font-black">Dashboard Overzicht</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.map((stat) => (
@@ -70,9 +70,9 @@ export default async function AdminDashboardPage() {
             </div>
 
             <div className="mt-12 bg-white border border-slate-200 p-8 rounded-2xl shadow-sm">
-                <h2 className="text-xl font-headings text-slate-900 mb-4 font-bold">Welcome to bhenauto Admin Portal</h2>
+                <h2 className="text-xl font-headings text-slate-900 mb-4 font-bold">Welkom op het bhenauto Admin Portaal</h2>
                 <p className="text-slate-600 font-medium leading-relaxed max-w-3xl">
-                    Use the side navigation to manage your vehicle inventory, update car details, track incoming customer inquiries, and curate the featured vehicles displayed on the home page.
+                    Gebruik de navigatie aan de zijkant om uw voertuigvoorraad te beheren, autogegevens bij te werken, inkomende klantaanvragen op te volgen en de uitgelichte voertuigen op de startpagina te cureren.
                 </p>
             </div>
         </div>

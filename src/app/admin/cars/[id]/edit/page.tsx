@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata = {
-    title: "Edit Vehicle | bhenauto Admin",
+    title: "Voertuig Bewerken | bhenauto Admin",
 };
 
 export default async function EditCarPage(
@@ -28,11 +28,11 @@ export default async function EditCarPage(
                     href="/admin/cars"
                     className="inline-flex items-center text-gray-400 hover:text-white transition-colors text-sm uppercase tracking-widest font-semibold mb-6"
                 >
-                    <ArrowLeft size={16} className="mr-2" /> back to inventory
+                    <ArrowLeft size={16} className="mr-2" /> terug naar voorraad
                 </Link>
 
-                <h1 className="text-3xl font-headings text-white mb-2">Edit Vehicle Details</h1>
-                <p className="text-gray-400 font-light text-sm">Update the specifics of {car.year} {car.brand} {car.model}</p>
+                <h1 className="text-3xl font-headings text-white mb-2">Voertuigdetails Bewerken</h1>
+                <p className="text-gray-400 font-light text-sm">Werk de specifieke gegevens bij van {car.year} {car.brand} {car.model}</p>
             </div>
 
             <CarForm initialData={car} />

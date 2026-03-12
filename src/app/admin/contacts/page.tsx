@@ -3,7 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Mail, Phone, Calendar } from "lucide-react";
 
 export const metadata = {
-    title: "Inquiries | bhenauto Admin",
+    title: "Aanvragen | bhenauto Admin",
 };
 
 export default async function ContactsAdminPage() {
@@ -15,19 +15,19 @@ export default async function ContactsAdminPage() {
         <div>
             <div className="flex justify-between items-end mb-8 border-b border-slate-200 pb-6">
                 <div>
-                    <h1 className="text-3xl font-headings text-slate-900 mb-2 font-black">Customer Inquiries</h1>
-                    <p className="text-slate-500 font-medium text-sm">Review and manage incoming requests from the public site.</p>
+                    <h1 className="text-3xl font-headings text-slate-900 mb-2 font-black">Klantenaanvragen</h1>
+                    <p className="text-slate-500 font-medium text-sm">Beoordeel en beheer inkomende verzoeken van de openbare site.</p>
                 </div>
                 <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 text-[#d91c1c] font-bold text-sm shadow-sm">
-                    Total: {contacts.length}
+                    Totaal: {contacts.length}
                 </div>
             </div>
 
             {contacts.length === 0 ? (
                 <div className="text-center py-24 bg-white border border-slate-200 rounded-2xl shadow-sm">
                     <Mail size={48} className="mx-auto text-slate-300 mb-4" />
-                    <h3 className="text-xl font-headings text-slate-900 mb-2 font-bold">No Inquiries Found</h3>
-                    <p className="text-slate-500 font-medium">You don't have any customer messages yet.</p>
+                    <h3 className="text-xl font-headings text-slate-900 mb-2 font-bold">Geen Aanvragen Gevonden</h3>
+                    <p className="text-slate-500 font-medium">U heeft nog geen klantberichten.</p>
                 </div>
             ) : (
                 <div className="space-y-6">
@@ -38,7 +38,7 @@ export default async function ContactsAdminPage() {
                                     <h3 className="text-xl font-headings text-slate-900 font-bold">{contact.name}</h3>
                                     {contact.car_reference && (
                                         <div className="mt-2 inline-flex items-center px-3 py-1 bg-[#d91c1c]/10 text-[#d91c1c] text-xs font-bold uppercase tracking-wider rounded-full border border-[#d91c1c]/20">
-                                            Inquiry for: {contact.car_reference}
+                                            Aanvraag voor: {contact.car_reference}
                                         </div>
                                     )}
                                 </div>
@@ -58,7 +58,7 @@ export default async function ContactsAdminPage() {
                                     {contact.phone ? (
                                         <a href={`tel:${contact.phone}`} className="hover:text-[#d91c1c] transition-colors">{contact.phone}</a>
                                     ) : (
-                                        <span className="text-slate-400 italic">Not provided</span>
+                                        <span className="text-slate-400 italic">Niet opgegeven</span>
                                     )}
                                 </div>
                             </div>
