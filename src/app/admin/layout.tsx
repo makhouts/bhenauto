@@ -1,12 +1,34 @@
 import { ReactNode } from "react";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { Car, MessageSquare, LayoutDashboard, LogOut } from "lucide-react";
+import { Toaster } from "sonner";
+import prisma from "@/lib/prisma";
 
-export default function AdminLayout({
+export default async function AdminLayout({
     children,
 }: {
     children: ReactNode;
 }) {
+    // Check if the user is authenticated
+    const cookieStore = await cookies();
+    const session = cookieStore.get("admin_session");
+    const isAuthenticated = session?.value === "authenticated";
+
+    // Fetch sidebar counts (only when authenticated)
+    const [carCount, nieuweAanvragen] = isAuthenticated
+        ? await Promise.all([
+              prisma.car.count(),
+              prisma.contact.count({ where: { read: false } }),
+          ])
+        : [0, 0];
+
+    // If not authenticated, render only the children (login page)
+    // No sidebar, no logout button
+    if (!isAuthenticated) {
+        return <>{children}</>;
+    }
+
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
             {/* Sidebar Navigation */}
@@ -32,6 +54,9 @@ export default function AdminLayout({
                     >
                         <Car size={18} className="mr-3" />
                         Voorraad
+                        <span className="ml-auto bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-1 rounded-full leading-none">
+                            {carCount}
+                        </span>
                     </Link>
 
                     <Link
@@ -40,6 +65,11 @@ export default function AdminLayout({
                     >
                         <MessageSquare size={18} className="mr-3" />
                         Aanvragen
+                        {nieuweAanvragen > 0 && (
+                            <span className="ml-auto bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-1 rounded-full leading-none">
+                                {nieuweAanvragen}
+                            </span>
+                        )}
                     </Link>
                 </nav>
 
@@ -66,6 +96,19 @@ export default function AdminLayout({
                     {children}
                 </div>
             </main>
+
+            <Toaster
+                position="bottom-right"
+                toastOptions={{
+                    style: {
+                        fontFamily: "var(--font-inter)",
+                        borderRadius: "12px",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                    },
+                }}
+                richColors
+            />
         </div>
     );
 }

@@ -12,28 +12,9 @@ export const metadata: Metadata = {
 export default function ContactPage() {
     return (
         <div className="min-h-screen bg-background-light">
-            {/* Top Banner Area */}
-            <div className="relative bg-white py-24 mb-12 overflow-hidden border-b border-slate-200 mt-20">
-                <div className="absolute inset-0 z-0 opacity-40">
-                    <Image
-                        src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2070&auto=format&fit=crop"
-                        alt="Showroom"
-                        fill
-                        className="object-cover"
-                        priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-white to-black/80"></div>
-                </div>
 
-                <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-8">
-                    <h1 className="text-4xl md:text-6xl font-headings text-slate-900 mb-6 uppercase tracking-wider font-black">Contacteer Conciërge</h1>
-                    <p className="text-slate-200 max-w-2xl mx-auto text-lg font-medium drop-shadow-md">
-                        Ervaar uitzonderlijke service vanaf de eerste aanvraag. Ons toegewijde team staat klaar om u te helpen uw volgende droomwagen te ontdekken.
-                    </p>
-                </div>
-            </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 mb-20">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 mb-20">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
 
                     {/* Contact Info Sidebar */}

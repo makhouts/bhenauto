@@ -1,10 +1,10 @@
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import CarRow from "@/components/admin/CarRow";
+import CarsTableClient from "@/components/admin/CarsTableClient";
 
 export const metadata = {
-    title: "Manage Fleet | bhenauto Admin",
+    title: "Voertuigvoorraad | bhenauto Admin",
 };
 
 export default async function AdminCarsPage() {
@@ -33,33 +33,8 @@ export default async function AdminCarsPage() {
                 </Link>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-x-auto shadow-sm">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-widest text-slate-500">
-                            <th className="px-6 py-4 font-semibold">Voertuig</th>
-                            <th className="px-6 py-4 font-semibold">Prijs</th>
-                            <th className="px-6 py-4 font-semibold">Zichtbaarheid</th>
-                            <th className="px-6 py-4 font-semibold">Status</th>
-                            <th className="px-6 py-4 font-semibold text-right">Acties</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {cars.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
-                                    <p className="mb-2">Uw voorraad is momenteel leeg.</p>
-                                    <Link href="/admin/cars/new" className="text-[#d91c1c] font-bold hover:underline">Voeg uw eerste voertuig toe</Link>
-                                </td>
-                            </tr>
-                        ) : (
-                            cars.map((car: any) => (
-                                <CarRow key={car.id} car={car} />
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            <CarsTableClient cars={cars} />
         </div>
     );
 }
+

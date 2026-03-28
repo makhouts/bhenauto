@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import ConditionalLayout from "@/components/ConditionalLayout";
 import "./globals.css";
 
 const inter = Inter({
@@ -32,10 +31,9 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${playfair.variable} antialiased min-h-screen flex flex-col bg-background-light text-slate-900`}
       >
-        <Header />
-        <main className="flex-grow pt-20">{children}</main>
-        <Footer />
+        <ConditionalLayout>{children}</ConditionalLayout>
       </body>
     </html>
   );
 }
+

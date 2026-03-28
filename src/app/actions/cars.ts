@@ -35,9 +35,53 @@ export async function toggleSold(id: string, sold: boolean) {
     }
 }
 
+export async function updateCarStatus(id: string, status: "beschikbaar" | "gereserveerd" | "verkocht") {
+    try {
+        await prisma.car.update({
+            where: { id },
+            data: {
+                sold: status === "verkocht",
+                reserved: status === "gereserveerd",
+            },
+        });
+        revalidatePath("/admin/cars");
+        revalidatePath("/inventory");
+        revalidatePath("/");
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update car status:", error);
+        return { error: "Failed to update car status." };
+    }
+}
+
 export async function deleteCar(id: string) {
     try {
-        // Note: In a real app we'd also delete images from the filesystem or cloud storage
+        // Fetch car images to clean up from Cloudinary
+        const car = await prisma.car.findUnique({
+            where: { id },
+            include: { images: true },
+        });
+
+        if (car?.images?.length) {
+            // Dynamically import cloudinary only when needed
+            const { default: cloudinary } = await import("@/lib/cloudinary");
+
+            // Extract Cloudinary public IDs from URLs and delete them
+            const publicIds = car.images
+                .map((img) => {
+                    // Cloudinary URL format: https://res.cloudinary.com/{cloud}/image/upload/v{version}/{folder}/{public_id}.{ext}
+                    const match = img.url.match(/\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
+                    return match?.[1] || null;
+                })
+                .filter(Boolean) as string[];
+
+            if (publicIds.length > 0) {
+                await cloudinary.api.delete_resources(publicIds).catch((err: Error) => {
+                    console.warn("Failed to delete some Cloudinary images:", err.message);
+                });
+            }
+        }
+
         await prisma.car.delete({
             where: { id },
         });

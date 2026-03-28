@@ -18,6 +18,7 @@ export type CarWithImages = {
     description: string;
     featured: boolean;
     sold: boolean;
+    reserved: boolean;
     createdAt: Date;
     updatedAt: Date;
     images: { url: string }[];
@@ -92,7 +93,7 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
     ]);
 
     return {
-        cars: cars as CarWithImages[],
+        cars: cars as unknown as CarWithImages[],
         hasMore: skip + cars.length < total,
         total,
     };

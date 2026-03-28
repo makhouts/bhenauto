@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { v4 as uuidv4 } from "uuid";
+import cloudinary from "@/lib/cloudinary";
 
 export async function POST(request: NextRequest) {
     try {
@@ -17,36 +15,28 @@ export async function POST(request: NextRequest) {
 
         const uploadedUrls: string[] = [];
 
-        // Ensure the uploads directory exists
-        const uploadDir = join(process.cwd(), "public/uploads");
-        try {
-            await mkdir(uploadDir, { recursive: true });
-        } catch (e) {
-            // Directory might already exist, ignore error or log it
-        }
-
         for (const file of files) {
             const bytes = await file.arrayBuffer();
             const buffer = Buffer.from(bytes);
 
-            // Create a unique filename to prevent overwriting
-            const uniqueSuffix = uuidv4();
-            const originalName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "");
-            const filename = `${uniqueSuffix}-${originalName}`;
+            // Convert buffer to base64 data URI for Cloudinary upload
+            const base64 = buffer.toString("base64");
+            const dataUri = `data:${file.type || "image/jpeg"};base64,${base64}`;
 
-            const path = join(uploadDir, filename);
+            const result = await cloudinary.uploader.upload(dataUri, {
+                folder: "bhenauto",
+                asset_folder: "bhenauto",
+                resource_type: "image",
+            });
 
-            await writeFile(path, buffer);
-
-            // Store the relative URL suitable for saving in the database
-            uploadedUrls.push(`/uploads/${filename}`);
+            uploadedUrls.push(result.secure_url);
         }
 
         return NextResponse.json({ urls: uploadedUrls });
-    } catch (error) {
-        console.error("Error uploading files:", error);
+    } catch (error: any) {
+        console.error("Cloudinary upload error:", error?.message || error);
         return NextResponse.json(
-            { error: "Internal server error during file upload." },
+            { error: error?.message || "Failed to upload images." },
             { status: 500 }
         );
     }

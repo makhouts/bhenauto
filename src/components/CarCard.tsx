@@ -24,6 +24,7 @@ interface CarWithImages {
     description: string;
     featured: boolean;
     sold: boolean;
+    reserved: boolean;
     images: CarImage[];
 }
 
@@ -70,6 +71,14 @@ export default function CarCard({ car }: CarCardProps) {
                 {car.sold && (
                     <div className="absolute top-4 right-4 bg-[#d91c1c] text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-md z-10">
                         Verkocht
+                    </div>
+                )}
+
+                {/* Reserved badge */}
+                {!car.sold && car.reserved && (
+                    <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-md z-10 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
+                        Gereserveerd
                     </div>
                 )}
 

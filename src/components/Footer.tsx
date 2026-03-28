@@ -1,81 +1,87 @@
 import Link from "next/link";
-import { Facebook, Instagram } from "lucide-react";
+import { Globe, Share2, MapPin, Phone, Mail } from "lucide-react";
 
 export default function Footer() {
     return (
-        <footer className="bg-white border-t border-slate-200 pt-16 pb-8 text-slate-500">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
+        <footer 
+            className="relative bg-[#5c0f0f] pt-12 pb-6 text-white overflow-hidden"
+            style={{ clipPath: "polygon(0 0, 100% 2vw, 100% 100%, 0 100%)" }}
+        >
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 box-border mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-6 mb-12 lg:mb-16">
                     {/* Brand Info */}
-                    <div className="space-y-4">
-                        <div className="flex-shrink-0 flex items-center gap-2">
-                            <div className="text-[#d91c1c]">
-                                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M18.92 6c-.2-.58-.76-1-1.42-1h-11c-.66 0-1.22.42-1.42 1L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-6zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM19 17H5v-5h14v5z" />
-                                    <circle cx="7.5" cy="14.5" r="1.5" />
-                                    <circle cx="16.5" cy="14.5" r="1.5" />
-                                </svg>
-                            </div>
-                            <Link href="/" className="text-xl font-headings font-black text-slate-900 tracking-tighter uppercase mr-12">
-                                BHEN<span className="text-[#d91c1c]">AUTO</span>
-                            </Link>
-                        </div>
-                        <p className="text-sm mt-4 leading-relaxed text-slate-500">
-                            Premium automotive showroom en expert carrosserie gevestigd in België. Uitmuntendheid in elk detail sinds 1998.
+                    <div className="space-y-4 lg:col-span-5 pr-4">
+                        <Link href="/" className="inline-block text-3xl md:text-4xl font-headings font-bold text-white tracking-tighter hover:text-white/80 transition-colors duration-300">
+                            Bhenauto
+                        </Link>
+                        <p className="text-sm leading-relaxed text-white/90">
+                            Uw partner in exclusieve automobielen.<br />
+                            Wij cureren alleen de allerbeste<br />
+                            voertuigen voor onze gewaardeerde<br />
+                            clientèle.
                         </p>
-                        <div className="flex space-x-4 pt-4">
-                            <a href="#" className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-[#d91c1c] hover:text-white hover:border-[#d91c1c] transition-all"><Facebook size={16} /></a>
-                            <a href="#" className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-[#d91c1c] hover:text-white hover:border-[#d91c1c] transition-all"><Instagram size={16} /></a>
+                        <div className="flex space-x-3 pt-1">
+                            <button className="w-9 h-9 rounded-full border border-white/30 flex items-center justify-center hover:bg-white hover:text-[#5c0f0f] hover:border-white transition-all duration-300 hover:scale-105" aria-label="Web">
+                                <Globe size={16} />
+                            </button>
+                            <button className="w-9 h-9 rounded-full border border-white/30 flex items-center justify-center hover:bg-white hover:text-[#5c0f0f] hover:border-white transition-all duration-300 hover:scale-105" aria-label="Share">
+                                <Share2 size={16} />
+                            </button>
                         </div>
                     </div>
 
-                    {/* Services */}
-                    <div>
-                        <h3 className="text-slate-900 font-bold mb-6">Diensten</h3>
-                        <ul className="space-y-4 text-sm text-slate-500">
-                            <li><Link href="/inventory" className="hover:text-[#d91c1c] transition-colors">Autoverkoop</Link></li>
-                            <li><Link href="/contact" className="hover:text-[#d91c1c] transition-colors">Carrosserie</Link></li>
-                            <li><Link href="/about" className="hover:text-[#d91c1c] transition-colors">Restauratie</Link></li>
-                            <li><Link href="/contact" className="hover:text-[#d91c1c] transition-colors">Taxatie</Link></li>
-                            <li><Link href="/about" className="hover:text-[#d91c1c] transition-colors">Detailing</Link></li>
+                    {/* Navigation */}
+                    <div className="lg:col-span-2">
+                        <h3 className="text-white/70 font-bold mb-4 text-xs tracking-widest uppercase">Navigatie</h3>
+                        <ul className="space-y-3 text-sm">
+                            <li><Link href="/inventory" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Voorraad</Link></li>
+                            <li><Link href="/contact" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Carrosserie</Link></li>
+                            <li><Link href="/about" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Over Ons</Link></li>
+                            <li><Link href="/contact" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Contact</Link></li>
                         </ul>
                     </div>
 
-                    {/* Quick Links */}
-                    <div>
-                        <h3 className="text-slate-900 font-bold mb-6">Bedrijf</h3>
-                        <ul className="space-y-4 text-sm text-slate-500">
-                            <li><Link href="/about" className="hover:text-[#d91c1c] transition-colors">Over Ons</Link></li>
-                            <li><Link href="/" className="hover:text-[#d91c1c] transition-colors">Onze Showroom</Link></li>
-                            <li><Link href="/contact" className="hover:text-[#d91c1c] transition-colors">Contact</Link></li>
-                            <li><Link href="/" className="hover:text-[#d91c1c] transition-colors">Carrières</Link></li>
-                            <li><Link href="/terms" className="hover:text-[#d91c1c] transition-colors">Juridische Info</Link></li>
+                    {/* Information */}
+                    <div className="lg:col-span-2">
+                        <h3 className="text-white/70 font-bold mb-4 text-xs tracking-widest uppercase">Informatie</h3>
+                        <ul className="space-y-3 text-sm">
+                            <li><Link href="/privacy" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Privacybeleid</Link></li>
+                            <li><Link href="/terms" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Algemene Voorwaarden</Link></li>
                         </ul>
                     </div>
 
                     {/* Contact */}
-                    <div>
-                        <h3 className="text-slate-900 font-bold mb-6">Nieuwsbrief</h3>
-                        <p className="text-sm mb-4 text-slate-500">Blijf op de hoogte van onze nieuwste voorraad en nieuws.</p>
-                        <div className="flex">
-                            <input type="email" placeholder="E-mailadres" className="bg-slate-50 border border-slate-200 border-r-0 rounded-l py-2 px-4 w-full focus:ring-1 focus:ring-[#d91c1c] focus:outline-none text-slate-900 text-sm" />
-                            <button className="bg-[#d91c1c] text-white px-4 py-2 rounded-r hover:bg-[#b91515] transition-colors flex items-center justify-center">
-                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M2.01 21L23 12L2.01 3L2 10l15 2l-15 2z" fill="currentColor" />
-                                </svg>
-                            </button>
-                        </div>
+                    <div className="lg:col-span-3">
+                        <h3 className="text-white/70 font-bold mb-4 text-xs tracking-widest uppercase">Contact</h3>
+                        <ul className="space-y-3 text-sm">
+                            <li className="flex items-start gap-2 group">
+                                <MapPin className="w-4 h-4 text-white/80 shrink-0 mt-0.5 group-hover:scale-110 group-hover:text-white transition-all duration-300" />
+                                <span className="text-white group-hover:text-white/80 transition-colors duration-300">Automotive Boulevard 12, Amsterdam</span>
+                            </li>
+                            <li className="flex items-center gap-2 group">
+                                <Phone className="w-4 h-4 text-white/80 shrink-0 group-hover:scale-110 group-hover:text-white transition-all duration-300" />
+                                <a href="tel:+310201234567" className="text-white group-hover:text-white/80 transition-colors duration-300">+31 (0)20 123 4567</a>
+                            </li>
+                            <li className="flex items-center gap-2 group">
+                                <Mail className="w-4 h-4 text-white/80 shrink-0 group-hover:scale-110 group-hover:text-white transition-all duration-300" />
+                                <a href="mailto:info@bhenauto.nl" className="text-white group-hover:text-white/80 transition-colors duration-300">info@bhenauto.nl</a>
+                            </li>
+                        </ul>
                     </div>
                 </div>
 
-                <div className="border-t border-slate-200 pt-8 flex flex-col md:flex-row justify-between items-center text-sm">
-                    <p>&copy; {new Date().getFullYear()} bhenauto. Alle rechten voorbehouden.</p>
-                    <div className="flex space-x-8 mt-4 md:mt-0">
-                        <Link href="/privacy" className="hover:text-[#d91c1c] transition-colors">Privacybeleid</Link>
-                        <Link href="/terms" className="hover:text-[#d91c1c] transition-colors">Servicevoorwaarden</Link>
-                    </div>
+                <div className="flex justify-end pt-6 relative z-10 w-full text-xs text-white/50 border-t border-white/10">
+                    <p>&copy; {new Date().getFullYear()} Bhenauto. Premium Automotive Excellence.</p>
+                </div>
+
+                {/* Large Watermark Text */}
+                <div className="absolute bottom-[-10%] left-4 sm:left-6 lg:left-8 pointer-events-none select-none z-0">
+                    <span className="text-[14vw] md:text-[8rem] lg:text-[10rem] font-headings font-black tracking-tighter text-white/[0.04] uppercase leading-none">
+                        BHENAUTO
+                    </span>
                 </div>
             </div>
+            
         </footer>
     );
 }

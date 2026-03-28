@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle } from "lucide-react";
+import LatestOccasionsCarousel from "@/components/LatestOccasionsCarousel";
 
 // Placeholder data for featured cars (to be replaced by DB fetch later)
 const featuredCars = [
@@ -69,48 +70,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Vehicles Section */}
-      <section className="py-24 bg-white/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-end border-b-2 border-[#d91c1c] pb-2 mb-12">
-            <h3 className="text-2xl font-headings font-black text-slate-900">Uitgelichte Premium Voertuigen</h3>
-            <Link href="/inventory" className="flex items-center text-sm font-bold text-[#d91c1c] group transition-colors">
-              Bekijk Alles <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredCars.map((car, index) => (
-              <div key={car.id} className="group cursor-pointer animate-fade-in bg-white border border-slate-100 rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300" style={{ animationDelay: `${index * 150}ms` }}>
-                <div className="relative h-[220px] w-full overflow-hidden bg-slate-100">
-                  <Image
-                    src={car.image}
-                    alt={car.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <h4 className="text-lg font-headings font-bold text-slate-900 leading-tight pr-4">{car.title}</h4>
-                    <span className="text-[#d91c1c] font-black">{car.price}</span>
-                  </div>
-                  <div className="flex gap-4 text-xs font-medium text-slate-500 mt-6">
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 border border-slate-400 rounded-full flex items-center justify-center"><div className="w-1 h-1 bg-slate-400 rounded-full"></div></div>
-                      {car.mileage}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                      Automaat
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Latest Occasions Carousel */}
+      <LatestOccasionsCarousel />
 
       {/* Why Choose BhenAuto */}
       <section className="py-24 bg-white border-y border-slate-100">

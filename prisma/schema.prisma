@@ -24,6 +24,7 @@ model Car {
   description  String
   featured     Boolean  @default(false)
   sold         Boolean  @default(false)
+  reserved     Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   images       Image[]
@@ -44,5 +45,6 @@ model Contact {
   phone         String
   message       String
   car_reference String?
+  read          Boolean  @default(false)
   createdAt     DateTime @default(now())
 }
