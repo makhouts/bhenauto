@@ -99,13 +99,14 @@ export async function saveCar(data: any) {
     try {
         const { id, images, ...carData } = data;
 
-        // Parse numeric fields
+        // Parse numeric fields and arrays
         const parsedData = {
             ...carData,
             year: parseInt(carData.year),
             mileage: parseInt(carData.mileage),
             price: parseFloat(carData.price),
             horsepower: parseInt(carData.horsepower),
+            features: JSON.parse(carData.features || "[]"),
         };
 
         if (id) {

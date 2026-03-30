@@ -4,6 +4,7 @@ import InventoryFilter from "@/components/InventoryFilter";
 import InfiniteInventory from "@/components/InfiniteInventory";
 import CarCardSkeleton from "@/components/CarCardSkeleton";
 import { fetchCarsPaginated } from "@/app/actions/fetchCars";
+import prisma from "@/lib/prisma";
 
 export const metadata = {
     title: "Voorraad | BhenAuto",
@@ -20,7 +21,13 @@ export default async function InventoryPage(props: {
     const query = searchParams.query as string | undefined;
     const brand = searchParams.brand as string | string[] | undefined;
     const sort = searchParams.sort as string | undefined;
-    const type = searchParams.type as string | string[] | undefined;
+    const maxPrice = searchParams.maxPrice as string | undefined;
+    const maxMileage = searchParams.maxMileage as string | undefined;
+    const fuel = searchParams.fuel as string | string[] | undefined;
+
+    // Fetch dynamic brands available in the DB
+    const uBrands = await prisma.car.findMany({ select: { brand: true }, distinct: ['brand'] });
+    const availableBrands = uBrands.map(c => c.brand).filter(Boolean).sort();
 
     // Fetch first page server-side (SSR — instant first paint)
     const { cars: initialCars, hasMore: initialHasMore, total } = await fetchCarsPaginated({
@@ -29,10 +36,12 @@ export default async function InventoryPage(props: {
         brand,
         query,
         sort,
-        type,
+        maxPrice,
+        maxMileage,
+        fuel,
     });
 
-    const filterParams = { brand, query, sort, type };
+    const filterParams = { brand, query, sort, maxPrice, maxMileage, fuel };
 
     return (
         <main className="min-h-screen bg-[#f8f6f6] flex flex-col pt-8">
@@ -58,7 +67,7 @@ export default async function InventoryPage(props: {
                 {/* ── Sidebar Filter ── */}
                 <aside className="w-full lg:w-1/4 shrink-0">
                     <Suspense fallback={<div className="h-96 bg-white border border-slate-200 rounded-lg shadow-sm animate-pulse" />}>
-                        <InventoryFilter />
+                        <InventoryFilter availableBrands={availableBrands} />
                     </Suspense>
 
 

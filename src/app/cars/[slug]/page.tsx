@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import prisma from '@/lib/prisma';
 import ImageGallery from '@/components/ImageGallery';
-import { MapPin, Calendar, Phone } from 'lucide-react';
+import { MapPin, Calendar, Phone, Mail, ShieldCheck } from 'lucide-react';
 
 export async function generateMetadata(
     props: { params: Promise<{ slug: string }> }
@@ -100,12 +100,6 @@ export default async function CarDetailPage(
                         ║   LEFT — specs & description  ║
                         ╚═══════════════════════════════╝ */}
                     <div className="flex-1 min-w-0">
-
-                        {/* Availability badge */}
-                        <div className="text-[11px] font-black text-[#d91c1c] uppercase tracking-[0.18em] mb-3">
-                            {car.sold ? '⚪ Verkocht' : '🟢 Nu Beschikbaar'}
-                        </div>
-
                         {/* Title */}
                         <h1 className="text-3xl md:text-4xl lg:text-5xl font-headings font-black text-slate-900 leading-tight mb-2">
                             {car.title}
@@ -180,32 +174,23 @@ export default async function CarDetailPage(
                         </div>
 
                         {/* ── Features / Options ── */}
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-7">
-                            <h2 className="text-xl font-headings font-black text-slate-900 mb-5">
-                                Kenmerken & Opties
-                            </h2>
-                            <div className="flex flex-wrap gap-2">
-                                {[
-                                    'Panoramisch Dak',
-                                    '360° Camera',
-                                    'Stoelverwarming',
-                                    'Spoorassistent',
-                                    'Apple CarPlay',
-                                    'Android Auto',
-                                    'Matrix LED Koplampen',
-                                    'Keyless Entry',
-                                    'Adaptieve Cruisecontrol',
-                                    'Dodehoekdetectie',
-                                ].map((feature, idx) => (
-                                    <span
-                                        key={idx}
-                                        className="bg-red-50 border border-red-100 text-[#d91c1c] text-xs font-semibold px-3 py-1.5 rounded-lg"
-                                    >
-                                        {feature}
-                                    </span>
-                                ))}
+                        {car.features && car.features.length > 0 && (
+                            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-7">
+                                <h2 className="text-xl font-headings font-black text-slate-900 mb-5">
+                                    Kenmerken & Opties
+                                </h2>
+                                <div className="flex flex-wrap gap-2">
+                                    {car.features.map((feature: string, idx: number) => (
+                                        <span
+                                            key={idx}
+                                            className="bg-red-50 border border-red-100 text-[#d91c1c] text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm"
+                                        >
+                                            {feature}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* ╔═══════════════════════════════╗
@@ -217,112 +202,82 @@ export default async function CarDetailPage(
                         <div className="lg:sticky lg:top-24 space-y-5">
 
                             {/* ── Contact Card ── */}
-                            <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-7">
+                            <div className="bg-white border border-slate-100 rounded-[28px] shadow-xl shadow-slate-200/40 p-8 relative overflow-hidden group/card transform transition-all duration-500 hover:shadow-2xl">
+                                {/* Decorative subtle gradient blob */}
+                                <div className="absolute -top-24 -right-24 w-56 h-56 bg-gradient-to-br from-red-50 to-transparent rounded-full blur-3xl opacity-60 group-hover/card:bg-red-100 transition-colors duration-700 pointer-events-none"></div>
 
-                                {/* Consultant */}
-                                <div className="flex items-center gap-4 mb-7 pb-6 border-b border-slate-100">
-                                    <div className="w-12 h-12 bg-slate-200 rounded-full overflow-hidden shrink-0 relative">
-                                        <Image
-                                            src="https://i.pravatar.cc/150?u=bhenauto-consultant"
-                                            alt="Consultant"
-                                            fill
-                                            className="object-cover"
-                                        />
-                                    </div>
-                                    <div>
-                                        <h4 className="font-bold text-slate-900 text-sm">Rachid Benhammida</h4>
-                                        <p className="text-xs text-slate-500">Senior Verkoopadviseur</p>
-                                    </div>
+                                <h3 className="text-[32px] font-headings font-black text-slate-900 mb-8 tracking-tight text-left relative z-10">
+                                    Interesse?
+                                </h3>
+
+                                <div className="space-y-4 mb-8 relative z-10">
+                                    {/* Phone Box */}
+                                    <a href="tel:+32000000000" className="group flex items-center bg-[#fbfbfb] border border-transparent rounded-[20px] p-5 hover:bg-white hover:border-red-100 transition-all duration-300 hover:shadow-md hover:shadow-red-900/5">
+                                        <div className="flex items-center justify-center text-[#d91c1c] mr-5">
+                                            <Phone className="w-[22px] h-[22px] transform group-hover:scale-110 group-hover:-rotate-12 transition-transform duration-300" strokeWidth={2.5} />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Bel ons direct</p>
+                                            <p className="text-lg font-black text-slate-900 tracking-tight group-hover:text-[#d91c1c] transition-colors">+32 (0) 000 00 00</p>
+                                        </div>
+                                    </a>
+
+                                    {/* Mail Box */}
+                                    <Link href={`/contact?car=${car.slug}`} className="group flex items-center bg-[#fbfbfb] border border-transparent rounded-[20px] p-5 hover:bg-white hover:border-red-100 transition-all duration-300 hover:shadow-md hover:shadow-red-900/5">
+                                        <div className="flex items-center justify-center text-[#d91c1c] mr-5">
+                                            <Mail className="w-[22px] h-[22px] transform group-hover:scale-110 group-hover:translate-y-px transition-transform duration-300" strokeWidth={2.5} />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Mail een specialist</p>
+                                            <p className="text-[15px] font-bold text-slate-900 tracking-tight group-hover:text-[#d91c1c] transition-colors">sales@bhenauto.nl</p>
+                                        </div>
+                                    </Link>
                                 </div>
 
-                                {/* CTA Buttons */}
-                                <div className="flex flex-col gap-3">
-                                    <Link
-                                        href={`/contact?car=${car.slug}`}
-                                        id="btn-request-info"
-                                        className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#d91c1c] hover:bg-[#b91515] active:bg-[#a01010] text-white font-bold text-sm transition-colors rounded-lg"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                        Informatie Aanvragen
-                                    </Link>
-
+                                {/* Action Buttons */}
+                                <div className="space-y-4 mb-8 relative z-10">
                                     <Link
                                         href={`/contact?car=${car.slug}&type=testdrive`}
-                                        id="btn-test-drive"
-                                        className="flex items-center justify-center gap-2 w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-sm transition-colors rounded-lg border border-slate-200"
+                                        className="relative flex items-center justify-center w-full py-4.5 bg-[#e61919] hover:bg-[#b91515] active:bg-[#a01010] text-white font-black text-[13px] uppercase tracking-widest rounded-2xl transition-all duration-300 hover:shadow-[0_8px_25px_rgba(230,25,25,0.35)] hover:-translate-y-1 overflow-hidden group"
                                     >
-                                        <Calendar size={16} />
-                                        Proefrit Plannen
+                                        <span className="relative z-10 py-1">BOEK EEN TESTRIT</span>
+                                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out rounded-2xl"></div>
                                     </Link>
 
-                                    <a
-                                        href={`https://wa.me/32000000000?text=Hallo, ik heb interesse in: ${encodeURIComponent(car.title)} (${car.slug})`}
-                                        id="btn-whatsapp"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-sm transition-colors rounded-lg"
+                                    <Link
+                                        href={`/contact?car=${car.slug}`}
+                                        className="flex items-center justify-center w-full py-4.5 bg-white border-2 border-slate-200 hover:border-[#d91c1c] text-slate-700 hover:text-[#d91c1c] font-bold text-[15px] transition-all rounded-2xl"
                                     >
-                                        <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 00-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zM12 4C7.589 4 4 7.589 4 12c0 1.742.558 3.354 1.5 4.685L4.5 21l4.473-.952A7.957 7.957 0 0012 20c4.411 0 8-3.589 8-8s-3.589-8-8-8z" />
-                                        </svg>
-                                        Chat via WhatsApp
-                                    </a>
+                                        Stel een vraag
+                                    </Link>
                                 </div>
 
-                                {/* Direct contact phone */}
-                                <div className="mt-7 pt-6 border-t border-slate-100 text-center">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">Direct Contact</span>
-                                    <a
-                                        href="tel:+32000000000"
-                                        className="flex items-center justify-center gap-2 mt-2 text-xl font-black text-slate-900 hover:text-[#d91c1c] transition-colors"
-                                    >
-                                        <Phone size={18} className="text-[#d91c1c]" />
-                                        +32 (0) 000 00 00
-                                    </a>
-                                </div>
-                            </div>
-
-                            {/* ── Location Card ── */}
-                            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                                <div className="p-4 flex items-center gap-3 border-b border-slate-100">
-                                    <MapPin size={18} className="text-[#d91c1c] shrink-0" />
-                                    <span className="font-bold text-slate-900 text-sm">BhenAuto Showroom</span>
-                                </div>
-                                <div className="h-44 bg-slate-200 relative">
-                                    <Image
-                                        src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1000&auto=format&fit=crop"
-                                        alt="Locatie kaart"
-                                        fill
-                                        className="object-cover opacity-60"
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <a
-                                            href="https://maps.google.com"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="bg-white text-slate-900 px-5 py-2.5 text-xs font-bold rounded-lg shadow-lg uppercase tracking-wider hover:bg-slate-50 transition-colors"
-                                        >
-                                            Route Plannen
-                                        </a>
+                                {/* Footer of card */}
+                                <div className="flex items-center justify-center pt-6 border-t border-slate-100 relative z-10">
+                                    <div className="flex items-center gap-2 text-[#008778]">
+                                        <ShieldCheck size={18} strokeWidth={2.5} className="mt-[-2px]" />
+                                        <span className="text-[11px] font-black uppercase tracking-widest">Inclusief Garantie</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* ── Financing teaser ── */}
-                            <div className="bg-slate-900 text-white rounded-xl p-6">
-                                <h3 className="font-headings font-black text-lg mb-2">Financiering Nodig?</h3>
-                                <p className="text-slate-400 text-sm mb-5 leading-relaxed">
-                                    Vraag een gepersonaliseerde financieringsoplossing aan. Snelle goedkeuring.
-                                </p>
-                                <Link
-                                    href={`/contact?car=${car.slug}&type=financing`}
-                                    className="inline-block bg-[#d91c1c] hover:bg-[#b91515] text-white font-bold text-sm px-5 py-2.5 rounded-lg transition-colors"
-                                >
-                                    Financiering Aanvragen
-                                </Link>
+                            {/* ── Location Card Google Maps ── */}
+                            <div className="bg-white border border-slate-100 rounded-[28px] shadow-sm overflow-hidden p-3 mt-5">
+                                <div className="h-[250px] w-full rounded-[20px] overflow-hidden relative group">
+                                    <div className="absolute inset-0 bg-transparent pointer-events-none shadow-[inset_0_0_20px_rgba(0,0,0,0.05)] z-10 transition-colors duration-300"></div>
+                                    <iframe
+                                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2516.356948124384!2d4.225758377155591!3d50.89861107168115!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47c3c07cb13d10cd%3A0x14ae28aebd5ab2be!2sBhenauto!5e0!3m2!1sen!2sbe!4v1774786991203!5m2!1sen!2sbe"
+                                        width="100%"
+                                        height="100%"
+                                        style={{ border: 0 }}
+                                        allowFullScreen
+                                        loading="lazy"
+                                        referrerPolicy="no-referrer-when-downgrade"
+                                        className="grayscale-[20%] contrast-125 transition-all duration-500 group-hover:grayscale-0"
+                                    />
+                                </div>
                             </div>
+
                         </div>
                     </div>
                 </div>

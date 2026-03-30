@@ -107,6 +107,7 @@ export default async function AdminLayout({
                         fontWeight: "600",
                     },
                 }}
+                closeButton
                 richColors
             />
         </div>

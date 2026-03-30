@@ -4,7 +4,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
-export default function InventoryFilter() {
+export default function InventoryFilter({ availableBrands = [] }: { availableBrands?: string[] }) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -51,14 +51,11 @@ export default function InventoryFilter() {
         router.push(pathname);
     };
 
-    const brands = ["Porsche", "BMW", "Mercedes-Benz", "Audi"];
     const currentBrands = searchParams.getAll("brand");
-
-    const types = ["SUV", "Sedan", "Coupe", "Electric"];
-    const currentTypes = searchParams.getAll("type");
 
     // Price range mock
     const currentPrice = searchParams.get("maxPrice") || "250000";
+    const currentMileage = searchParams.get("maxMileage") || "200000";
 
     return (
         <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm font-sans flex flex-col gap-6 w-full">
@@ -92,7 +89,7 @@ export default function InventoryFilter() {
                 <div>
                     <h4 className="font-bold text-slate-900 mb-4 text-sm">Merk</h4>
                     <div className="space-y-3">
-                        {brands.map(brand => (
+                        {availableBrands.map(brand => (
                             <label key={brand} className="flex items-center gap-3 cursor-pointer group">
                                 <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${currentBrands.includes(brand) ? 'bg-[#d91c1c] border-[#d91c1c] text-white' : 'border-slate-300 bg-white group-hover:border-slate-400'}`}>
                                     {currentBrands.includes(brand) && (
@@ -113,19 +110,42 @@ export default function InventoryFilter() {
                     </div>
                 </div>
 
-                {/* Vehicle Type */}
+                {/* Mileage Range */}
                 <div className="border-t border-slate-100 pt-8">
-                    <h4 className="font-bold text-slate-900 mb-4 text-sm">Voertuigtype</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                        {types.map(type => (
-                            <button
-                                key={type}
-                                onClick={() => toggleMultiFilter("type", type)}
-                                className={`py-2 px-3 text-sm font-medium rounded-md border text-center transition-all ${currentTypes.includes(type) ? 'border-[#d91c1c] bg-red-50 text-[#d91c1c]' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
-                            >
-                                {type === "Electric" ? "Elektrisch" : type}
-                            </button>
-                        ))}
+                    <h4 className="font-bold text-slate-900 mb-4 text-sm">Kilometerstand</h4>
+                    <div className="relative pt-4 pb-2">
+                        <div className="h-1.5 w-full bg-slate-200 rounded-full absolute top-5 left-0"></div>
+                        <div
+                            className="h-1.5 bg-[#d91c1c] rounded-full absolute top-5 left-0"
+                            style={{ width: `${(parseInt(currentMileage) / 200000) * 100}%` }}
+                        ></div>
+                        <input
+                            type="range"
+                            min="0"
+                            max="200000"
+                            step="5000"
+                            value={currentMileage}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                router.push(`${pathname}?${createQueryString("maxMileage", val)}`);
+                            }}
+                            className="w-full h-1.5 appearance-none bg-transparent cursor-pointer relative z-10 
+                                [&::-webkit-slider-thumb]:appearance-none 
+                                [&::-webkit-slider-thumb]:w-5 
+                                [&::-webkit-slider-thumb]:h-5 
+                                [&::-webkit-slider-thumb]:rounded-full 
+                                [&::-webkit-slider-thumb]:bg-[#d91c1c]
+                                [&::-webkit-slider-thumb]:border-2
+                                [&::-webkit-slider-thumb]:border-white
+                                [&::-webkit-slider-thumb]:shadow-md"
+                        />
+                        <div className="flex justify-between mt-4 text-sm font-medium text-slate-500">
+                            <span>0 km</span>
+                            <span>200k+ km</span>
+                        </div>
+                    </div>
+                    <div className="text-center mt-2 text-xs font-bold text-slate-700">
+                        Max: {parseInt(currentMileage) >= 200000 ? "Geen limiet" : `${parseInt(currentMileage).toLocaleString('nl-NL')} km`}
                     </div>
                 </div>
 
@@ -137,13 +157,13 @@ export default function InventoryFilter() {
                         <div className="h-1.5 w-full bg-slate-200 rounded-full absolute top-5 left-0"></div>
                         <div
                             className="h-1.5 bg-[#d91c1c] rounded-full absolute top-5 left-0"
-                            style={{ width: `${(parseInt(currentPrice) / 250000) * 100}%` }}
+                            style={{ width: `${((parseInt(currentPrice) - 10000) / 240000) * 100}%` }}
                         ></div>
                         <input
                             type="range"
-                            min="20000"
+                            min="10000"
                             max="250000"
-                            step="10000"
+                            step="5000"
                             value={currentPrice}
                             onChange={(e) => {
                                 const val = e.target.value;
@@ -160,9 +180,12 @@ export default function InventoryFilter() {
                                 [&::-webkit-slider-thumb]:shadow-md"
                         />
                         <div className="flex justify-between mt-4 text-sm font-medium text-slate-500">
-                            <span>€20k</span>
+                            <span>€10k</span>
                             <span>€250k+</span>
                         </div>
+                    </div>
+                    <div className="text-center mt-2 text-xs font-bold text-slate-700">
+                        Max: {parseInt(currentPrice) >= 250000 ? "Geen limiet" : `€ ${parseInt(currentPrice).toLocaleString('nl-NL')}`}
                     </div>
                 </div>
 

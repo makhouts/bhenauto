@@ -28,7 +28,7 @@ export default function ContactPage() {
                                     </div>
                                     <div>
                                         <h3 className="text-slate-900 font-bold uppercase tracking-widest text-sm mb-2">Locatie</h3>
-                                        <p className="text-slate-600 leading-relaxed font-medium">123 Luxury Avenue<br />Beverly Hills, CA 90210<br />Verenigde Staten</p>
+                                        <p className="text-slate-600 leading-relaxed font-medium">Brusselsesteenweg 223<br />1730 Asse<br />België</p>
                                     </div>
                                 </div>
 
@@ -64,6 +64,23 @@ export default function ContactPage() {
                                             Zondag: Enkel op afspraak
                                         </p>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Google Maps Embed */}
+                            <div className="mt-12 bg-white border border-slate-200 rounded-[24px] shadow-sm overflow-hidden p-3 group">
+                                <div className="h-[300px] w-full rounded-[16px] overflow-hidden relative">
+                                    <div className="absolute inset-0 bg-transparent pointer-events-none shadow-[inset_0_0_20px_rgba(0,0,0,0.05)] z-10"></div>
+                                    <iframe
+                                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2516.356948124384!2d4.225758377155591!3d50.89861107168115!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47c3c07cb13d10cd%3A0x14ae28aebd5ab2be!2sBhenauto!5e0!3m2!1sen!2sbe!4v1774786991203!5m2!1sen!2sbe"
+                                        width="100%"
+                                        height="100%"
+                                        style={{ border: 0 }}
+                                        allowFullScreen
+                                        loading="lazy"
+                                        referrerPolicy="no-referrer-when-downgrade"
+                                        className="grayscale-[20%] contrast-125 transition-all duration-500 group-hover:grayscale-0"
+                                    />
                                 </div>
                             </div>
                         </div>

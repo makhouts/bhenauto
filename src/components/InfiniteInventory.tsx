@@ -15,6 +15,9 @@ interface InfiniteInventoryProps {
         query?: string;
         sort?: string;
         type?: string | string[];
+        maxPrice?: string;
+        maxMileage?: string;
+        fuel?: string | string[];
     };
 }
 

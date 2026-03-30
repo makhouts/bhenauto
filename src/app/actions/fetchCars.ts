@@ -31,6 +31,9 @@ interface FetchCarsParams {
     query?: string;
     sort?: string;
     type?: string | string[];
+    maxPrice?: string;
+    maxMileage?: string;
+    fuel?: string | string[];
 }
 
 export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
@@ -38,7 +41,7 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
     hasMore: boolean;
     total: number;
 }> {
-    const { page = 1, pageSize = 9, brand, query, sort, type } = params;
+    const { page = 1, pageSize = 9, brand, query, sort, type, maxPrice, maxMileage, fuel } = params;
 
     const where: any = {};
 
@@ -56,6 +59,27 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
             { model: { contains: t } },
             { description: { contains: t } }
         ]);
+    }
+
+    if (maxPrice) {
+        const parsedPrice = parseInt(maxPrice, 10);
+        if (!isNaN(parsedPrice) && parsedPrice < 250000) {
+            where.price = { lte: parsedPrice };
+        }
+    }
+
+    if (maxMileage) {
+        const parsedMileage = parseInt(maxMileage, 10);
+        if (!isNaN(parsedMileage) && parsedMileage < 200000) {
+            where.mileage = { lte: parsedMileage };
+        }
+    }
+
+    if (fuel) {
+        const fuels = Array.isArray(fuel) ? fuel : [fuel];
+        if (fuels.length > 0 && fuels[0] !== "") {
+            where.fuel_type = { in: fuels };
+        }
     }
 
     if (query) {

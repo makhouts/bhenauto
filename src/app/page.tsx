@@ -2,54 +2,67 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle } from "lucide-react";
 import LatestOccasionsCarousel from "@/components/LatestOccasionsCarousel";
+import prisma from "@/lib/prisma";
+import heroBg from "@/assets/wallpaper.avif";
+// Placeholder data removed
 
-// Placeholder data for featured cars (to be replaced by DB fetch later)
-const featuredCars = [
-  {
-    id: "1",
-    title: "2023 Porsche 911 Carrera S",
-    price: "€135.000",
-    mileage: "4.500 km",
-    image: "https://images.unsplash.com/photo-1503376760367-1b61b3699c27?q=80&w=2070&auto=format&fit=crop",
-  },
-  {
-    id: "2",
-    title: "2022 Mercedes-Benz G-Class",
-    price: "€165.000",
-    mileage: "12.000 km",
-    image: "https://images.unsplash.com/photo-1520031441872-265e4ff70366?q=80&w=1974&auto=format&fit=crop",
-  },
-  {
-    id: "3",
-    title: "2024 Audi RS e-tron GT",
-    price: "€145.000",
-    mileage: "1.200 km",
-    image: "https://images.unsplash.com/photo-1620882863868-b3ee58b45688?q=80&w=2070&auto=format&fit=crop",
-  },
-];
+export default async function Home() {
+  // 1. Fetch up to 9 featured cars
+  const featuredDb = await prisma.car.findMany({
+    where: { featured: true },
+    orderBy: { createdAt: 'desc' },
+    take: 9,
+    include: { images: { take: 1 } }
+  });
 
-export default function Home() {
+  let displayCarsDb = [...featuredDb];
+
+  // 2. If < 9, fill the rest with newest non-featured cars
+  if (displayCarsDb.length < 9) {
+    const additionalDb = await prisma.car.findMany({
+      where: { featured: false },
+      orderBy: { createdAt: 'desc' },
+      take: 9 - displayCarsDb.length,
+      include: { images: { take: 1 } }
+    });
+    displayCarsDb = [...displayCarsDb, ...additionalDb];
+  }
+
+  // 3. Map to simple prop format
+  const carouselData = displayCarsDb.map(c => ({
+    id: c.id,
+    title: c.title,
+    slug: c.slug,
+    price: c.price,
+    year: c.year,
+    mileage: c.mileage,
+    fuel_type: c.fuel_type,
+    image: c.images[0]?.url || "https://images.unsplash.com/photo-1555312399-28c11e73dbd6?q=80&w=2070&auto=format&fit=crop",
+    sold: c.sold,
+  }));
+
   return (
     <div className="flex flex-col min-h-screen bg-[#f8f6f6]">
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center overflow-hidden bg-[#e6e6e6]">
-        {/* We use a solid light/gradient background to let the car pop, similar to the mockup */}
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#f0f0f0] to-[#e0e0e0]">
+      <section className="relative h-screen flex items-center overflow-hidden bg-slate-900">
+        <div className="absolute inset-0 z-0">
           <Image
-            src="https://images.unsplash.com/photo-1503376760367-1b61b3699c27?q=80&w=2070&auto=format&fit=crop"
+            src={heroBg}
             alt="Luxury Showcase"
             fill
-            className="object-cover mix-blend-multiply opacity-50"
+            className="object-cover animate-slow-zoom"
             priority
           />
+          {/* Subtle dark overlay to ensure white text pops */}
+          <div className="absolute inset-0 bg-black/40"></div>
         </div>
 
         <div className="relative z-10 px-4 sm:px-6 lg:px-12 w-full max-w-7xl mx-auto flex flex-col items-start animate-fade-in pt-20">
-          <h1 className="text-6xl md:text-8xl font-headings text-slate-900 mb-2 leading-tight tracking-tighter font-black">
+          <h1 className="text-6xl md:text-8xl font-headings text-white mb-2 leading-tight tracking-tighter font-black">
             Ervaar <br />
             <span className="text-[#d91c1c]">Uitmuntendheid.</span>
           </h1>
-          <p className="text-lg md:text-xl text-slate-800 mb-10 max-w-xl font-medium tracking-wide">
+          <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-xl font-medium tracking-wide">
             Premium Auto's & Professionele Carrosserie in België.
             Ontdek onze zorgvuldig geselecteerde collectie high-performance voertuigen.
           </p>
@@ -62,7 +75,7 @@ export default function Home() {
             </Link>
             <Link
               href="/contact"
-              className="px-8 py-3.5 bg-transparent text-slate-900 border border-slate-900 font-bold rounded hover:bg-slate-900 hover:text-white transition-colors w-full sm:w-auto text-center"
+              className="px-8 py-3.5 bg-transparent text-white border border-white/50 backdrop-blur-sm font-bold rounded hover:bg-white hover:text-slate-900 hover:border-white transition-colors w-full sm:w-auto text-center"
             >
               Maak een Carrosserie Afspraak
             </Link>
@@ -71,7 +84,7 @@ export default function Home() {
       </section>
 
       {/* Latest Occasions Carousel */}
-      <LatestOccasionsCarousel />
+      <LatestOccasionsCarousel cars={carouselData} />
 
       {/* Why Choose BhenAuto */}
       <section className="py-24 bg-white border-y border-slate-100">
@@ -172,39 +185,65 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Client Experiences Section */}
+      {/* Client Experiences Section - Google Reviews Styled */}
       <section className="py-24 bg-[#f8f6f6]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h3 className="text-3xl font-headings font-black text-slate-900 inline-block border-b-2 border-[#d91c1c] pb-2">Klantervaringen</h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { name: "Marc Desmet", role: "Ondernemer", quote: `"De expertise die het BhenAuto team toonde tijdens de aankoop van mijn Porsche was opmerkelijk. Werkelijk de beste in België."` },
-              { name: "Sophie Dubois", role: "Architect", quote: `"Professioneel carrosseriewerk! Mijn auto ziet er weer uit alsof hij net uit de fabriek komt. Uitstekende kleurovereenkomst."` },
-              { name: "Jean-Luc Gerard", role: "Verzamelaar", quote: `"Een gespecialiseerde service voor bijzondere auto's. Ze begrijpen high-end voertuigen beter dan elke andere dealer die ik heb bezocht."` }
-            ].map((testimonial, i) => (
-              <div key={i} className="bg-white p-8 rounded-xl shadow-sm border border-slate-100 relative">
-                <div className="absolute top-6 right-6 text-red-100">
-                  <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" /></svg>
-                </div>
-                <div className="flex gap-1 text-[#d91c1c] mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-12">
+            <div>
+              <h3 className="text-3xl font-headings font-black text-slate-900 inline-block border-b-2 border-[#d91c1c] pb-2 mb-3">Klantervaringen</h3>
+              <div className="flex items-center gap-3">
+                <span className="text-4xl font-black text-slate-900 leading-none">5.0</span>
+                <div className="flex text-amber-500">
+                  {/* 5 solid stars */}
                   {Array(5).fill(0).map((_, j) => (
-                    <svg key={j} className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                    <svg key={j} className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                   ))}
                 </div>
-                <p className="text-slate-500 text-sm italic mb-6 min-h-[60px]">
-                  {testimonial.quote}
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-200 rounded-full overflow-hidden">
-                    <Image src={`https://i.pravatar.cc/150?img=${i + 11}`} width={40} height={40} alt={testimonial.name} />
+                <div className="flex items-center gap-1 text-sm font-bold text-slate-500">
+                  Google Reviews
+                  <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { name: "Marc Desmet", role: "1 maand geleden", quote: `"De expertise die het team toonde tijdens de aankoop van mijn droomauto was opmerkelijk. Vlotte service en zeer betrouwbaar."` },
+              { name: "Sophie Dubois", role: "3 maanden geleden", quote: `"Professioneel carrosseriewerk! Mijn auto ziet er weer uit alsof hij net uit de fabriek komt. Uitstekende communicatie gedurende het proces."` },
+              { name: "Jean-Luc Gerard", role: "4 maanden geleden", quote: `"Een gespecialiseerde service voor bijzondere auto's. Ze begrijpen high-end voertuigen beter dan elke andere dealer die ik heb bezocht in België."` },
+              { name: "Thomas Peeters", role: "5 maanden geleden", quote: `"Perfect geholpen bij de aankoop van mijn Audi RS6. Geen loze beloftes, alles netjes afgehandeld zoals het hoort. Een ware aanrader!"` }
+            ].map((testimonial, i) => (
+              <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 relative flex flex-col items-start hover:shadow-md transition-shadow">
+                <div className="flex gap-4 items-center mb-4">
+                  <div className="w-10 h-10 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center font-black text-lg">
+                    {testimonial.name.charAt(0)}
                   </div>
                   <div>
-                    <h5 className="text-sm font-bold text-slate-900">{testimonial.name}</h5>
+                    <h5 className="text-sm font-bold text-slate-900 leading-tight">{testimonial.name}</h5>
                     <p className="text-xs text-slate-400">{testimonial.role}</p>
                   </div>
+                </div>
+                <div className="flex gap-0.5 text-amber-400 mb-3">
+                  {Array(5).fill(0).map((_, j) => (
+                    <svg key={j} className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                  ))}
+                </div>
+                <p className="text-slate-600 text-[13px] leading-relaxed mb-4 flex-grow">
+                  {testimonial.quote}
+                </p>
+                <div className="mt-auto w-4 h-4 opacity-50">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                  </svg>
                 </div>
               </div>
             ))}

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { saveCar } from "@/app/actions/cars";
-import { Save, X, ImagePlus, Loader2, GripVertical, ChevronDown, Search, Sparkles } from "lucide-react";
+import { Save, X, ImagePlus, Loader2, GripVertical, ChevronDown, Search, Sparkles, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -26,6 +26,22 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 import { BRAND_NAMES, getModelsForBrand } from "@/lib/carBrands";
+
+const COMMON_FEATURES = [
+    'Panoramisch Dak',
+    '360° Camera',
+    'Stoelverwarming',
+    'Spoorassistent',
+    'Apple CarPlay',
+    'Android Auto',
+    'Matrix LED Koplampen',
+    'Keyless Entry',
+    'Adaptieve Cruisecontrol',
+    'Dodehoekdetectie',
+    'Lederen Bekleding',
+    'Sfeerverlichting',
+    'Luchtvering'
+];
 
 // ─── Sortable Image Item ────────────────────────────────────────────
 function SortableImage({
@@ -284,6 +300,22 @@ export default function CarForm({ initialData }: CarFormProps) {
     const [title, setTitle] = useState(initialData?.title || "");
     const availableModels = getModelsForBrand(brand);
 
+    // Features state
+    const [features, setFeatures] = useState<string[]>(initialData?.features || []);
+    const [featureInput, setFeatureInput] = useState("");
+
+    const addFeature = () => {
+        const val = featureInput.trim();
+        if (val && !features.includes(val)) {
+            setFeatures([...features, val]);
+        }
+        setFeatureInput("");
+    };
+
+    const removeFeature = (tag: string) => {
+        setFeatures(features.filter(f => f !== tag));
+    };
+
     // Auto-prefill title when brand or model changes (only if title hasn't been manually edited)
     const [titleManuallyEdited, setTitleManuallyEdited] = useState(!!initialData?.title);
 
@@ -307,8 +339,12 @@ export default function CarForm({ initialData }: CarFormProps) {
     };
 
     const [images, setImages] = useState<ImageItem[]>(buildInitial);
+    const [aiEnabled, setAiEnabled] = useState(false);
     const [aiAnalyzing, setAiAnalyzing] = useState(false);
     const [aiOrdered, setAiOrdered] = useState(false);
+    const [aiStale, setAiStale] = useState(false); // true when images changed since last AI run
+    const [aiProgress, setAiProgress] = useState("");
+    const [isUploading, setIsUploading] = useState(false);
 
 
     // DnD sensors
@@ -320,7 +356,7 @@ export default function CarForm({ initialData }: CarFormProps) {
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
-            setAiOrdered(false); // User manually reordered
+            setAiStale(true); // User manually reordered, AI results are stale
             setImages((items) => {
                 const oldIndex = items.findIndex((i) => i.id === active.id);
                 const newIndex = items.findIndex((i) => i.id === over.id);
@@ -329,13 +365,13 @@ export default function CarForm({ initialData }: CarFormProps) {
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
 
         const filesArray = Array.from(e.target.files);
         e.target.value = "";
 
-        // Only create local blob previews — actual upload happens on save
+        // Create local blob previews
         const previewItems: ImageItem[] = filesArray.map((file, i) => ({
             id: `new-${Date.now()}-${i}`,
             url: URL.createObjectURL(file),
@@ -343,6 +379,107 @@ export default function CarForm({ initialData }: CarFormProps) {
             file,
         }));
         setImages((prev) => [...prev, ...previewItems]);
+        setAiStale(true); // New images added, AI results are stale
+    };
+
+    // Upload blob images to Cloudinary and return their URLs
+    const uploadBlobImages = async (currentImages: ImageItem[]): Promise<ImageItem[]> => {
+        const blobItems = currentImages.filter((i) => i.url.startsWith("blob:") && i.file);
+        if (blobItems.length === 0) return currentImages;
+
+        setIsUploading(true);
+        try {
+            const uploadFormData = new FormData();
+            blobItems.forEach((item) => uploadFormData.append("files", item.file!));
+
+            const uploadRes = await fetch("/api/upload", {
+                method: "POST",
+                body: uploadFormData,
+            });
+
+            if (!uploadRes.ok) throw new Error("Upload failed");
+
+            const uploadData = await uploadRes.json();
+            const cloudinaryUrls: string[] = uploadData.urls;
+
+            let uploadIdx = 0;
+            const updated = currentImages.map((item) => {
+                if (item.url.startsWith("blob:") && item.file) {
+                    URL.revokeObjectURL(item.url);
+                    return { ...item, url: cloudinaryUrls[uploadIdx++], type: "existing" as const, file: undefined };
+                }
+                return item;
+            });
+            setImages(updated);
+            return updated;
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    // Trigger AI analysis (only when user clicks the button)
+    const triggerAiAnalysis = async () => {
+        if (images.length === 0) {
+            toast.error("Voeg eerst foto's toe voordat je AI-analyse start.");
+            return;
+        }
+
+        setAiAnalyzing(true);
+        setAiOrdered(false);
+        setAiProgress("Foto's uploaden naar cloud...");
+
+        try {
+            // First ensure all blob images are uploaded to Cloudinary
+            const updatedImages = await uploadBlobImages(images);
+
+            const allUrls = updatedImages.map((i) => i.url);
+
+            setAiProgress("AI analyseert elke foto...");
+
+            const aiRes = await fetch("/api/analyze-images", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageUrls: allUrls }),
+            });
+
+            if (!aiRes.ok) {
+                const errData = await aiRes.json().catch(() => ({}));
+                throw new Error(errData.error || "AI analyse mislukt");
+            }
+
+            setAiProgress("Volgorde optimaliseren...");
+
+            const aiData = await aiRes.json();
+            if (aiData.ordered && aiData.aiEnabled) {
+                // Rebuild images in AI-scored order
+                setImages((prev) => {
+                    const urlToItem = new Map(prev.map((item) => [item.url, item]));
+                    const reordered: ImageItem[] = [];
+                    for (const scored of aiData.ordered) {
+                        const existing = urlToItem.get(scored.url);
+                        if (existing) {
+                            reordered.push({ ...existing, aiScore: scored.score, aiAngle: scored.angle });
+                            urlToItem.delete(scored.url);
+                        }
+                    }
+                    for (const remaining of urlToItem.values()) {
+                        reordered.push(remaining);
+                    }
+                    return reordered;
+                });
+                setAiOrdered(true);
+                setAiStale(false); // AI just ran, results are fresh
+                toast.success("AI heeft de foto's gerangschikt!");
+            } else {
+                toast.info("AI-analyse is niet beschikbaar. Controleer je API-sleutel.");
+            }
+        } catch (err: any) {
+            console.error("AI analysis error:", err);
+            toast.error(err.message || "AI-analyse is mislukt.");
+        } finally {
+            setAiAnalyzing(false);
+            setAiProgress("");
+        }
     };
 
     const removeImage = (id: string) => {
@@ -353,6 +490,7 @@ export default function CarForm({ initialData }: CarFormProps) {
             }
             return prev.filter((i) => i.id !== id);
         });
+        setAiStale(true); // Image removed, AI results are stale
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -363,19 +501,21 @@ export default function CarForm({ initialData }: CarFormProps) {
         try {
             const formData = new FormData(e.currentTarget);
             const carData = Object.fromEntries(formData.entries());
+            
+            // Add the features array as JSON string
+            if (features.length > 0) {
+                carData.features = JSON.stringify(features);
+            }
 
-            // Separate existing Cloudinary images from new files that need uploading
-            const existingUrls = images
-                .filter((i) => i.type === "existing" || !i.url.startsWith("blob:"))
-                .map((i) => i.url);
-
+            // All images should already be uploaded to Cloudinary at this point
+            // (uploaded during handleFileChange for AI analysis)
             const newFiles = images
                 .filter((i) => i.type === "new" && i.file && i.url.startsWith("blob:"))
                 .map((i) => i.file!);
 
             let uploadedUrls: string[] = [];
 
-            // Only upload truly new files to Cloudinary
+            // Upload any remaining new files that weren't uploaded during AI analysis
             if (newFiles.length > 0) {
                 const uploadFormData = new FormData();
                 newFiles.forEach((file) => uploadFormData.append("files", file));
@@ -403,15 +543,6 @@ export default function CarForm({ initialData }: CarFormProps) {
             // Auto-generate slug from brand + model + year + unique suffix
             const uniqueSuffix = Math.random().toString(36).substring(2, 6);
             const slug = initialData?.slug || `${carData.year}-${carData.brand}-${carData.model}-${uniqueSuffix}`.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-
-            // AI analysis (runs in background, non-blocking)
-            if (uploadedUrls.length > 0 && process.env.NEXT_PUBLIC_GEMINI_ENABLED === "true") {
-                fetch("/api/analyze-images", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ imageUrls: allImages }),
-                }).catch(() => {}); // Fire and forget for now
-            }
 
             const result = await saveCar({
                 ...carData,
@@ -609,17 +740,77 @@ export default function CarForm({ initialData }: CarFormProps) {
                 </div>
             </div>
 
+            {/* Options & Features (Tags) */}
+            <div className="space-y-6 pt-4 border-t border-slate-100">
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Kenmerken & Opties</h3>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Voeg opties of accessoires toe</label>
+                    <div className="flex items-center gap-2 mb-3">
+                        <input
+                            type="text"
+                            value={featureInput}
+                            onChange={(e) => setFeatureInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === ",") {
+                                    e.preventDefault();
+                                    addFeature();
+                                }
+                            }}
+                            className="flex-1 bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
+                            placeholder="Typ optie (bijv. Panoramisch Dak) en druk op Enter..."
+                        />
+                        <button
+                            type="button"
+                            onClick={addFeature}
+                            className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-lg font-bold text-sm transition-colors"
+                        >
+                            Toevoegen
+                        </button>
+                    </div>
+                    
+                    {/* Common Features Preview */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                        {COMMON_FEATURES.filter(f => !features.includes(f)).map(f => (
+                            <button
+                                key={f}
+                                type="button"
+                                onClick={() => setFeatures([...features, f])}
+                                className="text-[11px] font-medium bg-white border border-slate-200 text-slate-500 hover:border-[#d91c1c] hover:bg-red-50 hover:text-[#d91c1c] px-2.5 py-1.5 rounded-md transition-colors shadow-sm"
+                            >
+                                + {f}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Tag Cloud */}
+                    {features.length > 0 ? (
+                        <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            {features.map((feature, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg shadow-sm font-medium text-sm group">
+                                    <span>{feature}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeFeature(feature)}
+                                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full p-0.5 transition-colors"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="p-4 bg-slate-50 rounded-xl text-slate-400 text-sm italic text-center border border-slate-200 border-dashed">
+                            Nog geen opties toegevoegd.
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {/* Image Gallery Manager with Drag & Drop */}
-            <div className="space-y-6 pt-4">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+            <div className="space-y-6 pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                     <h3 className="text-xl font-headings text-slate-900 font-bold">Media Galerij</h3>
                     <div className="flex items-center gap-3">
-                        {aiAnalyzing && (
-                            <span className="flex items-center gap-1.5 text-xs font-bold text-amber-600">
-                                <Loader2 size={12} className="animate-spin" />
-                                AI analyseert foto&apos;s...
-                            </span>
-                        )}
                         {aiOrdered && !aiAnalyzing && (
                             <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
                                 <Sparkles size={11} />
@@ -630,55 +821,154 @@ export default function CarForm({ initialData }: CarFormProps) {
                     </div>
                 </div>
 
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                >
-                    <SortableContext items={images.map((i) => i.id)} strategy={rectSortingStrategy}>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                            {images.map((item, index) => (
-                                <SortableImage
-                                    key={item.id}
-                                    id={item.id}
-                                    url={item.url}
-                                    index={index}
-                                    onRemove={() => removeImage(item.id)}
-                                    isNew={item.type === "new"}
-                                    aiScore={item.aiScore}
-                                    aiAngle={item.aiAngle}
-                                />
-                            ))}
-
-                            {/* Upload Button */}
-                            <label className={`aspect-[4/3] flex flex-col items-center justify-center border-2 border-dashed rounded-xl transition-colors relative ${
-                                aiAnalyzing
-                                    ? "border-amber-300 bg-amber-50 text-amber-400 cursor-wait"
-                                    : "border-slate-300 hover:border-[#d91c1c] hover:bg-[#d91c1c]/5 cursor-pointer text-slate-400 hover:text-[#d91c1c]"
-                            }`}>
-                                <input
-                                    type="file"
-                                    multiple
-                                    accept="image/*"
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    onChange={handleFileChange}
-                                    disabled={isSubmitting || aiAnalyzing}
-                                />
-                                {aiAnalyzing ? (
-                                    <>
-                                        <Loader2 size={24} className="mb-2 animate-spin" />
-                                        <span className="text-xs uppercase tracking-widest font-bold">Uploaden...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <ImagePlus size={24} className="mb-2" />
-                                        <span className="text-xs uppercase tracking-widest font-bold">Foto&apos;s Toevoegen</span>
-                                    </>
-                                )}
-                            </label>
+                {/* AI Toggle + Optimize Button */}
+                <div className="flex items-center justify-between bg-gradient-to-r from-slate-50 to-indigo-50/50 border border-slate-200 rounded-xl px-5 py-3.5">
+                    <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg transition-colors ${
+                            aiEnabled ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-400"
+                        }`}>
+                            <Sparkles size={16} />
                         </div>
-                    </SortableContext>
-                </DndContext>
+                        <div>
+                            <p className="text-sm font-bold text-slate-800">AI Foto Optimalisatie</p>
+                            <p className="text-xs text-slate-400">Laat AI automatisch de beste coverfoto kiezen en de volgorde bepalen</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {aiEnabled && images.length > 0 && !aiAnalyzing && (!aiOrdered || aiStale) && (
+                            <button
+                                type="button"
+                                onClick={triggerAiAnalysis}
+                                className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm shadow-indigo-200 hover:shadow-md hover:shadow-indigo-200"
+                            >
+                                <Zap size={13} />
+                                {aiOrdered && aiStale ? "Opnieuw" : "Optimaliseer"}
+                            </button>
+                        )}
+                        {/* Toggle Switch */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setAiEnabled(!aiEnabled);
+                            }}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                                aiEnabled ? "bg-indigo-600" : "bg-slate-300"
+                            }`}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${
+                                    aiEnabled ? "translate-x-6" : "translate-x-1"
+                                }`}
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="relative">
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext items={images.map((i) => i.id)} strategy={rectSortingStrategy}>
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                {images.map((item, index) => (
+                                    <SortableImage
+                                        key={item.id}
+                                        id={item.id}
+                                        url={item.url}
+                                        index={index}
+                                        onRemove={() => removeImage(item.id)}
+                                        isNew={item.type === "new"}
+                                        aiScore={item.aiScore}
+                                        aiAngle={item.aiAngle}
+                                    />
+                                ))}
+
+                                {/* Upload Button */}
+                                <label className={`aspect-[4/3] flex flex-col items-center justify-center border-2 border-dashed rounded-xl transition-colors relative ${
+                                    aiAnalyzing || isUploading
+                                        ? "border-amber-300 bg-amber-50 text-amber-400 cursor-wait"
+                                        : "border-slate-300 hover:border-[#d91c1c] hover:bg-[#d91c1c]/5 cursor-pointer text-slate-400 hover:text-[#d91c1c]"
+                                }`}>
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        onChange={handleFileChange}
+                                        disabled={isSubmitting || aiAnalyzing || isUploading}
+                                    />
+                                    <ImagePlus size={24} className="mb-2" />
+                                    <span className="text-xs uppercase tracking-widest font-bold">Foto&apos;s Toevoegen</span>
+                                </label>
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+
+                    {/* AI Analysis Overlay — on top of images */}
+                    {aiAnalyzing && (
+                        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl overflow-hidden">
+                            {/* Frosted glass backdrop */}
+                            <div className="absolute inset-0 bg-white/70 backdrop-blur-md" />
+
+                            {/* Shimmer effect */}
+                            <div className="absolute inset-0 overflow-hidden">
+                                <div className="absolute -inset-[100%] animate-shimmer bg-gradient-to-r from-transparent via-indigo-200/30 to-transparent" style={{ transform: 'rotate(-12deg)' }} />
+                            </div>
+
+                            <div className="relative flex flex-col items-center gap-4 py-6 px-8">
+                                {/* Pulsing sparkles icon */}
+                                <div className="relative">
+                                    <div className="absolute inset-0 animate-ping rounded-full bg-indigo-400/20" />
+                                    <div className="relative p-4 bg-white rounded-2xl shadow-lg shadow-indigo-200/50 border border-indigo-100">
+                                        <Sparkles size={28} className="text-indigo-600 animate-pulse" />
+                                    </div>
+                                </div>
+
+                                <div className="text-center space-y-1.5">
+                                    <h4 className="text-base font-bold text-slate-800">AI Analyse Bezig</h4>
+                                    <p className="text-sm text-slate-500">{aiProgress || 'Bezig met verwerken...'}</p>
+                                </div>
+
+                                {/* Animated progress bar */}
+                                <div className="w-56 h-1.5 bg-indigo-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full animate-ai-progress" style={{ width: '60%' }} />
+                                </div>
+
+                                {/* Step indicators */}
+                                <div className="flex items-center gap-5 mt-1">
+                                    <div className={`flex items-center gap-1.5 text-xs font-medium ${
+                                        aiProgress.includes('upload') ? 'text-indigo-600' : aiProgress.includes('analys') || aiProgress.includes('optim') ? 'text-green-500' : 'text-slate-300'
+                                    }`}>
+                                        <div className={`w-2 h-2 rounded-full ${
+                                            aiProgress.includes('upload') ? 'bg-indigo-500 animate-pulse' : aiProgress.includes('analys') || aiProgress.includes('optim') ? 'bg-green-500' : 'bg-slate-300'
+                                        }`} />
+                                        Upload
+                                    </div>
+                                    <div className={`flex items-center gap-1.5 text-xs font-medium ${
+                                        aiProgress.includes('analys') ? 'text-indigo-600' : aiProgress.includes('optim') ? 'text-green-500' : 'text-slate-300'
+                                    }`}>
+                                        <div className={`w-2 h-2 rounded-full ${
+                                            aiProgress.includes('analys') ? 'bg-indigo-500 animate-pulse' : aiProgress.includes('optim') ? 'bg-green-500' : 'bg-slate-300'
+                                        }`} />
+                                        Analyse
+                                    </div>
+                                    <div className={`flex items-center gap-1.5 text-xs font-medium ${
+                                        aiProgress.includes('optim') ? 'text-indigo-600' : 'text-slate-300'
+                                    }`}>
+                                        <div className={`w-2 h-2 rounded-full ${
+                                            aiProgress.includes('optim') ? 'bg-indigo-500 animate-pulse' : 'bg-slate-300'
+                                        }`} />
+                                        Rangschikken
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+
             </div>
 
             <div className="pt-8 border-t border-slate-200 flex justify-end gap-4">
@@ -692,8 +982,8 @@ export default function CarForm({ initialData }: CarFormProps) {
                 </button>
                 <button
                     type="submit"
-                    disabled={isSubmitting}
-                    className="px-8 py-3 bg-[#d91c1c] hover:bg-[#b91515] text-white rounded-lg uppercase tracking-widest text-xs font-bold transition-colors flex items-center shadow-md shadow-[#d91c1c]/20 disabled:opacity-70"
+                    disabled={isSubmitting || aiAnalyzing || isUploading}
+                    className="px-8 py-3 bg-[#d91c1c] hover:bg-[#b91515] text-white rounded-lg uppercase tracking-widest text-xs font-bold transition-colors flex items-center shadow-md shadow-[#d91c1c]/20 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {isSubmitting ? (
                         <>

@@ -98,3 +98,50 @@ h6 {
 .animate-delay-300 {
   animation-delay: 300ms;
 }
+
+/* AI Analysis Animations */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) rotate(-12deg);
+  }
+
+  100% {
+    transform: translateX(100%) rotate(-12deg);
+  }
+}
+
+@keyframes ai-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  50% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+.animate-ai-progress {
+  animation: ai-progress 2s ease-in-out infinite;
+}
+
+@keyframes slowZoom {
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.1);
+  }
+}
+
+.animate-slow-zoom {
+  animation: slowZoom 30s ease-out forwards;
+}

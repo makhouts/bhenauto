@@ -4,55 +4,36 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // Fix macOS Node.js SSL certificate issue
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-const SCORING_PROMPT = `You are an expert automotive advertising photographer.
 
-Analyze this car listing photo and score it 0-100 as COVER IMAGE for a car ad.
-
-Scoring rules:
-- 90-100: Exterior front 3/4 angle, full car visible, clean background, great lighting
-- 75-89: Full exterior side/rear, good lighting and background
-- 60-74: Interior dashboard/cockpit shots, clean and well-lit
-- 40-59: Partial exterior, mediocre lighting or busy background
-- 20-39: Detail shots (wheels, badges, buttons, engine) - supporting only
-- 0-19: Blurry, dark, or poorly composed
-
-Respond with ONLY valid JSON, no markdown, no code blocks:
-{"score": 85, "angle": "exterior_front_quarter", "reason": "Strong 3/4 front view"}`;
 
 /** Convert Cloudinary URL to small thumbnail for analysis */
 function toThumbnailUrl(url: string): string {
-    return url.replace("/upload/", "/upload/w_400,q_60,f_jpg/");
+    return url.replace("/upload/", "/upload/w_200,q_40,f_jpg/");
 }
 
-async function analyzeImage(
-    model: any,
-    imageUrl: string
-): Promise<{ score: number; angle: string; reason: string }> {
-    const thumbUrl = toThumbnailUrl(imageUrl);
-    const imgResponse = await globalThis.fetch(thumbUrl);
-    if (!imgResponse.ok) throw new Error(`Failed to fetch thumbnail: ${imgResponse.status}`);
+const BATCH_PROMPT = `Score each car photo 0-100 as a cover image for a car listing ad.
 
-    const buffer = await imgResponse.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
-    console.log(`[AI Images] Thumbnail: ${(buffer.byteLength / 1024).toFixed(0)}KB`);
+Scoring: 90-100=exterior front 3/4 full car, 75-89=full exterior other angle, 60-74=interior cockpit/dashboard, 40-59=partial exterior, 20-39=detail shots, 0-19=poor quality.
 
-    const result = await model.generateContent([
-        SCORING_PROMPT,
-        { inlineData: { data: base64, mimeType: "image/jpeg" } },
-    ]);
+Respond ONLY with a JSON array, no markdown. Each element: {"index":<0-based>,"score":<number>,"angle":"<type>","reason":"<brief>"}`;
 
-    const text = result.response.text().trim();
-    console.log(`[AI Images] Response: ${text}`);
-
-    const jsonMatch = text.match(/\{[\s\S]*?\}/);
-    if (!jsonMatch) throw new Error(`No JSON found: ${text.substring(0, 100)}`);
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    return {
-        score: Math.min(100, Math.max(0, Number(parsed.score) || 50)),
-        angle: parsed.angle || "unknown",
-        reason: parsed.reason || "",
-    };
+/** Retry a function with exponential backoff on 429 errors */
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            return await fn();
+        } catch (err: any) {
+            const is429 = err.message?.includes("429") || err.message?.includes("Too Many Requests");
+            if (is429 && attempt < maxRetries) {
+                const delay = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
+                console.log(`[AI Images] Rate limited. Retrying in ${delay / 1000}s (attempt ${attempt + 1}/${maxRetries})...`);
+                await new Promise((r) => setTimeout(r, delay));
+                continue;
+            }
+            throw err;
+        }
+    }
+    throw new Error("Max retries exceeded");
 }
 
 export async function POST(request: NextRequest) {
@@ -74,26 +55,54 @@ export async function POST(request: NextRequest) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
-        console.log(`[AI Images] Analyzing ${imageUrls.length} image(s)...`);
+        console.log(`[AI Images] Analyzing ${imageUrls.length} image(s) in single batch...`);
 
-        const scoredImages = [];
+        // Fetch all thumbnails in parallel
+        const imageDataParts = await Promise.all(
+            imageUrls.map(async (url: string, i: number) => {
+                const thumbUrl = toThumbnailUrl(url);
+                const imgResponse = await globalThis.fetch(thumbUrl);
+                if (!imgResponse.ok) throw new Error(`Failed to fetch thumbnail ${i + 1}: ${imgResponse.status}`);
+                const buffer = await imgResponse.arrayBuffer();
+                console.log(`[AI Images] Thumbnail ${i + 1}: ${(buffer.byteLength / 1024).toFixed(0)}KB`);
+                return {
+                    inlineData: {
+                        data: Buffer.from(buffer).toString("base64"),
+                        mimeType: "image/jpeg",
+                    },
+                };
+            })
+        );
 
-        for (let i = 0; i < imageUrls.length; i++) {
-            try {
-                console.log(`[AI Images] Image ${i + 1}/${imageUrls.length}...`);
-                const result = await analyzeImage(model, imageUrls[i]);
-                console.log(`[AI Images] ✓ Image ${i + 1}: score=${result.score}`);
-                scoredImages.push({ url: imageUrls[i], ...result });
-            } catch (err: any) {
-                console.error(`[AI Images] ✗ Image ${i + 1}: ${err.message}`);
-                scoredImages.push({ url: imageUrls[i], score: 50, angle: "unknown", reason: err.message });
-            }
-        }
+        // Send ALL images in a single API call (saves quota!)
+        const result = await withRetry(async () => {
+            return model.generateContent([BATCH_PROMPT, ...imageDataParts]);
+        });
+
+        const text = result.response.text().trim();
+        console.log(`[AI Images] Batch response: ${text}`);
+
+        // Parse the JSON array response
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error(`No JSON array found: ${text.substring(0, 200)}`);
+
+        const parsed: Array<{ index: number; score: number; angle: string; reason: string }> = JSON.parse(jsonMatch[0]);
+
+        // Map scores back to image URLs
+        const scoredImages = imageUrls.map((url: string, i: number) => {
+            const entry = parsed.find((p) => p.index === i);
+            return {
+                url,
+                score: entry ? Math.min(100, Math.max(0, Number(entry.score) || 50)) : 50,
+                angle: entry?.angle || "unknown",
+                reason: entry?.reason || "",
+            };
+        });
 
         const ordered = scoredImages.sort((a, b) => b.score - a.score);
-        console.log(`[AI Images] Final: ${ordered.map((o) => o.score).join(", ")}`);
+        console.log(`[AI Images] Final: ${ordered.map((o) => `${o.score}(${o.angle})`).join(", ")}`);
 
         return NextResponse.json({ ordered, aiEnabled: true });
     } catch (error: any) {

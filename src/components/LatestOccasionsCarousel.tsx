@@ -1,45 +1,50 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+// framer-motion import removed
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
-const carouselCars = [
-  {
-    id: "1",
-    title: "BMW M8 Competition",
-    price: "€ 142.900",
-    details: "2023 • 8.500 km • Petrol",
-    image: "https://images.unsplash.com/photo-1555312399-28c11e73dbd6?q=80&w=2070&auto=format&fit=crop",
-    sold: true,
-  },
-  {
-    id: "2",
-    title: "Audi RS6 Avant",
-    price: "€ 118.500",
-    details: "2022 • 24.200 km • Hybrid",
-    image: "https://images.unsplash.com/photo-1603386329225-868f9b1ee6c9?q=80&w=2069&auto=format&fit=crop",
-    sold: false,
-  },
-  {
-    id: "3",
-    title: "Mercedes-AMG GT",
-    price: "€ 105.000",
-    details: "2021 • 15.000 km • Petrol",
-    image: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?q=80&w=2070&auto=format&fit=crop",
-    sold: false,
-  },
-  {
-    id: "4",
-    title: "Porsche 911 GT3",
-    price: "€ 215.000",
-    details: "2023 • 3.200 km • Petrol",
-    image: "https://images.unsplash.com/photo-1503376760367-1b61b3699c27?q=80&w=2070&auto=format&fit=crop",
-    sold: false,
-  }
-];
+interface CarouselCar {
+  id: string;
+  title: string;
+  slug: string;
+  price: number;
+  year: number;
+  mileage: number;
+  fuel_type: string;
+  image: string;
+  sold: boolean;
+}
 
-export default function LatestOccasionsCarousel() {
+export default function LatestOccasionsCarousel({ cars }: { cars: CarouselCar[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const interval = setInterval(() => {
+      const container = containerRef.current;
+      if (!container || container.scrollWidth <= container.clientWidth) return;
+
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      const cardWidth = container.firstElementChild?.clientWidth || 400;
+      const gap = 24; // gap-6
+      
+      let nextScroll = container.scrollLeft + cardWidth + gap;
+      
+      // Go back to start if we've reached the end
+      if (container.scrollLeft >= maxScroll - 10) {
+        nextScroll = 0;
+      }
+
+      container.scrollTo({ left: nextScroll, behavior: 'smooth' });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section className="py-24 bg-[#f8f6f6] overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -79,13 +84,15 @@ export default function LatestOccasionsCarousel() {
         <div className="relative -mx-4 sm:mx-0">
           <div 
             id="occasions-carousel"
+            ref={containerRef}
             className="flex gap-6 overflow-x-auto snap-x snap-mandatory px-4 sm:px-0 pb-8 scrollbar-hide"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            {carouselCars.map((car) => (
-              <div 
+            {cars.map((car) => (
+              <Link
+                href={`/cars/${car.slug}`}
                 key={car.id} 
-                className="group cursor-pointer snap-start shrink-0 w-[85vw] sm:w-[350px] md:w-[400px] flex flex-col"
+                className="group cursor-pointer snap-start shrink-0 w-[85vw] sm:w-[350px] md:w-[400px] flex flex-col block"
               >
                 <div className="relative h-[220px] md:h-[260px] w-full rounded-lg overflow-hidden bg-slate-200">
                   <Image
@@ -107,14 +114,14 @@ export default function LatestOccasionsCarousel() {
                       {car.title}
                     </h4>
                     <span className="text-sm md:text-base font-bold text-[#d91c1c] shrink-0">
-                      {car.price}
+                      € {car.price.toLocaleString('nl-NL')}
                     </span>
                   </div>
                   <p className="text-xs font-medium text-slate-500">
-                    {car.details}
+                    {car.year} • {car.mileage.toLocaleString('nl-NL')} km • {car.fuel_type}
                   </p>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
