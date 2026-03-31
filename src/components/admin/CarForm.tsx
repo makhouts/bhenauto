@@ -740,6 +740,26 @@ export default function CarForm({ initialData }: CarFormProps) {
                 </div>
             </div>
 
+            {/* Carpass URL */}
+            <div className="space-y-4 pt-4 border-t border-slate-100">
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Documenten</h3>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                        Carpass URL <span className="text-slate-300 normal-case font-normal">(optioneel)</span>
+                    </label>
+                    <input
+                        type="url"
+                        name="carpass_url"
+                        defaultValue={initialData?.carpass_url || ""}
+                        className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
+                        placeholder="https://www.carpass.be/..."
+                    />
+                    <p className="text-xs text-slate-400 mt-1.5">
+                        Vul de Carpass URL in — er verschijnt dan een Carpass-knop op de voertuigpagina.
+                    </p>
+                </div>
+            </div>
+
             {/* Options & Features (Tags) */}
             <div className="space-y-6 pt-4 border-t border-slate-100">
                 <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Kenmerken & Opties</h3>

@@ -76,17 +76,39 @@ export async function POST(request: NextRequest) {
             })
         );
 
-        // Send ALL images in a single API call (saves quota!)
-        const result = await withRetry(async () => {
-            return model.generateContent([BATCH_PROMPT, ...imageDataParts]);
-        });
+        // Send ALL images in a single API call
+        let text: string;
+        try {
+            const result = await withRetry(async () => {
+                return model.generateContent([BATCH_PROMPT, ...imageDataParts]);
+            });
+            text = result.response.text().trim();
+            console.log(`[AI Images] Batch response: ${text.substring(0, 300)}`);
+        } catch (aiErr: any) {
+            console.warn("[AI Images] Gemini call failed (possibly Zscaler intercept):", aiErr.message);
+            // Fall back to original order
+            return NextResponse.json({
+                ordered: imageUrls.map((url: string, i: number) => ({
+                    url, score: 50 - i, angle: "unknown", reason: "AI analyse niet bereikbaar (netwerk)"
+                })),
+                aiEnabled: false,
+            });
+        }
 
-        const text = result.response.text().trim();
-        console.log(`[AI Images] Batch response: ${text}`);
+        // Guard: if we got an HTML page instead of JSON (e.g. Zscaler block page)
+        if (text.trimStart().startsWith("<")) {
+            console.warn("[AI Images] Response looks like HTML (Zscaler/proxy intercept). Falling back to original order.");
+            return NextResponse.json({
+                ordered: imageUrls.map((url: string, i: number) => ({
+                    url, score: 50 - i, angle: "unknown", reason: "AI analyse onderschept door netwerk proxy"
+                })),
+                aiEnabled: false,
+            });
+        }
 
-        // Parse the JSON array response
-        const jsonMatch = text.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) throw new Error(`No JSON array found: ${text.substring(0, 200)}`);
+        // Parse the JSON array response — strip markdown fences if present
+        const jsonMatch = text.replace(/```json|```/g, "").match(/\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error(`No JSON array found in response: ${text.substring(0, 200)}`);
 
         const parsed: Array<{ index: number; score: number; angle: string; reason: string }> = JSON.parse(jsonMatch[0]);
 

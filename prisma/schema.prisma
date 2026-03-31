@@ -25,6 +25,7 @@ model Car {
   featured     Boolean  @default(false)
   sold         Boolean  @default(false)
   reserved     Boolean  @default(false)
+  carpass_url  String?
   features     String[] @default([])
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

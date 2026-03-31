@@ -31,8 +31,9 @@ export default function InfiniteInventory({
 }: InfiniteInventoryProps) {
     const [cars, setCars] = useState<CarWithImages[]>(initialCars);
     const [hasMore, setHasMore] = useState(initialHasMore);
-    const [page, setPage] = useState(2); // next page to load
+    const [page, setPage] = useState(2);
     const [isPending, startTransition] = useTransition();
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const sentinelRef = useRef<HTMLDivElement>(null);
     const loadingRef = useRef(false);
 
@@ -87,22 +88,57 @@ export default function InfiniteInventory({
 
     return (
         <>
-            {/* Count + Sort in one row — flush with top of filter */}
+            {/* Count + Sort + View toggle */}
             <div className="flex items-center justify-between mb-6">
                 <div className="text-slate-600 text-sm">
                     <span className="font-black text-slate-900 mr-1 text-base">{initialTotal}</span>
                     voertuigen gevonden
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-500">
-                    Sorteer:
-                    <SortSelect />
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                        Sorteer:
+                        <SortSelect />
+                    </div>
+                    {/* Grid / List toggle */}
+                    <div className="flex rounded overflow-hidden border border-slate-200">
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            title="Kaartweergave"
+                            className={`p-2 transition-colors ${
+                                viewMode === 'grid' ? 'bg-[#d91c1c] text-white' : 'text-slate-400 hover:bg-slate-50'
+                            }`}
+                        >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                                <rect x="14" y="14" width="7" height="7" rx="1"/>
+                            </svg>
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            title="Lijstweergave"
+                            className={`p-2 transition-colors border-l border-slate-200 ${
+                                viewMode === 'list' ? 'bg-[#d91c1c] text-white' : 'text-slate-400 hover:bg-slate-50'
+                            }`}
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <line x1="3" y1="6" x2="21" y2="6"/>
+                                <line x1="3" y1="12" x2="21" y2="12"/>
+                                <line x1="3" y1="18" x2="21" y2="18"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* Grid / List */}
+            <div className={viewMode === 'grid'
+                ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'
+                : 'flex flex-col gap-4'
+            }>
                 {cars.map((car) => (
-                    <CarCard key={car.id} car={car} />
+                    <CarCard key={car.id} car={car} listView={viewMode === 'list'} />
                 ))}
 
                 {/* Skeleton cards while loading */}

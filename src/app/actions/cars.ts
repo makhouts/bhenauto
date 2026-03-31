@@ -106,7 +106,6 @@ export async function saveCar(data: any) {
             mileage: parseInt(carData.mileage),
             price: parseFloat(carData.price),
             horsepower: parseInt(carData.horsepower),
-            features: JSON.parse(carData.features || "[]"),
         };
 
         if (id) {

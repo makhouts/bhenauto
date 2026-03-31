@@ -48,7 +48,7 @@ export default async function InventoryPage(props: {
 
             {/* ── Header Banner ── */}
             <header className="bg-[#f8f6f6] py-16 border-b border-slate-200">
-                <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">
                         <Link href="/" className="hover:text-[#d91c1c]">Home</Link>
                         <span>/</span>
@@ -62,10 +62,10 @@ export default async function InventoryPage(props: {
                 </div>
             </header>
 
-            <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col lg:flex-row gap-8 w-full items-start">
+            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col lg:flex-row gap-8 w-full items-start">
 
                 {/* ── Sidebar Filter ── */}
-                <aside className="w-full lg:w-1/4 shrink-0">
+                <aside className="w-full lg:w-64 shrink-0">
                     <Suspense fallback={<div className="h-96 bg-white border border-slate-200 rounded-lg shadow-sm animate-pulse" />}>
                         <InventoryFilter availableBrands={availableBrands} />
                     </Suspense>

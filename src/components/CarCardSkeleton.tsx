@@ -17,18 +17,12 @@ export default function CarCardSkeleton() {
 
                 {/* Stats row */}
                 <div className="flex justify-between py-5 px-2 mt-auto border-t border-slate-50 gap-4">
-                    <div className="flex flex-col items-center gap-2">
-                        <div className="w-4 h-4 bg-slate-200 rounded" />
-                        <div className="w-12 h-3 bg-slate-200 rounded" />
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                        <div className="w-4 h-4 bg-slate-200 rounded" />
-                        <div className="w-16 h-3 bg-slate-200 rounded" />
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                        <div className="w-4 h-4 bg-slate-200 rounded" />
-                        <div className="w-12 h-3 bg-slate-200 rounded" />
-                    </div>
+                    {[...Array(4)].map((_, i) => (
+                        <div key={i} className="flex flex-col items-center gap-2">
+                            <div className="w-4 h-4 bg-slate-200 rounded" />
+                            <div className="w-12 h-3 bg-slate-200 rounded" />
+                        </div>
+                    ))}
                 </div>
 
                 {/* CTA button */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
 export default function InventoryFilter({ availableBrands = [] }: { availableBrands?: string[] }) {
@@ -11,11 +11,22 @@ export default function InventoryFilter({ availableBrands = [] }: { availableBra
 
     const [isOpen, setIsOpen] = useState(false);
 
-    // Helpers to create query strings
+    // Local slider state — only pushed to URL on release
+    const paramMileage = searchParams.get("maxMileage") || "200000";
+    const paramPrice = searchParams.get("maxPrice") || "250000";
+    const [localMileage, setLocalMileage] = useState(paramMileage);
+    const [localPrice, setLocalPrice] = useState(paramPrice);
+    const isDraggingMileage = useRef(false);
+    const isDraggingPrice = useRef(false);
+
+    // Keep local state in sync when URL params change externally (e.g. reset)
+    // We use the param values when not actively dragging
+    const displayMileage = isDraggingMileage.current ? localMileage : paramMileage;
+    const displayPrice = isDraggingPrice.current ? localPrice : paramPrice;
+
     const createQueryString = useCallback(
         (name: string, value: string) => {
             const params = new URLSearchParams(searchParams.toString());
-            // Since we moved to multiple brands and types, we handle arrays:
             if (value) {
                 params.set(name, value);
             } else {
@@ -33,11 +44,9 @@ export default function InventoryFilter({ availableBrands = [] }: { availableBra
             const currentValues = params.getAll(name);
 
             if (currentValues.includes(value)) {
-                // Remove the value
                 params.delete(name);
                 currentValues.filter(v => v !== value).forEach(v => params.append(name, v));
             } else {
-                // Add the value
                 params.append(name, value);
             }
 
@@ -48,14 +57,23 @@ export default function InventoryFilter({ availableBrands = [] }: { availableBra
     );
 
     const clearFilters = () => {
+        setLocalMileage("200000");
+        setLocalPrice("250000");
         router.push(pathname);
     };
 
     const currentBrands = searchParams.getAll("brand");
 
-    // Price range mock
-    const currentPrice = searchParams.get("maxPrice") || "250000";
-    const currentMileage = searchParams.get("maxMileage") || "200000";
+    // Commit slider value to URL (only on release)
+    const commitMileage = (val: string) => {
+        isDraggingMileage.current = false;
+        router.push(`${pathname}?${createQueryString("maxMileage", val)}`);
+    };
+
+    const commitPrice = (val: string) => {
+        isDraggingPrice.current = false;
+        router.push(`${pathname}?${createQueryString("maxPrice", val)}`);
+    };
 
     return (
         <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm font-sans flex flex-col gap-6 w-full">
@@ -113,79 +131,70 @@ export default function InventoryFilter({ availableBrands = [] }: { availableBra
                 {/* Mileage Range */}
                 <div className="border-t border-slate-100 pt-8">
                     <h4 className="font-bold text-slate-900 mb-4 text-sm">Kilometerstand</h4>
-                    <div className="relative pt-4 pb-2">
-                        <div className="h-1.5 w-full bg-slate-200 rounded-full absolute top-5 left-0"></div>
-                        <div
-                            className="h-1.5 bg-[#d91c1c] rounded-full absolute top-5 left-0"
-                            style={{ width: `${(parseInt(currentMileage) / 200000) * 100}%` }}
-                        ></div>
+                    <div className="pb-2">
                         <input
                             type="range"
                             min="0"
                             max="200000"
                             step="5000"
-                            value={currentMileage}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                router.push(`${pathname}?${createQueryString("maxMileage", val)}`);
+                            value={displayMileage}
+                            onInput={(e) => {
+                                isDraggingMileage.current = true;
+                                setLocalMileage((e.target as HTMLInputElement).value);
                             }}
-                            className="w-full h-1.5 appearance-none bg-transparent cursor-pointer relative z-10 
-                                [&::-webkit-slider-thumb]:appearance-none 
-                                [&::-webkit-slider-thumb]:w-5 
-                                [&::-webkit-slider-thumb]:h-5 
-                                [&::-webkit-slider-thumb]:rounded-full 
-                                [&::-webkit-slider-thumb]:bg-[#d91c1c]
-                                [&::-webkit-slider-thumb]:border-2
-                                [&::-webkit-slider-thumb]:border-white
-                                [&::-webkit-slider-thumb]:shadow-md"
+                            onChange={(e) => {
+                                isDraggingMileage.current = true;
+                                setLocalMileage(e.target.value);
+                            }}
+                            onMouseUp={(e) => commitMileage((e.target as HTMLInputElement).value)}
+                            onTouchEnd={(e) => commitMileage((e.target as HTMLInputElement).value)}
+                            className="slider-input w-full"
+                            style={{
+                                background: `linear-gradient(to right, #d91c1c 0%, #d91c1c ${(parseInt(displayMileage) / 200000) * 100}%, #e2e8f0 ${(parseInt(displayMileage) / 200000) * 100}%, #e2e8f0 100%)`
+                            }}
                         />
-                        <div className="flex justify-between mt-4 text-sm font-medium text-slate-500">
+                        <div className="flex justify-between mt-3 text-sm font-medium text-slate-500">
                             <span>0 km</span>
                             <span>200k+ km</span>
                         </div>
                     </div>
-                    <div className="text-center mt-2 text-xs font-bold text-slate-700">
-                        Max: {parseInt(currentMileage) >= 200000 ? "Geen limiet" : `${parseInt(currentMileage).toLocaleString('nl-NL')} km`}
+                    <div className="text-center mt-1 text-xs font-bold text-slate-700">
+                        Max: {parseInt(displayMileage) >= 200000 ? "Geen limiet" : `${parseInt(displayMileage).toLocaleString('nl-NL')} km`}
                     </div>
                 </div>
 
                 {/* Price Range */}
                 <div className="border-t border-slate-100 pt-8">
                     <h4 className="font-bold text-slate-900 mb-4 text-sm">Prijsklasse</h4>
-                    <div className="relative pt-4 pb-2">
-                        {/* Custom visual track */}
-                        <div className="h-1.5 w-full bg-slate-200 rounded-full absolute top-5 left-0"></div>
-                        <div
-                            className="h-1.5 bg-[#d91c1c] rounded-full absolute top-5 left-0"
-                            style={{ width: `${((parseInt(currentPrice) - 10000) / 240000) * 100}%` }}
-                        ></div>
+                    <div className="pb-2">
                         <input
                             type="range"
                             min="10000"
                             max="250000"
                             step="5000"
-                            value={currentPrice}
-                            onChange={(e) => {
-                                const val = e.target.value;
-                                router.push(`${pathname}?${createQueryString("maxPrice", val)}`);
+                            value={displayPrice}
+                            onInput={(e) => {
+                                isDraggingPrice.current = true;
+                                setLocalPrice((e.target as HTMLInputElement).value);
                             }}
-                            className="w-full h-1.5 appearance-none bg-transparent cursor-pointer relative z-10 
-                                [&::-webkit-slider-thumb]:appearance-none 
-                                [&::-webkit-slider-thumb]:w-5 
-                                [&::-webkit-slider-thumb]:h-5 
-                                [&::-webkit-slider-thumb]:rounded-full 
-                                [&::-webkit-slider-thumb]:bg-[#d91c1c]
-                                [&::-webkit-slider-thumb]:border-2
-                                [&::-webkit-slider-thumb]:border-white
-                                [&::-webkit-slider-thumb]:shadow-md"
+                            onChange={(e) => {
+                                isDraggingPrice.current = true;
+                                setLocalPrice(e.target.value);
+                            }}
+                            onMouseUp={(e) => commitPrice((e.target as HTMLInputElement).value)}
+                            onTouchEnd={(e) => commitPrice((e.target as HTMLInputElement).value)}
+                            className="slider-input w-full"
+                            style={{
+                                background: `linear-gradient(to right, #d91c1c 0%, #d91c1c ${((parseInt(displayPrice) - 10000) / 240000) * 100}%, #e2e8f0 ${((parseInt(displayPrice) - 10000) / 240000) * 100}%, #e2e8f0 100%)`
+                            }}
                         />
-                        <div className="flex justify-between mt-4 text-sm font-medium text-slate-500">
+                        <div className="flex justify-between mt-3 text-sm font-medium text-slate-500">
                             <span>€10k</span>
                             <span>€250k+</span>
                         </div>
                     </div>
-                    <div className="text-center mt-2 text-xs font-bold text-slate-700">
-                        Max: {parseInt(currentPrice) >= 250000 ? "Geen limiet" : `€ ${parseInt(currentPrice).toLocaleString('nl-NL')}`}
+                    <div className="text-center mt-1 text-xs font-bold text-slate-700">
+                        Max: {parseInt(displayPrice) >= 250000 ? "Geen limiet" : `€ ${parseInt(displayPrice).toLocaleString('nl-NL')}`}
                     </div>
                 </div>
 

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight, X, ZoomIn, Maximize2 } from "lucide-react";
 
 interface ImageGalleryProps {
     images: { id: string; url: string }[];
@@ -11,171 +13,363 @@ interface ImageGalleryProps {
 export default function ImageGallery({ images, title }: ImageGalleryProps) {
     const [activeIndex, setActiveIndex] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [direction, setDirection] = useState(0);
+    const [isZoomed, setIsZoomed] = useState(false);
+    const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+    const thumbStripRef = useRef<HTMLDivElement>(null);
+    const lightboxThumbRef = useRef<HTMLDivElement>(null);
 
+    const goTo = useCallback((index: number) => {
+        if (index === activeIndex) return;
+        setDirection(index > activeIndex ? 1 : -1);
+        setActiveIndex(index);
+        setIsZoomed(false);
+    }, [activeIndex]);
+
+    const goNext = useCallback(() => {
+        if (activeIndex < images.length - 1) goTo(activeIndex + 1);
+    }, [activeIndex, images.length, goTo]);
+
+    const goPrev = useCallback(() => {
+        if (activeIndex > 0) goTo(activeIndex - 1);
+    }, [activeIndex, goTo]);
+
+    // Keyboard navigation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Don't intercept if user is typing in an input
             if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)) return;
-
-            if (e.key === "ArrowLeft") {
-                setActiveIndex((prev) => (prev > 0 ? prev - 1 : prev));
-            } else if (e.key === "ArrowRight") {
-                setActiveIndex((prev) => (prev < images.length - 1 ? prev + 1 : prev));
-            } else if (e.key === "Escape" && lightboxOpen) {
-                setLightboxOpen(false);
-            }
+            if (e.key === "ArrowLeft") goPrev();
+            else if (e.key === "ArrowRight") goNext();
+            else if (e.key === "Escape" && lightboxOpen) setLightboxOpen(false);
         };
-
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [images.length, lightboxOpen]);
+    }, [goNext, goPrev, lightboxOpen]);
 
-    const placeholder = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2070&auto=format&fit=crop";
+    // Lock body scroll when lightbox is open
+    useEffect(() => {
+        if (lightboxOpen) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "";
+            setIsZoomed(false);
+        }
+        return () => { document.body.style.overflow = ""; };
+    }, [lightboxOpen]);
+
+    // Auto-scroll active thumbnail into view
+    useEffect(() => {
+        const ref = lightboxOpen ? lightboxThumbRef : thumbStripRef;
+        if (ref.current) {
+            const activeThumb = ref.current.children[activeIndex] as HTMLElement;
+            if (activeThumb) {
+                activeThumb.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+            }
+        }
+    }, [activeIndex, lightboxOpen]);
+
+    // Touch/swipe support
+    const touchStart = useRef<number | null>(null);
+    const handleTouchStart = (e: React.TouchEvent) => { touchStart.current = e.touches[0].clientX; };
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (touchStart.current === null) return;
+        const diff = touchStart.current - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) goNext();
+            else goPrev();
+        }
+        touchStart.current = null;
+    };
+
+    // Zoom mouse tracking
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setMousePos({
+            x: ((e.clientX - rect.left) / rect.width) * 100,
+            y: ((e.clientY - rect.top) / rect.height) * 100,
+        });
+    };
+
+    const slideVariants = {
+        enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
+        center: { x: 0, opacity: 1 },
+        exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
+    };
 
     if (!images || images.length === 0) {
         return (
             <div className="flex gap-3 h-[420px] md:h-[500px]">
-                <div className="flex-1 relative bg-slate-100 rounded-xl flex items-center justify-center">
+                <div className="flex-1 relative bg-slate-100 rounded-2xl flex items-center justify-center">
                     <span className="text-slate-400 uppercase tracking-widest text-sm font-bold">Geen afbeeldingen beschikbaar</span>
                 </div>
             </div>
         );
     }
 
-    const nextImages = images.slice(1, 5);
-
     return (
         <>
-            {/* Gallery Grid */}
-            <div className="flex gap-3 h-[380px] md:h-[480px]">
-                {/* Main Image */}
-                <div
-                    className="relative flex-1 overflow-hidden rounded-xl cursor-zoom-in group shadow-sm"
-                    onClick={() => setLightboxOpen(true)}
-                >
-                    <Image
-                        src={images[activeIndex].url}
-                        alt={`${title} - Vue ${activeIndex + 1}`}
-                        fill
-                        className="object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
-                        priority
-                    />
-                    {/* Bottom pill badges */}
-                    <div className="absolute bottom-4 left-4 flex gap-2">
-                        <span className="bg-black/60 text-white text-[11px] font-bold px-3 py-1.5 rounded-full backdrop-blur-sm">
-                            {images.length} foto's
-                        </span>
-                    </div>
-                </div>
+            {/* ── GALLERY GRID ── */}
+            <div className="flex gap-2.5 h-[380px] md:h-[520px]">
 
-                {/* Right Column: Top thumbnail + Bottom 2x2 grid card */}
-                {images.length > 1 && (
-                    <div className="flex flex-col gap-2 md:gap-3 w-[30%] md:w-[28%] shrink-0">
-                        {/* Top half: Single thumbnail */}
-                        <button
-                            onClick={() => setActiveIndex(1)}
-                            className={`relative flex-1 overflow-hidden rounded-[8px] md:rounded-[12px] cursor-pointer transition-all duration-200 ${activeIndex === 1 ? "ring-2 ring-[#d91c1c] ring-offset-2" : "hover:opacity-90"}`}
+                {/* ── Main Hero Image ── */}
+                <div
+                    className="relative flex-1 overflow-hidden rounded-2xl cursor-pointer group bg-slate-100"
+                    onClick={() => setLightboxOpen(true)}
+                    onMouseMove={handleMouseMove}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                >
+                    <AnimatePresence initial={false} custom={direction} mode="popLayout">
+                        <motion.div
+                            key={activeIndex}
+                            custom={direction}
+                            variants={slideVariants}
+                            initial="enter"
+                            animate="center"
+                            exit="exit"
+                            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+                            className="absolute inset-0"
                         >
                             <Image
-                                src={images[1].url}
-                                alt={`${title} thumbnail 2`}
+                                src={images[activeIndex].url}
+                                alt={`${title} - Foto ${activeIndex + 1}`}
                                 fill
-                                className="object-cover"
+                                className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                                priority
+                                sizes="(max-width: 768px) 100vw, 70vw"
                             />
-                        </button>
+                        </motion.div>
+                    </AnimatePresence>
 
-                        {/* Bottom half: 2x2 Grid card with overlay */}
-                        {images.length > 2 && (
-                            <button
-                                onClick={() => setLightboxOpen(true)}
-                                className="relative flex-1 rounded-[8px] md:rounded-[12px] overflow-hidden group cursor-pointer"
-                            >
-                                <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1 md:gap-[3px]">
-                                    {images.slice(2, 6).map((img, i) => (
-                                        <div key={img.id} className="relative w-full h-full overflow-hidden">
-                                            <Image
-                                                src={img.url}
-                                                alt={`${title} sub-thumbnail ${i + 3}`}
-                                                fill
-                                                className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                            />
+                    {/* Gradient overlays */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
+
+                    {/* Zoom icon */}
+                    <div className="absolute top-4 right-4 z-20 bg-black/40 backdrop-blur-md text-white rounded-full p-2.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-100 scale-75">
+                        <Maximize2 size={18} strokeWidth={2.5} />
+                    </div>
+
+                    {/* Image counter pill */}
+                    <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2">
+                        <span className="bg-black/50 backdrop-blur-md text-white text-xs font-bold px-3.5 py-2 rounded-full">
+                            {activeIndex + 1} / {images.length}
+                        </span>
+                    </div>
+
+                    {/* Nav arrows on main image */}
+                    {activeIndex > 0 && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); goPrev(); }}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-slate-800 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
+                        >
+                            <ChevronLeft size={20} strokeWidth={2.5} />
+                        </button>
+                    )}
+                    {activeIndex < images.length - 1 && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); goNext(); }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-slate-800 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
+                        >
+                            <ChevronRight size={20} strokeWidth={2.5} />
+                        </button>
+                    )}
+                </div>
+
+                {/* ── Right Thumbnail Column ── */}
+                {images.length > 1 && (
+                    <div className="hidden md:flex flex-col gap-2 w-[28%] shrink-0">
+                        {images.slice(1, 5).map((img, i) => {
+                            const realIndex = i + 1;
+                            const isLast = i === 3 && images.length > 5;
+                            return (
+                                <button
+                                    key={img.id}
+                                    onClick={() => isLast ? setLightboxOpen(true) : goTo(realIndex)}
+                                    className={`relative flex-1 overflow-hidden rounded-xl cursor-pointer transition-all duration-300 group/thumb
+                                        ${activeIndex === realIndex && !isLast ? "ring-2 ring-[#d91c1c] ring-offset-2 shadow-lg" : "hover:ring-1 hover:ring-slate-300 hover:ring-offset-1"}`}
+                                >
+                                    <Image
+                                        src={img.url}
+                                        alt={`${title} thumbnail ${realIndex + 1}`}
+                                        fill
+                                        className="object-cover transition-transform duration-500 group-hover/thumb:scale-110"
+                                        sizes="20vw"
+                                    />
+                                    {/* Show "View All" overlay on last thumbnail */}
+                                    {isLast && (
+                                        <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1.5 transition-all duration-300 group-hover/thumb:bg-black/40">
+                                            <ZoomIn size={22} className="text-white" strokeWidth={2} />
+                                            <span className="text-white text-xs font-bold tracking-wide">+{images.length - 5} meer</span>
                                         </div>
-                                    ))}
-                                    {/* Fill empty spots if less than 6 images total (so grid has 4 cells) */}
-                                    {images.length < 6 && Array.from({ length: 6 - images.length }).map((_, i) => (
-                                        <div key={`empty-${i}`} className="bg-slate-100 w-full h-full" />
-                                    ))}
-                                </div>
-                                {/* "View all" overlay spanning the entire bottom card */}
-                                <div className="absolute inset-0 bg-black/60 hover:bg-black/50 transition-colors flex flex-col items-center justify-center gap-1 md:gap-2">
-                                    <svg className="w-6 h-6 md:w-8 md:h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M4 6h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4zM4 12h4v4H4zm6 0h4v4h-4zm6 0h4v4h-4z" />
-                                    </svg>
-                                    <span className="text-white text-xs md:text-sm font-bold text-center px-2">Alle {images.length} bekijken</span>
-                                </div>
-                            </button>
-                        )}
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>
 
-            {/* Lightbox */}
-            {lightboxOpen && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-                    onClick={() => setLightboxOpen(false)}
-                >
-                    <button
-                        className="absolute top-6 right-6 text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
-                        onClick={() => setLightboxOpen(false)}
+            {/* ── Thumbnail Strip (Below gallery on mobile, below gallery on desktop for quick nav) ── */}
+            {images.length > 1 && (
+                <div className="mt-3">
+                    <div
+                        ref={thumbStripRef}
+                        className="flex gap-2 overflow-x-auto pb-2 scrollbar-none"
+                        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                     >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                    <div className="relative w-full max-w-5xl h-[80vh]" onClick={e => e.stopPropagation()}>
-                        <Image
-                            src={images[activeIndex].url}
-                            alt={`${title} - Vue ${activeIndex + 1}`}
-                            fill
-                            className="object-contain"
-                        />
-                        {/* Prev / Next */}
-                        {activeIndex > 0 && (
-                            <button
-                                className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white rounded-full p-3 transition-colors"
-                                onClick={() => setActiveIndex(i => i - 1)}
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                                </svg>
-                            </button>
-                        )}
-                        {activeIndex < images.length - 1 && (
-                            <button
-                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white rounded-full p-3 transition-colors"
-                                onClick={() => setActiveIndex(i => i + 1)}
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </button>
-                        )}
-                    </div>
-                    {/* Thumbstrip in lightbox */}
-                    <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 overflow-x-auto px-4">
                         {images.map((img, i) => (
                             <button
                                 key={img.id}
-                                onClick={() => setActiveIndex(i)}
-                                className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-lg transition-all ${activeIndex === i ? "ring-2 ring-white opacity-100" : "opacity-40 hover:opacity-70"}`}
+                                onClick={() => goTo(i)}
+                                className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-lg transition-all duration-300
+                                    ${activeIndex === i
+                                        ? "ring-2 ring-[#d91c1c] ring-offset-1 opacity-100 shadow-md"
+                                        : "opacity-50 hover:opacity-80 hover:ring-1 hover:ring-slate-300"
+                                    }`}
                             >
-                                <Image src={img.url} alt="" fill className="object-cover" />
+                                <Image src={img.url} alt="" fill className="object-cover" sizes="96px" />
                             </button>
                         ))}
                     </div>
                 </div>
             )}
+
+            {/* ═══════════════════════════════════════════
+                ║         FULLSCREEN LIGHTBOX             ║
+                ═══════════════════════════════════════════ */}
+            <AnimatePresence>
+                {lightboxOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col"
+                        onClick={() => setLightboxOpen(false)}
+                    >
+                        {/* ── Top Bar ── */}
+                        <div className="flex items-center justify-between px-6 py-4 relative z-20"
+                            onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center gap-3">
+                                <span className="text-white/90 text-sm font-bold">
+                                    {activeIndex + 1} <span className="text-white/40">/ {images.length}</span>
+                                </span>
+                                <span className="text-white/30 text-sm hidden sm:inline">|</span>
+                                <span className="text-white/50 text-sm hidden sm:inline truncate max-w-[200px]">{title}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setIsZoomed(!isZoomed)}
+                                    className={`text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all ${isZoomed ? 'bg-white/15 text-white' : ''}`}
+                                    title={isZoomed ? "Uitzoomen" : "Inzoomen"}
+                                >
+                                    <ZoomIn size={20} />
+                                </button>
+                                <button
+                                    onClick={() => setLightboxOpen(false)}
+                                    className="text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all"
+                                >
+                                    <X size={22} strokeWidth={2.5} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ── Main Image Area ── */}
+                        <div
+                            className="flex-1 relative flex items-center justify-center px-4 sm:px-16 overflow-hidden"
+                            onClick={e => e.stopPropagation()}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={handleTouchEnd}
+                            onMouseMove={isZoomed ? handleMouseMove : undefined}
+                        >
+                            <AnimatePresence initial={false} custom={direction} mode="popLayout">
+                                <motion.div
+                                    key={activeIndex}
+                                    custom={direction}
+                                    variants={{
+                                        enter: (dir: number) => ({ x: dir > 0 ? 200 : -200, opacity: 0, scale: 0.95 }),
+                                        center: { x: 0, opacity: 1, scale: 1 },
+                                        exit: (dir: number) => ({ x: dir > 0 ? -200 : 200, opacity: 0, scale: 0.95 }),
+                                    }}
+                                    initial="enter"
+                                    animate="center"
+                                    exit="exit"
+                                    transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+                                    className="absolute inset-0 flex items-center justify-center"
+                                >
+                                    <div
+                                        className={`relative w-full h-full transition-transform duration-300 ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
+                                        onClick={() => setIsZoomed(!isZoomed)}
+                                        style={isZoomed ? {
+                                            transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
+                                            transform: 'scale(2)',
+                                        } : {}}
+                                    >
+                                        <Image
+                                            src={images[activeIndex].url}
+                                            alt={`${title} - Foto ${activeIndex + 1}`}
+                                            fill
+                                            className="object-contain"
+                                            sizes="100vw"
+                                            priority
+                                        />
+                                    </div>
+                                </motion.div>
+                            </AnimatePresence>
+
+                            {/* Nav arrows */}
+                            {activeIndex > 0 && !isZoomed && (
+                                <button
+                                    onClick={goPrev}
+                                    className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/20 text-white rounded-full p-3 transition-all duration-200 hover:scale-110 active:scale-90"
+                                >
+                                    <ChevronLeft size={24} strokeWidth={2} />
+                                </button>
+                            )}
+                            {activeIndex < images.length - 1 && !isZoomed && (
+                                <button
+                                    onClick={goNext}
+                                    className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/20 text-white rounded-full p-3 transition-all duration-200 hover:scale-110 active:scale-90"
+                                >
+                                    <ChevronRight size={24} strokeWidth={2} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* ── Bottom Thumbnail Strip ── */}
+                        {!isZoomed && (
+                            <motion.div
+                                initial={{ y: 30, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 30, opacity: 0 }}
+                                transition={{ duration: 0.3, delay: 0.1 }}
+                                className="px-6 py-4"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                <div
+                                    ref={lightboxThumbRef}
+                                    className="flex justify-center gap-2 overflow-x-auto scrollbar-none"
+                                    style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                                >
+                                    {images.map((img, i) => (
+                                        <button
+                                            key={img.id}
+                                            onClick={() => goTo(i)}
+                                            className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-lg transition-all duration-300
+                                                ${activeIndex === i
+                                                    ? "ring-2 ring-white opacity-100 scale-105 shadow-lg shadow-white/10"
+                                                    : "opacity-35 hover:opacity-65 hover:scale-105"
+                                                }`}
+                                        >
+                                            <Image src={img.url} alt="" fill className="object-cover" sizes="80px" />
+                                        </button>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     );
 }

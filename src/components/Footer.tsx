@@ -1,9 +1,11 @@
 import Link from "next/link";
+import Image from "next/image";
+import logo from "@/assets/logo-bhenauto.png";
 import { Globe, Share2, MapPin, Phone, Mail } from "lucide-react";
 
 export default function Footer() {
     return (
-        <footer 
+        <footer
             className="relative bg-[#020214] pt-12 pb-6 text-white overflow-hidden"
             style={{ clipPath: "polygon(0 0, 100% 2vw, 100% 100%, 0 100%)" }}
         >
@@ -11,8 +13,13 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-6 mb-12 lg:mb-16">
                     {/* Brand Info */}
                     <div className="space-y-4 lg:col-span-5 pr-4">
-                        <Link href="/" className="inline-block text-3xl md:text-4xl font-headings font-bold text-[#d91c1c] tracking-tighter hover:text-[#b91515] transition-colors duration-300">
-                            Bhenauto
+                        <Link href="/" className="inline-block">
+                            <Image
+                                src={logo}
+                                alt="Bhenauto logo"
+                                height={196}
+                                className="h-44 w-auto object-contain mix-blend-lighten hover:opacity-80 transition-opacity duration-300"
+                            />
                         </Link>
                         <p className="text-sm leading-relaxed text-white/90">
                             Uw partner in exclusieve automobielen.<br />
@@ -81,7 +88,7 @@ export default function Footer() {
                     </span>
                 </div>
             </div>
-            
+
         </footer>
     );
 }

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle } from "lucide-react";
 import LatestOccasionsCarousel from "@/components/LatestOccasionsCarousel";
+import ScrollReveal from "@/components/ScrollReveal";
 import prisma from "@/lib/prisma";
 import heroBg from "@/assets/wallpaper.avif";
 // Placeholder data removed
@@ -87,6 +88,7 @@ export default async function Home() {
       <LatestOccasionsCarousel cars={carouselData} />
 
       {/* Why Choose BhenAuto */}
+      <ScrollReveal>
       <section className="py-24 bg-white border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h3 className="text-3xl font-headings font-black text-slate-900 mb-4">Waarom Kiezen Voor BhenAuto</h3>
@@ -125,8 +127,10 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      </ScrollReveal>
 
       {/* World-Class Carrosserie */}
+      <ScrollReveal>
       <section className="py-24 bg-[#f8f6f6]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row rounded-2xl overflow-hidden shadow-2xl">
@@ -184,8 +188,10 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      </ScrollReveal>
 
       {/* Client Experiences Section - Google Reviews Styled */}
+      <ScrollReveal>
       <section className="py-24 bg-[#f8f6f6]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-end mb-12">
@@ -250,6 +256,7 @@ export default async function Home() {
           </div>
         </div>
       </section>
+      </ScrollReveal>
     </div>
   );
 }

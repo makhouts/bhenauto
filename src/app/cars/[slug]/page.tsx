@@ -2,9 +2,13 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Suspense } from 'react';
 import prisma from '@/lib/prisma';
 import ImageGallery from '@/components/ImageGallery';
+import RelatedVehicles from '@/components/RelatedVehicles';
+import MobileContactBar from '@/components/MobileContactBar';
 import { MapPin, Calendar, Phone, Mail, ShieldCheck } from 'lucide-react';
+import carpassImg from '@/assets/carpass.webp';
 
 export async function generateMetadata(
     props: { params: Promise<{ slug: string }> }
@@ -20,15 +24,26 @@ export async function generateMetadata(
     }
 
     const imageUrl = car.images.length > 0 ? car.images[0].url : '';
+    const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
+    const ogDescription = `${car.brand} ${car.model} · ${car.year} · ${car.mileage.toLocaleString('nl-BE')} km · ${priceFormatted}`;
 
     return {
         title: `${car.title} | BhenAuto`,
-        description: car.description.substring(0, 160),
+        description: ogDescription,
         openGraph: {
-            title: `${car.title} | BhenAuto`,
-            description: car.description.substring(0, 160),
-            images: imageUrl ? [{ url: imageUrl }] : [],
-        }
+            title: `${car.title} – ${priceFormatted}`,
+            description: ogDescription,
+            images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630, alt: car.title }] : [],
+            type: 'website',
+            locale: 'nl_BE',
+            siteName: 'BhenAuto',
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: `${car.title} – ${priceFormatted}`,
+            description: ogDescription,
+            images: imageUrl ? [imageUrl] : [],
+        },
     };
 }
 
@@ -105,10 +120,28 @@ export default async function CarDetailPage(
                             {car.title}
                         </h1>
 
-                        {/* Subtitle */}
-                        <p className="text-slate-500 text-base mb-6">
-                            {car.brand} · {car.model} · {car.year} · {car.color}
-                        </p>
+                        {/* Subtitle + optional Carpass logo */}
+                        <div className="flex items-center justify-between mb-6">
+                            <p className="text-slate-500 text-base">
+                                {car.brand} · {car.model} · {car.year} · {car.color}
+                            </p>
+                            {car.carpass_url && (
+                                <a
+                                    href={car.carpass_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Bekijk Carpass"
+                                    className="shrink-0 ml-4 hover:opacity-80 transition-opacity"
+                                >
+                                    <Image
+                                        src={carpassImg}
+                                        alt="Carpass"
+                                        className="h-10 w-auto object-contain"
+                                        priority={false}
+                                    />
+                                </a>
+                            )}
+                        </div>
 
                         {/* Price row */}
                         <div className="flex items-baseline gap-4 mb-10">
@@ -250,6 +283,7 @@ export default async function CarDetailPage(
                                     >
                                         Stel een vraag
                                     </Link>
+
                                 </div>
 
                                 {/* Footer of card */}
@@ -281,7 +315,22 @@ export default async function CarDetailPage(
                         </div>
                     </div>
                 </div>
+
+                {/* ── RELATED VEHICLES ── */}
+                <Suspense fallback={null}>
+                    <RelatedVehicles
+                        currentCarId={car.id}
+                        brand={car.brand}
+                        priceRange={car.price}
+                    />
+                </Suspense>
             </div>
+
+            {/* Sticky Mobile Contact Bar */}
+            <MobileContactBar carSlug={car.slug} carTitle={car.title} />
+
+            {/* Bottom padding for mobile sticky bar */}
+            <div className="h-20 lg:hidden" />
         </div>
     );
 }
