@@ -1,9 +1,39 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import logo from "@/assets/logo-bhenauto.png";
-import { Globe, Share2, MapPin, Phone, Mail } from "lucide-react";
+import logo from "@/assets/logo.png";
+import { MapPin, Phone, Mail, ChevronUp, Globe } from "lucide-react";
+import { useLocale } from "@/components/LocaleContext";
+import { locales, localeNames, localeFlags, type Locale } from "@/lib/i18n";
+import type { FooterDict } from "@/lib/dictionaries";
 
-export default function Footer() {
+interface FooterProps {
+    dict: FooterDict;
+}
+
+export default function Footer({ dict }: FooterProps) {
+    const [langOpen, setLangOpen] = useState(false);
+    const langRef = useRef<HTMLDivElement>(null);
+    const { locale, switchLocale } = useLocale();
+
+    const languageOptions = locales.map(code => ({
+        code,
+        name: localeNames[code],
+        flag: localeFlags[code],
+    }));
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (langRef.current && !langRef.current.contains(event.target as Node)) {
+                setLangOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     return (
         <footer
             className="relative bg-[#020214] pt-12 pb-6 text-white overflow-hidden"
@@ -13,72 +43,104 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-6 mb-12 lg:mb-16">
                     {/* Brand Info */}
                     <div className="space-y-4 lg:col-span-5 pr-4">
-                        <Link href="/" className="inline-block">
+                        <Link href={`/${locale}`} className="inline-block">
                             <Image
                                 src={logo}
                                 alt="Bhenauto logo"
-                                height={196}
-                                className="h-44 w-auto object-contain mix-blend-lighten hover:opacity-80 transition-opacity duration-300"
+                                height={64}
+                                className="h-16 w-auto object-contain mix-blend-lighten hover:opacity-80 transition-opacity duration-300"
                             />
                         </Link>
-                        <p className="text-sm leading-relaxed text-white/90">
-                            Uw partner in exclusieve automobielen.<br />
-                            Wij cureren alleen de allerbeste<br />
-                            voertuigen voor onze gewaardeerde<br />
-                            clientèle.
+                        <p className="text-sm leading-relaxed text-white/90" style={{ whiteSpace: "pre-line" }}>
+                            {dict.description}
                         </p>
                         <div className="flex space-x-3 pt-1">
-                            <button className="w-9 h-9 rounded-full border border-white/30 flex items-center justify-center hover:bg-white hover:border-white transition-all duration-300 hover:scale-105 group" aria-label="Web">
-                                <Globe size={16} className="text-[#d91c1c] group-hover:text-[#020214]" />
-                            </button>
-                            <button className="w-9 h-9 rounded-full border border-white/30 flex items-center justify-center hover:bg-white hover:border-white transition-all duration-300 hover:scale-105 group" aria-label="Share">
-                                <Share2 size={16} className="text-[#d91c1c] group-hover:text-[#020214]" />
-                            </button>
+                            {/* Facebook */}
+                            <a href="#" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full border border-[#1877F2]/40 flex items-center justify-center hover:bg-[#1877F2] hover:border-[#1877F2] transition-all duration-300 hover:scale-105 group" aria-label="Facebook">
+                                <svg className="w-4 h-4 fill-[#1877F2] group-hover:fill-white transition-colors duration-300" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
+                            </a>
+                            {/* Instagram */}
+                            <a href="#" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full border border-[#E1306C]/40 flex items-center justify-center hover:bg-[#E1306C] hover:border-[#E1306C] transition-all duration-300 hover:scale-105 group" aria-label="Instagram">
+                                <svg className="w-4 h-4 fill-[#E1306C] group-hover:fill-white transition-colors duration-300" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" /></svg>
+                            </a>
+                            {/* TikTok */}
+                            <a href="#" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-full border border-white/30 flex items-center justify-center hover:bg-white hover:border-white transition-all duration-300 hover:scale-105 group" aria-label="TikTok">
+                                <svg className="w-4 h-4 fill-white group-hover:fill-[#020214] transition-colors duration-300" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.72a4.85 4.85 0 01-1.01-.03z" /></svg>
+                            </a>
                         </div>
                     </div>
 
                     {/* Navigation */}
-                    <div className="lg:col-span-2">
-                        <h3 className="text-[#d91c1c] font-bold mb-4 text-xs tracking-widest uppercase">Navigatie</h3>
+                    <nav className="lg:col-span-2" aria-label="Site navigatie">
+                        <h2 className="text-white/60 font-bold mb-4 text-xs tracking-widest uppercase">{dict.navigationLabel}</h2>
                         <ul className="space-y-3 text-sm">
-                            <li><Link href="/inventory" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Voorraad</Link></li>
-                            <li><Link href="/contact" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Carrosserie</Link></li>
-                            <li><Link href="/about" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Over Ons</Link></li>
-                            <li><Link href="/contact" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Contact</Link></li>
+                            <li><Link href={`/${locale}/inventory`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkInventory}</Link></li>
+                            <li><Link href={`/${locale}/werkplaats`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkWerkplaats}</Link></li>
+                            <li><Link href={`/${locale}/contact`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkContact}</Link></li>
                         </ul>
-                    </div>
+                    </nav>
 
                     {/* Information */}
                     <div className="lg:col-span-2">
-                        <h3 className="text-[#d91c1c] font-bold mb-4 text-xs tracking-widest uppercase">Informatie</h3>
+                        <h2 className="text-white/60 font-bold mb-4 text-xs tracking-widest uppercase">{dict.informationLabel}</h2>
                         <ul className="space-y-3 text-sm">
-                            <li><Link href="/privacy" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Privacybeleid</Link></li>
-                            <li><Link href="/terms" className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">Algemene Voorwaarden</Link></li>
+                            <li><Link href={`/${locale}/privacy`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkPrivacy}</Link></li>
+                            <li><Link href={`/${locale}/terms`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkTerms}</Link></li>
                         </ul>
                     </div>
 
                     {/* Contact */}
-                    <div className="lg:col-span-3">
-                        <h3 className="text-[#d91c1c] font-bold mb-4 text-xs tracking-widest uppercase">Contact</h3>
-                        <ul className="space-y-3 text-sm">
-                            <li className="flex items-start gap-2 group">
-                                <MapPin className="w-4 h-4 text-[#d91c1c] shrink-0 mt-0.5 group-hover:scale-110 transition-all duration-300" />
-                                <span className="text-white group-hover:text-white/80 transition-colors duration-300">Brusselsesteenweg 223, 1730 Asse</span>
-                            </li>
-                            <li className="flex items-center gap-2 group">
-                                <Phone className="w-4 h-4 text-[#d91c1c] shrink-0 group-hover:scale-110 transition-all duration-300" />
-                                <a href="tel:+310201234567" className="text-white group-hover:text-white/80 transition-colors duration-300">+31 (0)20 123 4567</a>
-                            </li>
-                            <li className="flex items-center gap-2 group">
-                                <Mail className="w-4 h-4 text-[#d91c1c] shrink-0 group-hover:scale-110 transition-all duration-300" />
-                                <a href="mailto:info@bhenauto.nl" className="text-white group-hover:text-white/80 transition-colors duration-300">info@bhenauto.nl</a>
-                            </li>
-                        </ul>
+                    <div className="lg:col-span-3 flex flex-col justify-between">
+                        <div>
+                            <h2 className="text-white/60 font-bold mb-4 text-xs tracking-widest uppercase">{dict.contactLabel}</h2>
+                            <ul className="space-y-3 text-sm">
+                                <li className="flex items-start gap-2 group">
+                                    <MapPin className="w-4 h-4 text-[#d91c1c] shrink-0 mt-0.5 group-hover:scale-110 transition-all duration-300" />
+                                    <span className="text-white group-hover:text-white/80 transition-colors duration-300">Brusselsesteenweg 223, 1730 Asse</span>
+                                </li>
+                                <li className="flex items-center gap-2 group">
+                                    <Phone className="w-4 h-4 text-[#d91c1c] shrink-0 group-hover:scale-110 transition-all duration-300" />
+                                    <a href="tel:+3225828353" className="text-white group-hover:text-white/80 transition-colors duration-300">02 582 83 53</a>
+                                </li>
+                                <li className="flex items-center gap-2 group">
+                                    <Mail className="w-4 h-4 text-[#d91c1c] shrink-0 group-hover:scale-110 transition-all duration-300" />
+                                    <a href="mailto:info@bhenauto.be" className="text-white group-hover:text-white/80 transition-colors duration-300">info@bhenauto.be</a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div className="mt-8 relative" ref={langRef}>
+                            <button
+                                onClick={() => setLangOpen(!langOpen)}
+                                className="inline-flex items-center gap-1 font-bold text-sm tracking-widest transition-colors hover:text-white text-white/50"
+                                aria-label="Change Language"
+                            >
+                                <Globe size={20} className="text-white/80 shrink-0" />
+                                <ChevronUp size={14} className={`ml-1 transition-transform duration-300 ${langOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            <div className={`absolute bottom-full left-0 mb-4 w-36 bg-[#020214] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-all duration-300 origin-bottom ${
+                                langOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+                            }`}>
+                                {languageOptions.map(lang => (
+                                    <button
+                                        key={lang.code}
+                                        onClick={() => { switchLocale(lang.code as Locale); setLangOpen(false); }}
+                                        className={`w-full flex items-center gap-3 px-5 py-3 text-sm font-bold transition-colors ${
+                                            locale === lang.code ? 'text-[#d91c1c] bg-white/5' : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                                        }`}
+                                    >
+                                        <span className="text-base leading-none">{lang.flag}</span>
+                                        {lang.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex justify-end pt-6 relative z-10 w-full text-xs text-white/50 border-t border-white/10">
-                    <p>&copy; {new Date().getFullYear()} Bhenauto. Premium Automotive Excellence.</p>
+                <div className="flex flex-col sm:flex-row justify-end items-center gap-4 pt-6 relative z-10 w-full text-xs text-white/50 border-t border-white/10">
+                    <p>&copy; {new Date().getFullYear()} Bhenauto. {dict.copyright}</p>
                 </div>
 
                 {/* Large Watermark Text */}

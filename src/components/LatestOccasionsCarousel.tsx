@@ -1,143 +1,375 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight, CalendarDays, Gauge, Fuel } from "lucide-react";
+import { useLocale } from "@/components/LocaleContext";
+import type { CarouselDict, CommonDict, HomeDict } from "@/lib/dictionaries";
 
 interface CarouselCar {
   id: string;
   title: string;
   slug: string;
+  brand: string;
+  model: string;
   price: number;
   year: number;
   mileage: number;
+  horsepower: number;
   fuel_type: string;
   image: string;
   sold: boolean;
 }
 
-export default function LatestOccasionsCarousel({ cars }: { cars: CarouselCar[] }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+const AUTO_PLAY_MS = 5000;
+
+export default function LatestOccasionsCarousel({
+  cars,
+  dict,
+  homeDict,
+  commonDict,
+}: {
+  cars: CarouselCar[];
+  dict: CarouselDict;
+  homeDict: HomeDict;
+  commonDict: CommonDict;
+}) {
+  const { locale } = useLocale();
+  const [visible, setVisible] = useState(3);
+  const [gap, setGap] = useState(40);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const interval = setInterval(() => {
-      const container = containerRef.current;
-      if (!container || container.scrollWidth <= container.clientWidth) return;
-
-      const maxScroll = container.scrollWidth - container.clientWidth;
-      const cardWidth = container.firstElementChild?.clientWidth || 400;
-      const gap = 16;
-
-      let nextScroll = container.scrollLeft + cardWidth + gap;
-
-      if (container.scrollLeft >= maxScroll - 10) {
-        nextScroll = 0;
-      }
-
-      container.scrollTo({ left: nextScroll, behavior: 'smooth' });
-    }, 5000);
-
-    return () => clearInterval(interval);
+    const handleResize = () => {
+      if (window.innerWidth >= 1280) { setVisible(3); setGap(40); }
+      else if (window.innerWidth >= 768) { setVisible(2); setGap(28); }
+      else { setVisible(1); setGap(20); }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", handleResize);
+      handleResize();
+    }
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const scroll = (direction: 'left' | 'right') => {
-    const container = containerRef.current;
-    if (!container) return;
-    const scrollAmount = direction === 'left' ? -320 : 320;
-    container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  const [index, setIndex] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(0);
+  const [dragDelta, setDragDelta] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  const total = cars.length;
+  const maxIndex = Math.max(0, total - visible);
+
+  const resetAutoPlay = useCallback(() => {
+    if (autoRef.current) clearTimeout(autoRef.current);
+    autoRef.current = setTimeout(() => {
+      setIndex(i => (i >= maxIndex ? 0 : i + 1));
+    }, AUTO_PLAY_MS);
+  }, [maxIndex]);
+
+  useEffect(() => {
+    resetAutoPlay();
+    return () => { if (autoRef.current) clearTimeout(autoRef.current); };
+  }, [index, resetAutoPlay]);
+
+  const goTo = useCallback((next: number) => {
+    if (isAnimating) return;
+    const clamped = Math.max(0, Math.min(next, maxIndex));
+    setIndex(clamped);
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 450);
+    resetAutoPlay();
+  }, [isAnimating, maxIndex, resetAutoPlay]);
+
+  const prev = () => goTo(index === 0 ? maxIndex : index - 1);
+  const next = () => goTo(index >= maxIndex ? 0 : index + 1);
+
+  const onDragStart = (x: number) => {
+    setDragging(true);
+    setDragStart(x);
+    setDragDelta(0);
+    if (autoRef.current) clearTimeout(autoRef.current);
+  };
+  const onDragMove = (x: number) => {
+    if (!dragging) return;
+    setDragDelta(x - dragStart);
+  };
+  const onDragEnd = () => {
+    if (!dragging) return;
+    setDragging(false);
+    const threshold = 60;
+    if (dragDelta < -threshold) next();
+    else if (dragDelta > threshold) prev();
+    else resetAutoPlay();
+    setDragDelta(0);
   };
 
+  if (!cars.length) return null;
+
   return (
-    <section className="py-12 sm:py-20 md:py-24 bg-[#f8f6f6] overflow-hidden">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Section Header */}
-        <div className="mb-6 sm:mb-8">
-          <p className="text-[10px] sm:text-xs tracking-[0.2em] font-bold text-slate-400 uppercase mb-1.5 sm:mb-2">
-            Nieuw Binnen
-          </p>
-          <div className="flex justify-between items-end">
-            <h3 className="text-2xl sm:text-3xl md:text-4xl font-headings font-black text-slate-900">
-              Laatste Occasions
-            </h3>
-            <div className="hidden sm:flex gap-2">
+    <section className="py-16 sm:py-24 theme-bg overflow-hidden">
+      {/* Standard boxed container to align with website layout */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        {/* ── Header ── */}
+        <div className="flex items-end justify-between mb-10 sm:mb-14">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span
+                className="inline-block w-6 h-0.5 rounded-full"
+                style={{ backgroundColor: '#d91c1c' }}
+              />
+              <p className="text-[10px] sm:text-xs tracking-[0.3em] font-bold text-[#d91c1c] uppercase">
+                {homeDict.latestLabel}
+              </p>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-headings font-black theme-text leading-none">
+              {homeDict.latestTitle}
+            </h2>
+          </div>
+
+          {/* Controls */}
+          <div className="flex items-center gap-4">
+            {/* Pill dots */}
+            <div className="hidden sm:flex items-center gap-1.5">
+              {Array.from({ length: maxIndex + 1 }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goTo(i)}
+                  aria-label={`Ga naar positie ${i + 1}`}
+                  className="transition-all duration-300 rounded-full"
+                  style={{
+                    width: i === index ? 24 : 7,
+                    height: 7,
+                    borderRadius: 4,
+                    backgroundColor: i === index ? '#d91c1c' : 'var(--theme-border)',
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div className="hidden sm:block w-px h-6 opacity-20" style={{ backgroundColor: 'var(--theme-text)' }} />
+
+            {/* Arrow buttons */}
+            <div className="flex items-center gap-2">
               <button
-                className="w-10 h-10 rounded-full border border-slate-300 flex items-center justify-center text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-colors"
-                aria-label="Previous"
-                onClick={() => scroll('left')}
+                onClick={prev}
+                aria-label="Vorige"
+                className="group w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-[#d91c1c] hover:border-[#d91c1c] hover:text-white theme-text-muted"
+                style={{ border: '1.5px solid var(--theme-border)' }}
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={17} className="transition-transform group-hover:-translate-x-0.5" />
               </button>
               <button
-                className="w-10 h-10 rounded-full border border-slate-300 flex items-center justify-center text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-colors"
-                aria-label="Next"
-                onClick={() => scroll('right')}
+                onClick={next}
+                aria-label="Volgende"
+                className="group w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-[#d91c1c] hover:border-[#d91c1c] hover:text-white theme-text-muted"
+                style={{ border: '1.5px solid var(--theme-border)' }}
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={17} className="transition-transform group-hover:translate-x-0.5" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Carousel */}
-        <div className="relative -mx-4 sm:mx-0">
+        {/* ── Track ── */}
+        <div
+          className="relative overflow-hidden select-none"
+          onMouseDown={e => onDragStart(e.clientX)}
+          onMouseMove={e => onDragMove(e.clientX)}
+          onMouseUp={onDragEnd}
+          onMouseLeave={onDragEnd}
+          onTouchStart={e => onDragStart(e.touches[0].clientX)}
+          onTouchMove={e => onDragMove(e.touches[0].clientX)}
+          onTouchEnd={onDragEnd}
+        >
           <div
-            id="occasions-carousel"
-            ref={containerRef}
-            className="flex gap-4 sm:gap-6 overflow-x-auto snap-x snap-mandatory px-4 sm:px-0 pb-4 sm:pb-6"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+            ref={trackRef}
+            className="flex"
+            style={{
+              gap: gap,
+              transform: `translateX(calc(-${index * (100 / visible)}% - ${index * (gap / visible)}px + ${dragging ? dragDelta : 0}px))`,
+              transition: dragging ? 'none' : 'transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+              cursor: dragging ? 'grabbing' : 'grab',
+            }}
           >
             {cars.map((car) => (
-              <Link
-                href={`/cars/${car.slug}`}
+              <div
                 key={car.id}
-                className="group snap-start shrink-0 w-[300px] sm:w-[310px] md:w-[330px] xl:w-[340px] bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 border border-slate-100"
+                className="shrink-0"
+                style={{
+                  width: `calc(${100 / visible}% - ${gap * ((visible - 1) / visible)}px)`,
+                  minWidth: 0,
+                }}
               >
-                {/* Card Image */}
-                <div className="relative h-[175px] sm:h-[200px] md:h-[220px] w-full overflow-hidden bg-slate-100">
-                  <Image
-                    src={car.image}
-                    alt={car.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                    sizes="(max-width: 640px) 280px, (max-width: 768px) 300px, 330px"
-                  />
-                  {car.sold && (
-                    <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold tracking-wider text-slate-900 uppercase rounded-full shadow-sm">
-                      VERKOCHT
-                    </div>
-                  )}
-                </div>
+                <Link
+                  href={`/${locale}/cars/${car.slug}`}
+                  draggable={false}
+                  className="group block theme-surface rounded-2xl overflow-hidden transition-all duration-300"
+                  style={{
+                    border: '1px solid var(--theme-border)',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(0,0,0,0.12)';
+                    (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+                    (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                  }}
+                >
+                  {/* ── Image ── */}
+                  <div
+                    className="relative overflow-hidden"
+                    style={{ aspectRatio: '16/10', backgroundColor: 'var(--theme-skeleton)' }}
+                  >
+                    <Image
+                      src={car.image}
+                      alt={car.title}
+                      fill
+                      draggable={false}
+                      className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                    />
 
-                {/* Card Info */}
-                <div className="p-4 sm:p-5">
-                  <h4 className="text-[15px] sm:text-base md:text-lg font-headings font-bold text-slate-900 truncate mb-1">
-                    {car.title}
-                  </h4>
-                  <p className="text-lg sm:text-xl font-black text-[#d91c1c] mb-2">
-                    € {car.price.toLocaleString('nl-NL')}
-                  </p>
-                  <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-400 font-medium">
-                    <span>{car.year}</span>
-                    <span className="text-slate-300">•</span>
-                    <span>{car.mileage.toLocaleString('nl-NL')} km</span>
-                    <span className="text-slate-300">•</span>
-                    <span>{car.fuel_type}</span>
+                    {/* Bottom scrim for price readability */}
+                    <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/65 to-transparent pointer-events-none" />
+
+                    {/* Sold badge */}
+                    {car.sold && (
+                      <div
+                        className="absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase backdrop-blur-md"
+                        style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
+                      >
+                        {commonDict.sold}
+                      </div>
+                    )}
+
+                    {/* Price */}
+                    <div className="absolute bottom-3 left-4">
+                      <span className="text-xl sm:text-2xl font-black text-white" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>
+                        €{car.price.toLocaleString('nl-BE')}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Link>
+
+                  {/* ── Card Body ── */}
+                  <div className="p-5 sm:p-6">
+
+                    {/* Brand + Model */}
+                    <div className="mb-4">
+                      <h3 className="text-lg sm:text-xl font-headings font-black theme-text leading-tight line-clamp-1">
+                        {car.brand} {car.model}
+                      </h3>
+                    </div>
+
+                    {/* Specs — 3-column split */}
+                    <div
+                      className="flex items-stretch mb-5 rounded-xl overflow-hidden"
+                      style={{ border: '1px solid var(--theme-border)' }}
+                    >
+                      {[
+                        { icon: CalendarDays, label: dict.specYear, value: car.year.toString() },
+                        { icon: Gauge, label: dict.specMileage, value: `${car.mileage.toLocaleString('nl-BE')} km` },
+                        { icon: Fuel, label: dict.specFuel, value: car.fuel_type },
+                      ].map((spec, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 flex flex-col items-center justify-center gap-1 py-3.5 px-2 relative"
+                          style={{ backgroundColor: 'var(--theme-bg-alt)' }}
+                        >
+                          {/* Divider between columns */}
+                          {i > 0 && (
+                            <span
+                              className="absolute left-0 top-1/2 -translate-y-1/2 h-3/5 w-px"
+                              style={{ backgroundColor: 'var(--theme-border)' }}
+                            />
+                          )}
+                          {/* Label row with icon */}
+                          <div className="flex items-center gap-1">
+                            <spec.icon size={11} style={{ color: '#d91c1c' }} className="shrink-0" />
+                            <span
+                              className="text-[9px] font-bold uppercase tracking-widest leading-none"
+                              style={{ color: '#d91c1c' }}
+                            >
+                              {spec.label}
+                            </span>
+                          </div>
+                          {/* Value */}
+                          <span className="text-sm font-extrabold theme-text leading-none text-center">
+                            {spec.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="w-full h-px mb-4" style={{ backgroundColor: 'var(--theme-border)' }} />
+
+                    {/* CTA */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold theme-text-faint uppercase tracking-widest group-hover:text-[#d91c1c] transition-colors duration-200">
+                        {dict.viewDetails}
+                      </span>
+                      <span
+                        className="flex items-center justify-center w-7 h-7 rounded-full transition-all duration-200 group-hover:bg-[#d91c1c] group-hover:text-white theme-text-faint"
+                        style={{ border: '1px solid var(--theme-border)' }}
+                      >
+                        <ArrowRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                      </span>
+                    </div>
+
+                  </div>
+                </Link>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Mobile "View All" link */}
-        <div className="mt-4 flex justify-center sm:hidden">
-          <Link href="/inventory" className="flex items-center text-sm font-bold text-slate-900 group">
-            Alle voertuigen bekijken <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+        {/* ── Mobile dots + View All ── */}
+        <div className="flex items-center justify-between mt-6 sm:hidden">
+          <div className="flex gap-1.5">
+            {Array.from({ length: maxIndex + 1 }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goTo(i)}
+                className="transition-all duration-300 rounded-full"
+                style={{
+                  width: i === index ? 18 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: i === index ? '#d91c1c' : 'var(--theme-border)',
+                }}
+              />
+            ))}
+          </div>
+          <Link
+            href={`/${locale}/inventory`}
+            className="flex items-center gap-1.5 text-xs font-bold theme-text-muted hover:text-[#d91c1c] transition-colors"
+          >
+            {dict.viewAllMobile}
+            <ArrowRight size={13} className="transition-transform" />
           </Link>
         </div>
+
+        {/* ── Desktop View All ── */}
+        <div className="hidden sm:flex justify-center mt-12">
+          <Link
+            href={`/${locale}/inventory`}
+            className="group inline-flex items-center gap-3 px-8 py-3.5 font-bold text-sm uppercase tracking-widest theme-text-secondary hover:text-[#d91c1c] transition-colors rounded-xl"
+            style={{ border: '1.5px solid var(--theme-border)' }}
+          >
+            {dict.viewAll}
+            <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+
       </div>
     </section>
   );

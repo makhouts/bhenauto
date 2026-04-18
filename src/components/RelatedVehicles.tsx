@@ -1,14 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
+import { getImageUrl } from "@/lib/image-url";
+import type { CarDetailDict } from "@/lib/dictionaries";
 
 interface RelatedVehiclesProps {
     currentCarId: string;
     brand: string;
     priceRange: number;
+    lang: string;
+    dict: CarDetailDict;
 }
 
-export default async function RelatedVehicles({ currentCarId, brand, priceRange }: RelatedVehiclesProps) {
+export default async function RelatedVehicles({ currentCarId, brand, priceRange, lang, dict }: RelatedVehiclesProps) {
     // Find cars from the same brand first, then fill with similar price range
     const sameBrand = await prisma.car.findMany({
         where: {
@@ -47,14 +51,14 @@ export default async function RelatedVehicles({ currentCarId, brand, priceRange 
         <section className="mt-16 mb-8">
             <div className="flex items-baseline justify-between mb-8">
                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Misschien ook interessant</p>
-                    <h2 className="text-2xl md:text-3xl font-headings font-black text-slate-900">Gerelateerde Voertuigen</h2>
+                    <p className="text-[10px] font-bold theme-text-faint uppercase tracking-widest mb-1">{dict.relatedLabel}</p>
+                    <h2 className="text-2xl md:text-3xl font-headings font-black theme-text">{dict.relatedTitle}</h2>
                 </div>
                 <Link
-                    href="/inventory"
-                    className="hidden sm:flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-[#d91c1c] transition-colors"
+                    href={`/${lang}/inventory`}
+                    className="hidden sm:flex items-center gap-2 text-sm font-bold theme-text-muted hover:text-[#d91c1c] transition-colors"
                 >
-                    Alle voorraad
+                    {dict.relatedViewAll}
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
@@ -63,14 +67,15 @@ export default async function RelatedVehicles({ currentCarId, brand, priceRange 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {related.map((car) => {
-                    const imgUrl = car.images[0]?.url || "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2070&auto=format&fit=crop";
+                    const imgUrl = car.images[0]?.url ? getImageUrl(car.images[0].url) : "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2070&auto=format&fit=crop";
                     return (
                         <Link
                             key={car.id}
-                            href={`/cars/${car.slug}`}
-                            className="group bg-white rounded-xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                            href={`/${lang}/cars/${car.slug}`}
+                            className="group theme-surface rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                            style={{ border: '1px solid var(--theme-border)' }}
                         >
-                            <div className="relative h-[180px] overflow-hidden bg-slate-100">
+                            <div className="relative h-[180px] overflow-hidden" style={{ backgroundColor: 'var(--theme-skeleton)' }}>
                                 <Image
                                     src={imgUrl}
                                     alt={car.title}
@@ -80,20 +85,20 @@ export default async function RelatedVehicles({ currentCarId, brand, priceRange 
                                 />
                                 {car.reserved && (
                                     <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-md text-amber-600 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border border-amber-200/50">
-                                        Gereserveerd
+                                        {dict.relatedReserved}
                                     </div>
                                 )}
                             </div>
                             <div className="p-4">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{car.brand}</p>
-                                <h3 className="text-base font-headings font-bold text-slate-900 truncate mb-1 group-hover:text-[#d91c1c] transition-colors">{car.model}</h3>
+                                <p className="text-[10px] font-bold theme-text-faint uppercase tracking-widest mb-0.5">{car.brand}</p>
+                                <h3 className="text-base font-headings font-bold theme-text truncate mb-1 group-hover:text-[#d91c1c] transition-colors">{car.model}</h3>
                                 <div className="flex items-baseline justify-between">
                                     <span className="text-lg font-black text-[#d91c1c]">€{car.price.toLocaleString("nl-BE")}</span>
-                                    <span className="text-[11px] text-slate-400 font-medium">
+                                    <span className="text-[11px] theme-text-faint font-medium">
                                         {car.year} · {car.mileage.toLocaleString("nl-BE")} km
                                     </span>
                                 </div>
-                            </div>
+            </div>
                         </Link>
                     );
                 })}

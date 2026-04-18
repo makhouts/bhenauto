@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 
 export default function PageTransition({ children }: { children: React.ReactNode }) {
     const pathname = usePathname() || "";
-    const isTargetPage = pathname.startsWith("/inventory") || pathname.startsWith("/aanbod");
+    // Match /inventory or /{lang}/inventory (and legacy /aanbod)
+    const isTargetPage = /^\/(nl|fr|en)?\/?inventory(\/|$)/.test(pathname) || /^\/(nl|fr|en)?\/?aanbod(\/|$)/.test(pathname);
 
     const [animateOut, setAnimateOut] = useState(!isTargetPage);
     const [showOverlay, setShowOverlay] = useState(isTargetPage);
@@ -20,8 +21,17 @@ export default function PageTransition({ children }: { children: React.ReactNode
     useEffect(() => {
         if (!isTargetPage) return;
 
+        // Only play the transition once per session
+        const hasSeenIntro = sessionStorage.getItem("hasSeenTransitions");
+        if (hasSeenIntro) {
+            setAnimateOut(true);
+            setShowOverlay(false);
+            return;
+        }
+
         setShowOverlay(true);
         setAnimateOut(false);
+        sessionStorage.setItem("hasSeenTransitions", "true");
 
         const video = videoRef.current;
         if (video) {

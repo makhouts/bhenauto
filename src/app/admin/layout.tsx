@@ -1,98 +1,105 @@
 import { ReactNode } from "react";
 import { cookies } from "next/headers";
+import { isValidSession } from "@/lib/session";
 import Link from "next/link";
-import { Car, MessageSquare, LayoutDashboard, LogOut } from "lucide-react";
+import { Car, MessageSquare, LayoutDashboard, LogOut, CalendarCheck } from "lucide-react";
 import { Toaster } from "sonner";
 import prisma from "@/lib/prisma";
 
-export default async function AdminLayout({
-    children,
-}: {
-    children: ReactNode;
-}) {
-    // Check if the user is authenticated
+export default async function AdminLayout({ children }: { children: ReactNode }) {
     const cookieStore = await cookies();
     const session = cookieStore.get("admin_session");
-    const isAuthenticated = session?.value === "authenticated";
+    const isAuthenticated = await isValidSession(session?.value);
 
-    // Fetch sidebar counts (only when authenticated)
-    const [carCount, nieuweAanvragen] = isAuthenticated
-        ? await Promise.all([
-              prisma.car.count(),
-              prisma.contact.count({ where: { read: false } }),
-          ])
-        : [0, 0];
-
-    // If not authenticated, render only the children (login page)
-    // No sidebar, no logout button
+    // Middleware already guards all /admin/* routes (except /admin/login).
+    // If the user is NOT authenticated here, they can only be on /admin/login
+    // (middleware would have redirected them otherwise).
+    // Render login without the sidebar shell — no redirect needed.
     if (!isAuthenticated) {
         return <>{children}</>;
     }
 
+    const [carCount, nieuweAanvragen, pendingAppointments] = await Promise.all([
+        prisma.car.count(),
+        prisma.contact.count({ where: { read: false } }),
+        prisma.appointment.count({ where: { status: "pending" } }),
+    ]);
+
+    const navItems = [
+        { href: "/admin", label: "Dashboard", icon: LayoutDashboard, badge: null },
+        { href: "/admin/cars", label: "Voorraad", icon: Car, badge: carCount },
+        { href: "/admin/contacts", label: "Aanvragen", icon: MessageSquare, badge: nieuweAanvragen || null },
+        { href: "/admin/appointments", label: "Afspraken", icon: CalendarCheck, badge: pendingAppointments || null, badgeWarn: true },
+    ];
+
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-            {/* Sidebar Navigation */}
-            <aside className="w-full md:w-64 bg-white border-r border-slate-200 flex flex-col shadow-sm z-10">
-                <div className="h-20 flex items-center justify-center border-b border-slate-200">
-                    <Link href="/admin" className="text-xl font-headings font-black text-slate-900 tracking-wide">
-                        bhen<span className="text-[#d91c1c]">admin</span>
+        <div className="min-h-screen flex flex-col md:flex-row" style={{ background: "#f4f5f7" }}>
+
+            {/* ── Sidebar ── */}
+            <aside
+                className="w-full md:w-[240px] shrink-0 flex flex-col"
+                style={{
+                    background: "#020214",
+                    borderRight: "1px solid rgba(255,255,255,0.06)",
+                }}
+            >
+                {/* Logo */}
+                <div className="h-[72px] flex items-center px-7" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <Link href="/admin" className="text-[1.3rem] font-headings font-black tracking-tight text-white">
+                        bhen<span style={{ color: "#d91c1c" }}>admin</span>
                     </Link>
                 </div>
 
-                <nav className="flex-1 py-8 px-4 space-y-2">
-                    <Link
-                        href="/admin"
-                        className="flex items-center px-4 py-3 text-slate-600 font-bold hover:bg-slate-50 hover:text-[#d91c1c] rounded-lg transition-colors uppercase tracking-widest text-xs"
-                    >
-                        <LayoutDashboard size={18} className="mr-3" />
-                        Dashboard
-                    </Link>
-
-                    <Link
-                        href="/admin/cars"
-                        className="flex items-center px-4 py-3 text-slate-600 font-bold hover:bg-slate-50 hover:text-[#d91c1c] rounded-lg transition-colors uppercase tracking-widest text-xs"
-                    >
-                        <Car size={18} className="mr-3" />
-                        Voorraad
-                        <span className="ml-auto bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-1 rounded-full leading-none">
-                            {carCount}
-                        </span>
-                    </Link>
-
-                    <Link
-                        href="/admin/contacts"
-                        className="flex items-center px-4 py-3 text-slate-600 font-bold hover:bg-slate-50 hover:text-[#d91c1c] rounded-lg transition-colors uppercase tracking-widest text-xs"
-                    >
-                        <MessageSquare size={18} className="mr-3" />
-                        Aanvragen
-                        {nieuweAanvragen > 0 && (
-                            <span className="ml-auto bg-slate-100 text-slate-500 text-[11px] font-bold px-2.5 py-1 rounded-full leading-none">
-                                {nieuweAanvragen}
-                            </span>
-                        )}
-                    </Link>
+                {/* Nav */}
+                <nav className="flex-1 px-4 py-6 space-y-1">
+                    {navItems.map(({ href, label, icon: Icon, badge, badgeWarn }) => (
+                        <Link
+                            key={href}
+                            href={href}
+                            className="group flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold transition-all duration-200"
+                            style={{ color: "rgba(180,190,220,0.85)" }}
+                        // active state handled by hover; Next.js can't tell here easily without client
+                        >
+                            <Icon size={17} className="shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+                            <span className="group-hover:text-white transition-colors">{label}</span>
+                            {badge !== null && badge !== undefined && badge > 0 && (
+                                <span
+                                    className="ml-auto text-[11px] font-black px-2 py-0.5 rounded-full leading-none"
+                                    style={
+                                        badgeWarn
+                                            ? { background: "rgba(251,191,36,0.15)", color: "#fbbf24" }
+                                            : { background: "rgba(255,255,255,0.08)", color: "rgba(200,210,240,0.9)" }
+                                    }
+                                >
+                                    {badge}
+                                </span>
+                            )}
+                        </Link>
+                    ))}
                 </nav>
 
-                <div className="p-4 border-t border-slate-200">
-                    <form action="/actions/auth" method="POST" className="w-full">
+                {/* Logout */}
+                <div className="px-4 pb-6" style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "1.25rem" }}>
+                    <form>
                         <button
                             formAction={async () => {
                                 "use server";
                                 const { logout } = await import("@/app/actions/auth");
                                 await logout();
                             }}
-                            className="flex items-center w-full px-4 py-3 text-red-600 font-bold hover:bg-red-50 rounded-lg transition-colors uppercase tracking-widest text-xs"
+                            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-[13px] font-bold transition-all duration-200 hover:bg-red-500/10"
+                            style={{ color: "rgba(248,113,113,0.8)" }}
                         >
-                            <LogOut size={18} className="mr-3" />
+                            <LogOut size={17} className="shrink-0" />
                             Uitloggen
                         </button>
                     </form>
                 </div>
             </aside>
 
-            {/* Main Content Area */}
-            <main className="flex-1 flex flex-col overflow-hidden bg-slate-50">
-                <div className="flex-1 overflow-auto p-4 md:p-8">
+            {/* ── Main ── */}
+            <main className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-auto p-6 md:p-10">
                     {children}
                 </div>
             </main>

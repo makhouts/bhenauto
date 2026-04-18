@@ -1,12 +1,14 @@
 import prisma from "@/lib/prisma";
 import { Mail } from "lucide-react";
 import ContactsClient from "@/components/admin/ContactsClient";
+import { requireAdmin } from "@/lib/auth-guard";
 
 export const metadata = {
     title: "Aanvragen | bhenauto Admin",
 };
 
 export default async function ContactsAdminPage() {
+    await requireAdmin();
     const contacts = await prisma.contact.findMany({
         orderBy: { createdAt: "desc" },
     });

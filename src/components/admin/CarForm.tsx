@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { saveCar } from "@/app/actions/cars";
@@ -26,6 +27,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 import { BRAND_NAMES, getModelsForBrand } from "@/lib/carBrands";
+import { getImageUrl } from "@/lib/image-url";
+import { v4 as uuidv4 } from "uuid";
 
 const COMMON_FEATURES = [
     'Panoramisch Dak',
@@ -85,7 +88,7 @@ function SortableImage({
                 index === 0 ? "border-[#d91c1c] ring-2 ring-[#d91c1c]/20" : isNew ? "border-[#d91c1c]/40" : "border-slate-200"
             } shadow-sm select-none`}
         >
-            <Image src={url} alt={`Image ${index + 1}`} fill className="object-cover" />
+            <Image src={url.startsWith("blob:") ? url : getImageUrl(url)} alt={`Image ${index + 1}`} fill className="object-cover" />
 
             {/* Cover badge */}
             {index === 0 && (
@@ -119,6 +122,65 @@ function SortableImage({
             >
                 <X size={14} />
             </button>
+        </div>
+    );
+}
+
+// ─── Formatted Number Field ─────────────────────────────────────────
+// Displays a space-separated number (e.g. "123 456") for readability,
+// while submitting the raw numeric value via a hidden input.
+// Supports an optional prefix (e.g. "€") or suffix (e.g. "km") shown inside the field.
+function FormattedNumberField({
+    label,
+    name,
+    defaultValue,
+    required,
+    prefix,
+    suffix,
+}: {
+    label: string;
+    name: string;
+    defaultValue?: number;
+    required?: boolean;
+    prefix?: string;
+    suffix?: string;
+}) {
+    const format = (n: number | undefined) =>
+        n != null ? n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") : "";
+
+    const [display, setDisplay] = useState(format(defaultValue));
+    const [raw, setRaw] = useState(defaultValue ?? "");
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const digits = e.target.value.replace(/\D/g, "");
+        const num = digits === "" ? "" : parseInt(digits, 10);
+        setRaw(num);
+        setDisplay(digits === "" ? "" : digits.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0"));
+    };
+
+    return (
+        <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{label}</label>
+            <div className="relative">
+                {prefix && (
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none select-none">{prefix}</span>
+                )}
+                <input
+                    type="text"
+                    inputMode="numeric"
+                    value={display}
+                    onChange={handleChange}
+                    required={required}
+                    className={`w-full bg-slate-50 border border-slate-300 text-slate-900 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium ${
+                        prefix ? "pl-7 pr-4" : suffix ? "pl-4 pr-10" : "px-4"
+                    }`}
+                    placeholder="0"
+                />
+                {suffix && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none select-none">{suffix}</span>
+                )}
+            </div>
+            <input type="hidden" name={name} value={raw} />
         </div>
     );
 }
@@ -157,16 +219,11 @@ function SearchableDropdown({
         }
     }, []);
 
-    useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
-                setOpen(false);
-                setSearch("");
-            }
-        };
-        document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
+    const closeDropdown = useCallback(() => {
+        setOpen(false);
+        setSearch("");
     }, []);
+    useOutsideClick(ref, closeDropdown, open);
 
     const filtered = options.filter((o) =>
         o.toLowerCase().includes(search.toLowerCase())
@@ -339,6 +396,8 @@ export default function CarForm({ initialData }: CarFormProps) {
     };
 
     const [images, setImages] = useState<ImageItem[]>(buildInitial);
+    // Stable car ID for R2 key prefix — use existing ID or generate a temporary one for new cars
+    const [carId] = useState(() => initialData?.id || uuidv4());
     const [aiEnabled, setAiEnabled] = useState(false);
     const [aiAnalyzing, setAiAnalyzing] = useState(false);
     const [aiOrdered, setAiOrdered] = useState(false);
@@ -382,7 +441,7 @@ export default function CarForm({ initialData }: CarFormProps) {
         setAiStale(true); // New images added, AI results are stale
     };
 
-    // Upload blob images to Cloudinary and return their URLs
+    // Upload blob images to R2 and return their keys
     const uploadBlobImages = async (currentImages: ImageItem[]): Promise<ImageItem[]> => {
         const blobItems = currentImages.filter((i) => i.url.startsWith("blob:") && i.file);
         if (blobItems.length === 0) return currentImages;
@@ -390,6 +449,7 @@ export default function CarForm({ initialData }: CarFormProps) {
         setIsUploading(true);
         try {
             const uploadFormData = new FormData();
+            uploadFormData.append("carId", carId);
             blobItems.forEach((item) => uploadFormData.append("files", item.file!));
 
             const uploadRes = await fetch("/api/upload", {
@@ -397,16 +457,19 @@ export default function CarForm({ initialData }: CarFormProps) {
                 body: uploadFormData,
             });
 
-            if (!uploadRes.ok) throw new Error("Upload failed");
+            if (!uploadRes.ok) {
+                const errData = await uploadRes.json().catch(() => ({}));
+                throw new Error(errData.error || "Upload failed");
+            }
 
             const uploadData = await uploadRes.json();
-            const cloudinaryUrls: string[] = uploadData.urls;
+            const r2Keys: string[] = uploadData.keys;
 
             let uploadIdx = 0;
             const updated = currentImages.map((item) => {
                 if (item.url.startsWith("blob:") && item.file) {
                     URL.revokeObjectURL(item.url);
-                    return { ...item, url: cloudinaryUrls[uploadIdx++], type: "existing" as const, file: undefined };
+                    return { ...item, url: r2Keys[uploadIdx++], type: "existing" as const, file: undefined };
                 }
                 return item;
             });
@@ -429,7 +492,7 @@ export default function CarForm({ initialData }: CarFormProps) {
         setAiProgress("Foto's uploaden naar cloud...");
 
         try {
-            // First ensure all blob images are uploaded to Cloudinary
+            // First ensure all blob images are uploaded to R2
             const updatedImages = await uploadBlobImages(images);
 
             const allUrls = updatedImages.map((i) => i.url);
@@ -501,23 +564,23 @@ export default function CarForm({ initialData }: CarFormProps) {
         try {
             const formData = new FormData(e.currentTarget);
             const carData = Object.fromEntries(formData.entries());
-            
-            // Add the features array as JSON string
-            if (features.length > 0) {
-                carData.features = JSON.stringify(features);
-            }
 
-            // All images should already be uploaded to Cloudinary at this point
-            // (uploaded during handleFileChange for AI analysis)
+            // NOTE: features is managed separately as a string[] array in state,
+            // do NOT add it to carData (FormData only supports strings).
+            // It will be passed directly as an array to saveCar() below.
+
+            // All images should already be uploaded to R2 at this point
+            // (uploaded during AI analysis or we upload now)
             const newFiles = images
                 .filter((i) => i.type === "new" && i.file && i.url.startsWith("blob:"))
                 .map((i) => i.file!);
 
-            let uploadedUrls: string[] = [];
+            let uploadedKeys: string[] = [];
 
             // Upload any remaining new files that weren't uploaded during AI analysis
             if (newFiles.length > 0) {
                 const uploadFormData = new FormData();
+                uploadFormData.append("carId", carId);
                 newFiles.forEach((file) => uploadFormData.append("files", file));
 
                 const uploadRes = await fetch("/api/upload", {
@@ -525,19 +588,22 @@ export default function CarForm({ initialData }: CarFormProps) {
                     body: uploadFormData,
                 });
 
-                if (!uploadRes.ok) throw new Error("Uploaden van afbeeldingen mislukt");
+                if (!uploadRes.ok) {
+                    const errData = await uploadRes.json().catch(() => ({}));
+                    throw new Error(errData.error || "Uploaden van afbeeldingen mislukt");
+                }
 
                 const uploadData = await uploadRes.json();
-                uploadedUrls = uploadData.urls;
+                uploadedKeys = uploadData.keys;
             }
 
             // Build ordered list matching the current image order
             let uploadIndex = 0;
             const allImages = images.map((item) => {
                 if (item.type === "existing" || !item.url.startsWith("blob:")) {
-                    return item.url; // Already on Cloudinary, reuse URL
+                    return item.url; // Already an R2 key
                 }
-                return uploadedUrls[uploadIndex++]; // Newly uploaded
+                return uploadedKeys[uploadIndex++]; // Newly uploaded R2 key
             });
 
             // Auto-generate slug from brand + model + year + unique suffix
@@ -548,6 +614,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                 ...carData,
                 slug,
                 id: initialData?.id,
+                features,           // Pass the actual string[] array, not JSON string
                 images: allImages,
                 featured: initialData?.featured || false,
                 sold: initialData?.sold || false,
@@ -579,8 +646,8 @@ export default function CarForm({ initialData }: CarFormProps) {
             <div className="space-y-6">
                 <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Voertuig Identiteit</h3>
 
-                {/* Row 1: Merk + Model + Bouwjaar */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Row 1: Merk + Model */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Brand Dropdown */}
                     <SearchableDropdown
                         label="Merk"
@@ -610,39 +677,42 @@ export default function CarForm({ initialData }: CarFormProps) {
                         required
                         disabled={!brand}
                     />
-
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Bouwjaar</label>
-                        <input
-                            type="number"
-                            name="year"
-                            defaultValue={initialData?.year}
-                            required
-                            min="1900"
-                            max="2100"
-                            className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
-                        />
-                    </div>
                 </div>
 
-                {/* Row 2: Interne Titel (auto-prefilled) */}
-                <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Interne Titel</label>
-                    <input
-                        type="text"
-                        name="title"
-                        value={title}
-                        onChange={(e) => {
-                            setTitle(e.target.value);
-                            setTitleManuallyEdited(true);
-                        }}
-                        required
-                        className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
-                        placeholder="Wordt automatisch ingevuld vanuit merk + model"
-                    />
-                    {!titleManuallyEdited && brand && (
-                        <p className="text-xs text-slate-400 mt-1">Automatisch ingevuld. Pas aan indien gewenst.</p>
-                    )}
+                {/* Row 2: Bouwjaar + Interne Titel */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Bouwjaar</label>
+                        <select
+                            name="year"
+                            defaultValue={initialData?.year || new Date().getFullYear()}
+                            required
+                            className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
+                        >
+                            {Array.from({ length: new Date().getFullYear() - 1960 + 1 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Interne Titel</label>
+                        <input
+                            type="text"
+                            name="title"
+                            value={title}
+                            onChange={(e) => {
+                                setTitle(e.target.value);
+                                setTitleManuallyEdited(true);
+                            }}
+                            required
+                            className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
+                            placeholder="Wordt automatisch ingevuld vanuit merk + model"
+                        />
+                        {!titleManuallyEdited && brand && (
+                            <p className="text-xs text-slate-400 mt-1">Automatisch ingevuld. Pas aan indien gewenst.</p>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -651,49 +721,62 @@ export default function CarForm({ initialData }: CarFormProps) {
                 <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Specificaties</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Prijs (€)</label>
-                        <input
-                            type="number"
-                            name="price"
-                            defaultValue={initialData?.price}
-                            required
-                            min="0"
-                            className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Kilometerstand</label>
-                        <input
-                            type="number"
-                            name="mileage"
-                            defaultValue={initialData?.mileage}
-                            required
-                            min="0"
-                            className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
-                        />
-                    </div>
+                    {/* Prijs — formatted display, hidden raw value */}
+                    <FormattedNumberField
+                        label="Prijs"
+                        name="price"
+                        defaultValue={initialData?.price}
+                        required
+                        prefix="€"
+                    />
+                    {/* Kilometerstand — formatted display, hidden raw value */}
+                    <FormattedNumberField
+                        label="Kilometerstand"
+                        name="mileage"
+                        defaultValue={initialData?.mileage}
+                        required
+                        suffix="km"
+                    />
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Vermogen</label>
-                        <input
-                            type="number"
-                            name="horsepower"
-                            defaultValue={initialData?.horsepower}
-                            required
-                            min="0"
-                            className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
-                        />
+                        <div className="relative">
+                            <input
+                                type="number"
+                                name="horsepower"
+                                defaultValue={initialData?.horsepower}
+                                required
+                                min="0"
+                                className="w-full bg-slate-50 border border-slate-300 text-slate-900 pl-4 pr-10 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none select-none">pk</span>
+                        </div>
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Kleur</label>
-                        <input
-                            type="text"
+                        <select
                             name="color"
-                            defaultValue={initialData?.color}
+                            defaultValue={initialData?.color || ""}
                             required
                             className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
-                            placeholder="e.g. Obsidian Black"
-                        />
+                        >
+                            <option value="" disabled>Selecteer kleur...</option>
+                            <option value="Zwart">Zwart</option>
+                            <option value="Wit">Wit</option>
+                            <option value="Grijs">Grijs</option>
+                            <option value="Zilver">Zilver</option>
+                            <option value="Blauw">Blauw</option>
+                            <option value="Rood">Rood</option>
+                            <option value="Groen">Groen</option>
+                            <option value="Oranje">Oranje</option>
+                            <option value="Geel">Geel</option>
+                            <option value="Bruin">Bruin</option>
+                            <option value="Beige">Beige</option>
+                            <option value="Bordeaux">Bordeaux</option>
+                            <option value="Paars">Paars</option>
+                            <option value="Goud">Goud</option>
+                            <option value="Brons">Brons</option>
+                            <option value="Champagne">Champagne</option>
+                        </select>
                     </div>
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Brandstoftype</label>

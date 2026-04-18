@@ -6,7 +6,8 @@ import { login } from "@/app/actions/auth";
 import { Lock, ArrowRight, Loader2, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
+import logo from "@/assets/logo.png";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -47,17 +48,15 @@ export default function LoginPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.3 }}
                     >
-                        <div className="flex items-center justify-center gap-3 mb-6">
-                            <div className="text-[#d91c1c]">
-                                <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M18.92 6c-.2-.58-.76-1-1.42-1h-11c-.66 0-1.22.42-1.42 1L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-6zM6.85 7h10.29l1.08 3.11H5.77L6.85 7zM19 17H5v-5h14v5z" />
-                                    <circle cx="7.5" cy="14.5" r="1.5" />
-                                    <circle cx="16.5" cy="14.5" r="1.5" />
-                                </svg>
-                            </div>
-                            <h2 className="text-3xl font-headings font-black text-white tracking-tighter uppercase">
-                                BHEN<span className="text-[#d91c1c]">AUTO</span>
-                            </h2>
+                        <div className="flex items-center justify-center mb-6">
+                            <Image
+                                src={logo}
+                                alt="BhenAuto"
+                                width={180}
+                                height={60}
+                                className="object-contain drop-shadow-lg"
+                                priority
+                            />
                         </div>
                         <p className="text-white/60 font-medium max-w-md mx-auto text-sm leading-relaxed">
                             Beveiligd beheersportaal voor geautoriseerd personeel.
@@ -81,7 +80,7 @@ export default function LoginPage() {
                     {/* Icon */}
                     <motion.div
                         className="flex justify-center mb-8"
-                        initial={{ scale: 0.5, opacity: 0 }}
+                        initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.5, delay: 0.2, type: "spring", stiffness: 200 }}
                     >
@@ -133,10 +132,6 @@ export default function LoginPage() {
                                 className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 py-3.5 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-2 focus:ring-[#d91c1c]/20 transition-all disabled:opacity-50 tracking-widest placeholder:text-slate-300"
                                 placeholder="••••••••"
                             />
-                            <p className="text-xs text-slate-400 mt-2 italic flex justify-between">
-                                <span>Demo Hint:</span>
-                                <span className="text-slate-600 font-medium not-italic">admin123</span>
-                            </p>
                         </div>
 
                         <motion.button

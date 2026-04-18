@@ -1,24 +1,30 @@
-"use client";
+// Server Component — fetches nav/footer dict slices and passes them to Header/Footer.
+// The locale is passed directly from [lang]/layout.tsx to avoid re-deriving it
+// from the x-pathname header (which could fall back to "fr" on certain routes).
 
-import { usePathname } from "next/navigation";
+import { getDictionary } from "@/lib/dictionaries";
+import { type Locale } from "@/lib/i18n";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import ClientConditionalLayout from "@/components/ClientConditionalLayout";
 
-export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
-    const pathname = usePathname();
-    const isAdminRoute = pathname?.startsWith("/admin");
-    const isHome = pathname === "/";
+export default async function ConditionalLayout({
+  children,
+  locale,
+}: {
+  children: React.ReactNode;
+  locale: Locale;
+}) {
+  const dict = await getDictionary(locale);
 
-    return (
-        <>
-            {!isAdminRoute && <Header />}
-            <main className={`flex-grow ${!isAdminRoute && !isHome ? "pt-20" : ""}`}>
-                {children}
-            </main>
-            {!isAdminRoute && <Footer />}
-            {!isAdminRoute && <WhatsAppButton />}
-        </>
-    );
+  return (
+    <ClientConditionalLayout
+      header={<Header dict={dict.nav} />}
+      footer={<Footer dict={dict.footer} />}
+      whatsApp={<WhatsAppButton />}
+    >
+      {children}
+    </ClientConditionalLayout>
+  );
 }
-

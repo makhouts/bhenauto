@@ -2,8 +2,14 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { requireAdmin } from "@/lib/auth-guard";
+import { z } from "zod";
+import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { r2Client, R2_BUCKET } from "@/lib/r2";
+import { isR2Key } from "@/lib/image-url";
 
 export async function toggleFeatured(id: string, featured: boolean) {
+    await requireAdmin();
     try {
         await prisma.car.update({
             where: { id },
@@ -20,13 +26,14 @@ export async function toggleFeatured(id: string, featured: boolean) {
 }
 
 export async function toggleSold(id: string, sold: boolean) {
+    await requireAdmin();
     try {
         await prisma.car.update({
             where: { id },
             data: { sold },
         });
         revalidatePath("/admin/cars");
-        revalidatePath(`/cars/${id}`); // We don't have slug easily here without querying, but we can revalidate all
+        revalidatePath(`/cars/${id}`);
         revalidatePath("/inventory");
         return { success: true };
     } catch (error) {
@@ -36,6 +43,7 @@ export async function toggleSold(id: string, sold: boolean) {
 }
 
 export async function updateCarStatus(id: string, status: "beschikbaar" | "gereserveerd" | "verkocht") {
+    await requireAdmin();
     try {
         await prisma.car.update({
             where: { id },
@@ -55,29 +63,30 @@ export async function updateCarStatus(id: string, status: "beschikbaar" | "geres
 }
 
 export async function deleteCar(id: string) {
+    await requireAdmin();
     try {
-        // Fetch car images to clean up from Cloudinary
         const car = await prisma.car.findUnique({
             where: { id },
             include: { images: true },
         });
 
+        // Delete all images from R2
         if (car?.images?.length) {
-            // Dynamically import cloudinary only when needed
-            const { default: cloudinary } = await import("@/lib/cloudinary");
+            const r2Keys = car.images
+                .map((img) => img.url)
+                .filter(isR2Key);
 
-            // Extract Cloudinary public IDs from URLs and delete them
-            const publicIds = car.images
-                .map((img) => {
-                    // Cloudinary URL format: https://res.cloudinary.com/{cloud}/image/upload/v{version}/{folder}/{public_id}.{ext}
-                    const match = img.url.match(/\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
-                    return match?.[1] || null;
-                })
-                .filter(Boolean) as string[];
-
-            if (publicIds.length > 0) {
-                await cloudinary.api.delete_resources(publicIds).catch((err: Error) => {
-                    console.warn("Failed to delete some Cloudinary images:", err.message);
+            if (r2Keys.length > 0) {
+                await r2Client.send(
+                    new DeleteObjectsCommand({
+                        Bucket: R2_BUCKET,
+                        Delete: {
+                            Objects: r2Keys.map((key) => ({ Key: key })),
+                            Quiet: true,
+                        },
+                    })
+                ).catch((err: Error) => {
+                    console.warn("Failed to delete some R2 images:", err.message);
                 });
             }
         }
@@ -95,40 +104,61 @@ export async function deleteCar(id: string) {
     }
 }
 
-export async function saveCar(data: any) {
-    try {
-        const { id, images, ...carData } = data;
+// ── Zod schema for strict car input validation ──
 
-        // Parse numeric fields and arrays
-        const parsedData = {
+const CarInputSchema = z.object({
+    id: z.string().optional(),
+    slug: z.string().min(1).max(300).regex(/^[a-z0-9-]+$/, "Slug may only contain lowercase letters, numbers, and dashes"),
+    title: z.string().min(1).max(300),
+    brand: z.string().min(1).max(100),
+    model: z.string().min(1).max(100),
+    year: z.coerce.number().int().min(1900).max(new Date().getFullYear() + 2),
+    mileage: z.coerce.number().int().min(0),
+    price: z.coerce.number().min(0),
+    horsepower: z.coerce.number().int().min(0),
+    fuel_type: z.string().min(1).max(50),
+    transmission: z.string().min(1).max(50),
+    color: z.string().min(1).max(50),
+    description: z.string().max(10000),
+    featured: z.boolean().optional().default(false),
+    sold: z.boolean().optional().default(false),
+    reserved: z.boolean().optional().default(false),
+    carpass_url: z.string().url().optional().or(z.literal("")).nullable(),
+    features: z.array(z.string().max(200)).optional().default([]),
+    // Accepts both R2 keys (e.g. "bhenauto/clxxx/img.webp") and legacy full URLs
+    images: z.array(z.string().min(1)).min(0).max(50),
+});
+
+export async function saveCar(data: unknown) {
+    await requireAdmin();
+    try {
+        const parsed = CarInputSchema.parse(data);
+        const { id, images, carpass_url, ...carData } = parsed;
+
+        const dbData = {
             ...carData,
-            year: parseInt(carData.year),
-            mileage: parseInt(carData.mileage),
-            price: parseFloat(carData.price),
-            horsepower: parseInt(carData.horsepower),
+            carpass_url: carpass_url || null,
         };
 
         if (id) {
-            // Update existing
             await prisma.car.update({
                 where: { id },
                 data: {
-                    ...parsedData,
+                    ...dbData,
                     images: {
-                        deleteMany: {}, // Clear old images
-                        create: images.map((url: string) => ({ url })) // Add new images
-                    }
-                }
+                        deleteMany: {},
+                        create: images.map((url: string) => ({ url })),
+                    },
+                },
             });
         } else {
-            // Create new
             await prisma.car.create({
                 data: {
-                    ...parsedData,
+                    ...dbData,
                     images: {
-                        create: images.map((url: string) => ({ url }))
-                    }
-                }
+                        create: images.map((url: string) => ({ url })),
+                    },
+                },
             });
         }
 
@@ -138,6 +168,11 @@ export async function saveCar(data: any) {
 
         return { success: true };
     } catch (error) {
+        if (error instanceof z.ZodError) {
+            const firstIssue = error.issues[0];
+            console.error("Car validation failed:", firstIssue);
+            return { error: `Validatiefout: ${firstIssue.path.join(".")} — ${firstIssue.message}` };
+        }
         console.error("Failed to save car:", error);
         return { error: "An error occurred while saving the car." };
     }

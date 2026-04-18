@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 
 export type CarWithImages = {
     id: string;
@@ -43,65 +44,65 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
 }> {
     const { page = 1, pageSize = 9, brand, query, sort, type, maxPrice, maxMileage, fuel } = params;
 
-    const where: any = {};
+    const conditions: Prisma.CarWhereInput[] = [];
 
     if (brand) {
         if (Array.isArray(brand)) {
-            where.brand = { in: brand };
+            conditions.push({ brand: { in: brand } });
         } else {
-            where.brand = brand;
+            conditions.push({ brand });
         }
     }
 
     if (type) {
         const types = Array.isArray(type) ? type : [type];
-        where.OR = types.flatMap((t: string) => [
-            { model: { contains: t } },
-            { description: { contains: t } }
-        ]);
+        conditions.push({
+            OR: types.flatMap((t: string) => [
+                { model: { contains: t, mode: "insensitive" as const } },
+                { description: { contains: t, mode: "insensitive" as const } },
+            ]),
+        });
     }
 
     if (maxPrice) {
         const parsedPrice = parseInt(maxPrice, 10);
         if (!isNaN(parsedPrice) && parsedPrice < 250000) {
-            where.price = { lte: parsedPrice };
+            conditions.push({ price: { lte: parsedPrice } });
         }
     }
 
     if (maxMileage) {
         const parsedMileage = parseInt(maxMileage, 10);
         if (!isNaN(parsedMileage) && parsedMileage < 200000) {
-            where.mileage = { lte: parsedMileage };
+            conditions.push({ mileage: { lte: parsedMileage } });
         }
     }
 
     if (fuel) {
         const fuels = Array.isArray(fuel) ? fuel : [fuel];
         if (fuels.length > 0 && fuels[0] !== "") {
-            where.fuel_type = { in: fuels };
+            conditions.push({ fuel_type: { in: fuels } });
         }
     }
 
     if (query) {
-        const queryOr = [
-            { title: { contains: query } },
-            { brand: { contains: query } },
-            { model: { contains: query } }
-        ];
-        if (where.OR) {
-            where.AND = [{ OR: where.OR }, { OR: queryOr }];
-            delete where.OR;
-        } else {
-            where.OR = queryOr;
-        }
+        conditions.push({
+            OR: [
+                { title: { contains: query, mode: "insensitive" } },
+                { brand: { contains: query, mode: "insensitive" } },
+                { model: { contains: query, mode: "insensitive" } },
+            ],
+        });
     }
 
-    const orderBy: any = {};
-    if (sort === "price_asc") orderBy.price = "asc";
-    else if (sort === "price_desc") orderBy.price = "desc";
-    else if (sort === "year_desc") orderBy.year = "desc";
-    else if (sort === "mileage_asc") orderBy.mileage = "asc";
-    else orderBy.createdAt = "desc";
+    const where: Prisma.CarWhereInput = conditions.length > 0 ? { AND: conditions } : {};
+
+    let orderBy: Prisma.CarOrderByWithRelationInput;
+    if (sort === "price_asc") orderBy = { price: "asc" };
+    else if (sort === "price_desc") orderBy = { price: "desc" };
+    else if (sort === "year_desc") orderBy = { year: "desc" };
+    else if (sort === "mileage_asc") orderBy = { mileage: "asc" };
+    else orderBy = { createdAt: "desc" };
 
     const skip = (page - 1) * pageSize;
 
@@ -111,7 +112,7 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
             orderBy,
             skip,
             take: pageSize,
-            include: { images: { take: 2 } }, // Only need first 2 images for the card
+            include: { images: { take: 2 } },
         }),
         prisma.car.count({ where }),
     ]);

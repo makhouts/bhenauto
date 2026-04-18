@@ -1,6 +1,5 @@
-import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
-import ConditionalLayout from "@/components/ConditionalLayout";
+import { Inter, Playfair_Display, Nunito_Sans } from "next/font/google";
+import { DARK_THEME } from "@/lib/themeConfig";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,11 +14,12 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "bhenauto | Premium Tweedehands Voertuigen",
-  description: "Ontdek onze zorgvuldig geselecteerde collectie van premium en luxe tweedehands voertuigen. Betrouwbare en deskundige dealer.",
-  keywords: ["premium auto's", "luxe auto's", "tweedehands dealer", "occasions", "exclusieve voertuigen"],
-};
+const nunitoSans = Nunito_Sans({
+  subsets: ["latin"],
+  variable: "--font-nunito",
+  weight: ["400", "600", "700", "800", "900"],
+  display: "swap",
+});
 
 export default function RootLayout({
   children,
@@ -27,13 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="nl" className="scroll-smooth">
+    <html suppressHydrationWarning className={`scroll-smooth ${DARK_THEME ? "dark" : ""}`}>
       <body
-        className={`${inter.variable} ${playfair.variable} antialiased min-h-screen flex flex-col bg-background-light text-slate-900`}
+        className={`${inter.variable} ${playfair.variable} ${nunitoSans.variable} antialiased min-h-screen flex flex-col`}
       >
-        <ConditionalLayout>{children}</ConditionalLayout>
+        {children}
       </body>
     </html>
   );
 }
-

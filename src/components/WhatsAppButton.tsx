@@ -4,7 +4,7 @@ import { useState } from "react";
 
 export default function WhatsAppButton() {
     const [hovered, setHovered] = useState(false);
-    const whatsappUrl = "https://wa.me/32000000000?text=" + encodeURIComponent("Hallo, ik heb een vraag over uw voertuigen.");
+    const whatsappUrl = "https://wa.me/3225828353?text=" + encodeURIComponent("Hallo, ik heb een vraag over uw voertuigen.");
 
     return (
         <div
@@ -14,7 +14,7 @@ export default function WhatsAppButton() {
         >
             {/* Tooltip label */}
             <div
-                className={`mr-3 bg-white text-slate-800 font-bold text-sm px-4 py-2.5 rounded-full shadow-lg transition-all duration-300 whitespace-nowrap ${
+                className={`mr-3 theme-surface theme-text font-bold text-sm px-4 py-2.5 rounded-full shadow-lg transition-all duration-300 whitespace-nowrap ${
                     hovered ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4 pointer-events-none"
                 }`}
             >

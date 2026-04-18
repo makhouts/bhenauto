@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, X, ZoomIn, Maximize2 } from "lucide-react";
+import { useGallery } from "@/hooks/useGallery";
+import { getImageUrl } from "@/lib/image-url";
 
 interface ImageGalleryProps {
     images: { id: string; url: string }[];
@@ -11,84 +13,18 @@ interface ImageGalleryProps {
 }
 
 export default function ImageGallery({ images, title }: ImageGalleryProps) {
-    const [activeIndex, setActiveIndex] = useState(0);
-    const [lightboxOpen, setLightboxOpen] = useState(false);
-    const [direction, setDirection] = useState(0);
-    const [isZoomed, setIsZoomed] = useState(false);
-    const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
-    const thumbStripRef = useRef<HTMLDivElement>(null);
-    const lightboxThumbRef = useRef<HTMLDivElement>(null);
+    // Resolve all image URLs once (R2 keys → full CDN URLs)
+    const resolvedImages = useMemo(() =>
+        images.map(img => ({ ...img, url: getImageUrl(img.url) })),
+        [images]
+    );
 
-    const goTo = useCallback((index: number) => {
-        if (index === activeIndex) return;
-        setDirection(index > activeIndex ? 1 : -1);
-        setActiveIndex(index);
-        setIsZoomed(false);
-    }, [activeIndex]);
-
-    const goNext = useCallback(() => {
-        if (activeIndex < images.length - 1) goTo(activeIndex + 1);
-    }, [activeIndex, images.length, goTo]);
-
-    const goPrev = useCallback(() => {
-        if (activeIndex > 0) goTo(activeIndex - 1);
-    }, [activeIndex, goTo]);
-
-    // Keyboard navigation
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)) return;
-            if (e.key === "ArrowLeft") goPrev();
-            else if (e.key === "ArrowRight") goNext();
-            else if (e.key === "Escape" && lightboxOpen) setLightboxOpen(false);
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [goNext, goPrev, lightboxOpen]);
-
-    // Lock body scroll when lightbox is open
-    useEffect(() => {
-        if (lightboxOpen) {
-            document.body.style.overflow = "hidden";
-        } else {
-            document.body.style.overflow = "";
-            setIsZoomed(false);
-        }
-        return () => { document.body.style.overflow = ""; };
-    }, [lightboxOpen]);
-
-    // Auto-scroll active thumbnail into view
-    useEffect(() => {
-        const ref = lightboxOpen ? lightboxThumbRef : thumbStripRef;
-        if (ref.current) {
-            const activeThumb = ref.current.children[activeIndex] as HTMLElement;
-            if (activeThumb) {
-                activeThumb.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-            }
-        }
-    }, [activeIndex, lightboxOpen]);
-
-    // Touch/swipe support
-    const touchStart = useRef<number | null>(null);
-    const handleTouchStart = (e: React.TouchEvent) => { touchStart.current = e.touches[0].clientX; };
-    const handleTouchEnd = (e: React.TouchEvent) => {
-        if (touchStart.current === null) return;
-        const diff = touchStart.current - e.changedTouches[0].clientX;
-        if (Math.abs(diff) > 50) {
-            if (diff > 0) goNext();
-            else goPrev();
-        }
-        touchStart.current = null;
-    };
-
-    // Zoom mouse tracking
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        setMousePos({
-            x: ((e.clientX - rect.left) / rect.width) * 100,
-            y: ((e.clientY - rect.top) / rect.height) * 100,
-        });
-    };
+    const {
+        state: { activeIndex, direction, lightboxOpen, isZoomed, mousePos },
+        refs: { thumbStripRef, lightboxThumbRef },
+        actions: { goTo, goNext, goPrev, openLightbox, closeLightbox, toggleZoom },
+        handlers: { handleTouchStart, handleTouchEnd, handleMouseMove },
+    } = useGallery(resolvedImages.length);
 
     const slideVariants = {
         enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
@@ -96,11 +32,11 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
         exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
     };
 
-    if (!images || images.length === 0) {
+    if (!resolvedImages || resolvedImages.length === 0) {
         return (
             <div className="flex gap-3 h-[420px] md:h-[500px]">
-                <div className="flex-1 relative bg-slate-100 rounded-2xl flex items-center justify-center">
-                    <span className="text-slate-400 uppercase tracking-widest text-sm font-bold">Geen afbeeldingen beschikbaar</span>
+                <div className="flex-1 relative rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--theme-skeleton)' }}>
+                    <span className="theme-text-faint uppercase tracking-widest text-sm font-bold">Geen afbeeldingen beschikbaar</span>
                 </div>
             </div>
         );
@@ -113,8 +49,9 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
 
                 {/* ── Main Hero Image ── */}
                 <div
-                    className="relative flex-1 overflow-hidden rounded-2xl cursor-pointer group bg-slate-100"
-                    onClick={() => setLightboxOpen(true)}
+                    className="relative flex-1 overflow-hidden rounded-2xl cursor-pointer group"
+                    style={{ backgroundColor: 'var(--theme-skeleton)' }}
+                    onClick={openLightbox}
                     onMouseMove={handleMouseMove}
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
@@ -131,7 +68,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                             className="absolute inset-0"
                         >
                             <Image
-                                src={images[activeIndex].url}
+                                src={resolvedImages[activeIndex].url}
                                 alt={`${title} - Foto ${activeIndex + 1}`}
                                 fill
                                 className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
@@ -152,7 +89,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                     {/* Image counter pill */}
                     <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2">
                         <span className="bg-black/50 backdrop-blur-md text-white text-xs font-bold px-3.5 py-2 rounded-full">
-                            {activeIndex + 1} / {images.length}
+                            {activeIndex + 1} / {resolvedImages.length}
                         </span>
                     </div>
 
@@ -161,14 +98,16 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                         <button
                             onClick={(e) => { e.stopPropagation(); goPrev(); }}
                             className="absolute left-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-slate-800 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
+                            aria-label="Vorige foto"
                         >
                             <ChevronLeft size={20} strokeWidth={2.5} />
                         </button>
                     )}
-                    {activeIndex < images.length - 1 && (
+                    {activeIndex < resolvedImages.length - 1 && (
                         <button
                             onClick={(e) => { e.stopPropagation(); goNext(); }}
                             className="absolute right-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-slate-800 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
+                            aria-label="Volgende foto"
                         >
                             <ChevronRight size={20} strokeWidth={2.5} />
                         </button>
@@ -176,15 +115,15 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                 </div>
 
                 {/* ── Right Thumbnail Column ── */}
-                {images.length > 1 && (
+                {resolvedImages.length > 1 && (
                     <div className="hidden md:flex flex-col gap-2 w-[28%] shrink-0">
-                        {images.slice(1, 5).map((img, i) => {
+                        {resolvedImages.slice(1, 5).map((img, i) => {
                             const realIndex = i + 1;
-                            const isLast = i === 3 && images.length > 5;
+                            const isLast = i === 3 && resolvedImages.length > 5;
                             return (
                                 <button
                                     key={img.id}
-                                    onClick={() => isLast ? setLightboxOpen(true) : goTo(realIndex)}
+                                    onClick={() => isLast ? openLightbox() : goTo(realIndex)}
                                     className={`relative flex-1 overflow-hidden rounded-xl cursor-pointer transition-all duration-300 group/thumb
                                         ${activeIndex === realIndex && !isLast ? "ring-2 ring-[#d91c1c] ring-offset-2 shadow-lg" : "hover:ring-1 hover:ring-slate-300 hover:ring-offset-1"}`}
                                 >
@@ -199,7 +138,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                     {isLast && (
                                         <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px] flex flex-col items-center justify-center gap-1.5 transition-all duration-300 group-hover/thumb:bg-black/40">
                                             <ZoomIn size={22} className="text-white" strokeWidth={2} />
-                                            <span className="text-white text-xs font-bold tracking-wide">+{images.length - 5} meer</span>
+                                            <span className="text-white text-xs font-bold tracking-wide">+{resolvedImages.length - 5} meer</span>
                                         </div>
                                     )}
                                 </button>
@@ -210,14 +149,14 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
             </div>
 
             {/* ── Thumbnail Strip (Below gallery on mobile, below gallery on desktop for quick nav) ── */}
-            {images.length > 1 && (
+            {resolvedImages.length > 1 && (
                 <div className="mt-3">
                     <div
                         ref={thumbStripRef}
                         className="flex gap-2 overflow-x-auto pb-2 scrollbar-none"
                         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                     >
-                        {images.map((img, i) => (
+                        {resolvedImages.map((img, i) => (
                             <button
                                 key={img.id}
                                 onClick={() => goTo(i)}
@@ -227,7 +166,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                         : "opacity-50 hover:opacity-80 hover:ring-1 hover:ring-slate-300"
                                     }`}
                             >
-                                <Image src={img.url} alt="" fill className="object-cover" sizes="96px" />
+                                <Image src={img.url} alt={`${title} - miniatuur ${i + 1}`} fill className="object-cover" sizes="96px" />
                             </button>
                         ))}
                     </div>
@@ -245,28 +184,28 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
                         className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col"
-                        onClick={() => setLightboxOpen(false)}
+                        onClick={closeLightbox}
                     >
                         {/* ── Top Bar ── */}
                         <div className="flex items-center justify-between px-6 py-4 relative z-20"
                             onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-3">
                                 <span className="text-white/90 text-sm font-bold">
-                                    {activeIndex + 1} <span className="text-white/40">/ {images.length}</span>
+                                    {activeIndex + 1} <span className="text-white/40">/ {resolvedImages.length}</span>
                                 </span>
                                 <span className="text-white/30 text-sm hidden sm:inline">|</span>
                                 <span className="text-white/50 text-sm hidden sm:inline truncate max-w-[200px]">{title}</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => setIsZoomed(!isZoomed)}
+                                    onClick={toggleZoom}
                                     className={`text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all ${isZoomed ? 'bg-white/15 text-white' : ''}`}
                                     title={isZoomed ? "Uitzoomen" : "Inzoomen"}
                                 >
                                     <ZoomIn size={20} />
                                 </button>
                                 <button
-                                    onClick={() => setLightboxOpen(false)}
+                                    onClick={closeLightbox}
                                     className="text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all"
                                 >
                                     <X size={22} strokeWidth={2.5} />
@@ -299,14 +238,14 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 >
                                     <div
                                         className={`relative w-full h-full transition-transform duration-300 ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
-                                        onClick={() => setIsZoomed(!isZoomed)}
+                                        onClick={toggleZoom}
                                         style={isZoomed ? {
                                             transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
                                             transform: 'scale(2)',
                                         } : {}}
                                     >
                                         <Image
-                                            src={images[activeIndex].url}
+                                            src={resolvedImages[activeIndex].url}
                                             alt={`${title} - Foto ${activeIndex + 1}`}
                                             fill
                                             className="object-contain"
@@ -322,14 +261,16 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 <button
                                     onClick={goPrev}
                                     className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/20 text-white rounded-full p-3 transition-all duration-200 hover:scale-110 active:scale-90"
+                                    aria-label="Vorige foto"
                                 >
                                     <ChevronLeft size={24} strokeWidth={2} />
                                 </button>
                             )}
-                            {activeIndex < images.length - 1 && !isZoomed && (
+                            {activeIndex < resolvedImages.length - 1 && !isZoomed && (
                                 <button
                                     onClick={goNext}
                                     className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/20 text-white rounded-full p-3 transition-all duration-200 hover:scale-110 active:scale-90"
+                                    aria-label="Volgende foto"
                                 >
                                     <ChevronRight size={24} strokeWidth={2} />
                                 </button>
@@ -351,7 +292,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                     className="flex justify-center gap-2 overflow-x-auto scrollbar-none"
                                     style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                                 >
-                                    {images.map((img, i) => (
+                                    {resolvedImages.map((img, i) => (
                                         <button
                                             key={img.id}
                                             onClick={() => goTo(i)}
@@ -361,7 +302,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                                     : "opacity-35 hover:opacity-65 hover:scale-105"
                                                 }`}
                                         >
-                                            <Image src={img.url} alt="" fill className="object-cover" sizes="80px" />
+                                            <Image src={img.url} alt={`${title} - miniatuur ${i + 1}`} fill className="object-cover" sizes="80px" />
                                         </button>
                                     ))}
                                 </div>

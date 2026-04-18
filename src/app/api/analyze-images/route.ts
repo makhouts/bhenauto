@@ -1,14 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getImageUrl } from "@/lib/image-url";
+import { isValidSession } from "@/lib/session";
 
-// Fix macOS Node.js SSL certificate issue
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+/** Allowed hostnames for image fetching (prevents SSRF). */
+function isAllowedImageUrl(urlOrKey: string): boolean {
+    // R2 keys (no http prefix) are safe — resolved to the R2 CDN URL server-side
+    if (!urlOrKey.startsWith("http://") && !urlOrKey.startsWith("https://")) {
+        return true;
+    }
+    try {
+        const parsed = new URL(urlOrKey);
+        // Only allow HTTPS
+        if (parsed.protocol !== "https:") return false;
+        const host = parsed.hostname;
+        // Custom CDN domain
+        if (host === "images.bhenauto.com") return true;
+        // Cloudflare R2 public bucket domains
+        if (host.endsWith(".r2.dev")) return true;
+        // The configured R2 public URL domain
+        const r2PublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+        if (r2PublicUrl) {
+            try {
+                const r2Host = new URL(r2PublicUrl).hostname;
+                if (host === r2Host) return true;
+            } catch {
+                // ignore malformed env var
+            }
+        }
+        return false;
+    } catch {
+        return false;
+    }
+}
 
-
-
-/** Convert Cloudinary URL to small thumbnail for analysis */
-function toThumbnailUrl(url: string): string {
-    return url.replace("/upload/", "/upload/w_200,q_40,f_jpg/");
+/** Resolve an R2 key or full URL to a fetchable URL for AI analysis. */
+function toFetchableUrl(urlOrKey: string): string {
+    return getImageUrl(urlOrKey);
 }
 
 const BATCH_PROMPT = `Score each car photo 0-100 as a cover image for a car listing ad.
@@ -17,16 +45,19 @@ Scoring: 90-100=exterior front 3/4 full car, 75-89=full exterior other angle, 60
 
 Respond ONLY with a JSON array, no markdown. Each element: {"index":<0-based>,"score":<number>,"angle":"<type>","reason":"<brief>"}`;
 
-/** Retry a function with exponential backoff on 429 errors */
+/** Retry a function with exponential backoff on transient 429 errors.
+ *  Quota-exhaustion 429s (daily/project limit) are not retried — the window
+ *  does not reset within our retry budget, so retrying just wastes latency. */
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             return await fn();
         } catch (err: any) {
-            const is429 = err.message?.includes("429") || err.message?.includes("Too Many Requests");
-            if (is429 && attempt < maxRetries) {
+            const msg: string = err.message ?? "";
+            const is429 = msg.includes("429") || msg.includes("Too Many Requests");
+            const isQuotaExhausted = is429 && /quota|RESOURCE_EXHAUSTED/i.test(msg);
+            if (is429 && !isQuotaExhausted && attempt < maxRetries) {
                 const delay = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
-                console.log(`[AI Images] Rate limited. Retrying in ${delay / 1000}s (attempt ${attempt + 1}/${maxRetries})...`);
                 await new Promise((r) => setTimeout(r, delay));
                 continue;
             }
@@ -37,11 +68,29 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
 }
 
 export async function POST(request: NextRequest) {
+    // Auth check — defence-in-depth (middleware also guards this route)
+    const sessionCookie = request.cookies.get("admin_session")?.value;
+    if (!await isValidSession(sessionCookie)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
-        const { imageUrls } = await request.json();
+        const body = await request.json();
+        const { imageUrls } = body;
 
         if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
             return NextResponse.json({ error: "No image URLs provided" }, { status: 400 });
+        }
+
+        if (imageUrls.length > 50) {
+            return NextResponse.json({ error: "Too many images (max 50)" }, { status: 400 });
+        }
+
+        // SSRF protection — validate all URLs before fetching
+        for (const url of imageUrls) {
+            if (typeof url !== "string" || !isAllowedImageUrl(url)) {
+                return NextResponse.json({ error: "Invalid image URL" }, { status: 400 });
+            }
         }
 
         const apiKey = process.env.GEMINI_API_KEY;
@@ -55,18 +104,15 @@ export async function POST(request: NextRequest) {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
-        console.log(`[AI Images] Analyzing ${imageUrls.length} image(s) in single batch...`);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         // Fetch all thumbnails in parallel
         const imageDataParts = await Promise.all(
             imageUrls.map(async (url: string, i: number) => {
-                const thumbUrl = toThumbnailUrl(url);
-                const imgResponse = await globalThis.fetch(thumbUrl);
-                if (!imgResponse.ok) throw new Error(`Failed to fetch thumbnail ${i + 1}: ${imgResponse.status}`);
+                const fetchUrl = toFetchableUrl(url);
+                const imgResponse = await globalThis.fetch(fetchUrl);
+                if (!imgResponse.ok) throw new Error(`Failed to fetch thumbnail ${i + 1}`);
                 const buffer = await imgResponse.arrayBuffer();
-                console.log(`[AI Images] Thumbnail ${i + 1}: ${(buffer.byteLength / 1024).toFixed(0)}KB`);
                 return {
                     inlineData: {
                         data: Buffer.from(buffer).toString("base64"),
@@ -83,10 +129,8 @@ export async function POST(request: NextRequest) {
                 return model.generateContent([BATCH_PROMPT, ...imageDataParts]);
             });
             text = result.response.text().trim();
-            console.log(`[AI Images] Batch response: ${text.substring(0, 300)}`);
         } catch (aiErr: any) {
-            console.warn("[AI Images] Gemini call failed (possibly Zscaler intercept):", aiErr.message);
-            // Fall back to original order
+            console.warn("[AI Images] Gemini call failed:", aiErr.message);
             return NextResponse.json({
                 ordered: imageUrls.map((url: string, i: number) => ({
                     url, score: 50 - i, angle: "unknown", reason: "AI analyse niet bereikbaar (netwerk)"
@@ -95,9 +139,9 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Guard: if we got an HTML page instead of JSON (e.g. Zscaler block page)
+        // Guard: if we got an HTML page instead of JSON (e.g. proxy intercept)
         if (text.trimStart().startsWith("<")) {
-            console.warn("[AI Images] Response looks like HTML (Zscaler/proxy intercept). Falling back to original order.");
+            console.warn("[AI Images] Response looks like HTML. Falling back to original order.");
             return NextResponse.json({
                 ordered: imageUrls.map((url: string, i: number) => ({
                     url, score: 50 - i, angle: "unknown", reason: "AI analyse onderschept door netwerk proxy"
@@ -108,7 +152,7 @@ export async function POST(request: NextRequest) {
 
         // Parse the JSON array response — strip markdown fences if present
         const jsonMatch = text.replace(/```json|```/g, "").match(/\[[\s\S]*\]/);
-        if (!jsonMatch) throw new Error(`No JSON array found in response: ${text.substring(0, 200)}`);
+        if (!jsonMatch) throw new Error("No JSON array found in AI response");
 
         const parsed: Array<{ index: number; score: number; angle: string; reason: string }> = JSON.parse(jsonMatch[0]);
 
@@ -124,11 +168,10 @@ export async function POST(request: NextRequest) {
         });
 
         const ordered = scoredImages.sort((a, b) => b.score - a.score);
-        console.log(`[AI Images] Final: ${ordered.map((o) => `${o.score}(${o.angle})`).join(", ")}`);
 
         return NextResponse.json({ ordered, aiEnabled: true });
     } catch (error: any) {
         console.error("[AI Images] Fatal:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: "Failed to analyze images" }, { status: 500 });
     }
 }

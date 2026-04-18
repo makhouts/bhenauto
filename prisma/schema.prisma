@@ -30,6 +30,10 @@ model Car {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   images       Image[]
+
+  @@index([brand])
+  @@index([sold, reserved])
+  @@index([createdAt])
 }
 
 model Image {
@@ -49,4 +53,41 @@ model Contact {
   car_reference String?
   read          Boolean  @default(false)
   createdAt     DateTime @default(now())
+
+  @@index([read])
+  @@index([createdAt])
+}
+
+enum AppointmentStatus {
+  pending
+  confirmed
+  cancelled
+}
+
+model Appointment {
+  id            String            @id @default(cuid())
+  date          DateTime          // UTC midnight of the chosen day
+  timeSlot      String            // e.g. "09:00"
+  name          String
+  email         String
+  phone         String
+  service       String
+  notes         String?
+  status        AppointmentStatus @default(pending)
+  durationHours Int               @default(1) // how many hours this appointment occupies
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([date, status])
+  @@index([status])
+}
+
+model BlockedDate {
+  id        String   @id @default(cuid())
+  date      DateTime             // UTC midnight of the blocked day
+  timeSlot  String?              // null = entire day blocked, "HH:MM" = specific slot only
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@unique([date, timeSlot]) // prevent duplicates (null treated as one unique value per date)
 }

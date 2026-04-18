@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
 import Link from "next/link";
 import Image from "next/image";
 import { toggleFeatured, deleteCar, updateCarStatus } from "@/app/actions/cars";
 import { Star, Edit, Trash2, Loader2, AlertTriangle, ChevronDown, CheckCircle, Clock, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getImageUrl } from "@/lib/image-url";
 
 type Status = "beschikbaar" | "gereserveerd" | "verkocht";
 
@@ -52,15 +55,7 @@ export default function CarRow({ car }: { car: any }) {
     }, [car.sold, car.reserved]);
 
     // Close dropdown on outside click
-    useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-                setDropdownOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handler);
-        return () => document.removeEventListener("mousedown", handler);
-    }, []);
+    useOutsideClick(dropdownRef, () => setDropdownOpen(false), dropdownOpen);
 
     const handleToggleFeatured = async () => {
         setIsUpdating(true);
@@ -109,7 +104,7 @@ export default function CarRow({ car }: { car: any }) {
         maximumFractionDigits: 0,
     }).format(car.price);
 
-    const thumbnailUrl = car.images?.[0]?.url;
+    const thumbnailUrl = car.images?.[0]?.url ? getImageUrl(car.images[0].url) : null;
 
     return (
         <tr className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors relative">
@@ -216,30 +211,54 @@ export default function CarRow({ car }: { car: any }) {
                     </button>
                 </div>
 
-                {/* Delete Confirmation Popover */}
-                {showDeleteConfirm && (
-                    <div className="absolute right-8 top-12 z-10 w-64 bg-white border border-red-200 p-4 rounded-xl shadow-xl text-left animate-fade-in">
-                        <div className="flex items-start text-red-600 mb-3">
-                            <AlertTriangle size={20} className="mr-2 shrink-0 mt-0.5" />
-                            <p className="text-sm font-bold">Weet u zeker dat u dit voertuig permanent wilt verwijderen?</p>
+            </td>
+
+            {/* Delete Confirmation Modal — rendered in a portal to avoid table clipping */}
+            {showDeleteConfirm && typeof document !== "undefined" && createPortal(
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    onClick={() => setShowDeleteConfirm(false)}
+                >
+                    {/* Backdrop */}
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+                    {/* Dialog */}
+                    <div
+                        className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-red-100"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-3 mb-5">
+                            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                <AlertTriangle size={20} className="text-red-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-base font-black text-slate-900 mb-1">Voertuig verwijderen?</h3>
+                                <p className="text-sm text-slate-500 leading-relaxed">
+                                    <span className="font-semibold text-slate-700">{car.brand} {car.model}</span> wordt permanent verwijderd. Deze actie kan niet ongedaan worden gemaakt.
+                                </p>
+                            </div>
                         </div>
-                        <div className="flex justify-end space-x-2">
+
+                        <div className="flex gap-3 justify-end">
                             <button
                                 onClick={() => setShowDeleteConfirm(false)}
-                                className="px-3 py-1.5 text-xs text-slate-500 font-bold hover:text-slate-900 transition-colors uppercase tracking-wider"
+                                className="px-4 py-2 text-sm text-slate-600 font-bold hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                             >
                                 Annuleren
                             </button>
                             <button
                                 onClick={handleDelete}
-                                className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white font-bold transition-colors uppercase tracking-wider rounded-lg shadow-sm"
+                                disabled={isUpdating}
+                                className="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors shadow-sm flex items-center gap-2 disabled:opacity-70"
                             >
+                                {isUpdating && <Loader2 size={14} className="animate-spin" />}
                                 Verwijderen
                             </button>
                         </div>
                     </div>
-                )}
-            </td>
+                </div>,
+                document.body
+            )}
         </tr>
     );
 }

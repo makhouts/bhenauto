@@ -2,12 +2,14 @@ import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import CarsTableClient from "@/components/admin/CarsTableClient";
+import { requireAdmin } from "@/lib/auth-guard";
 
 export const metadata = {
     title: "Voertuigvoorraad | bhenauto Admin",
 };
 
 export default async function AdminCarsPage() {
+    await requireAdmin();
     const cars = await prisma.car.findMany({
         orderBy: { createdAt: "desc" },
         include: {

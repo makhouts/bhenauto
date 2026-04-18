@@ -5,11 +5,15 @@ import CarCard from "@/components/CarCard";
 import CarCardSkeleton from "@/components/CarCardSkeleton";
 import { fetchCarsPaginated, type CarWithImages } from "@/app/actions/fetchCars";
 import SortSelect from "@/components/SortSelect";
+import { useLocale } from "@/components/LocaleContext";
+import type { InventoryDict, CommonDict } from "@/lib/dictionaries";
 
 interface InfiniteInventoryProps {
     initialCars: CarWithImages[];
     initialHasMore: boolean;
     initialTotal: number;
+    dict: InventoryDict;
+    commonDict: CommonDict;
     searchParams: {
         brand?: string | string[];
         query?: string;
@@ -28,7 +32,10 @@ export default function InfiniteInventory({
     initialHasMore,
     initialTotal,
     searchParams,
+    dict,
+    commonDict,
 }: InfiniteInventoryProps) {
+    const { locale } = useLocale();
     const [cars, setCars] = useState<CarWithImages[]>(initialCars);
     const [hasMore, setHasMore] = useState(initialHasMore);
     const [page, setPage] = useState(2);
@@ -37,25 +44,32 @@ export default function InfiniteInventory({
     const sentinelRef = useRef<HTMLDivElement>(null);
     const loadingRef = useRef(false);
 
-    // Reset when filters change (new searchParams = new initial data from server)
+    // Serialize searchParams to a stable string — prevents new object references
+    // on every render from causing loadMore to be recreated, which was causing
+    // the IntersectionObserver to fire in an infinite loop.
+    const searchParamsKey = JSON.stringify(searchParams);
+
+    // Reset when filters change (triggered by stable serialized key, not array ref)
     useEffect(() => {
         setCars(initialCars);
         setHasMore(initialHasMore);
         setPage(2);
-    }, [initialCars, initialHasMore]);
+        loadingRef.current = false;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParamsKey, initialHasMore]);
 
     const loadMore = useCallback(() => {
         if (loadingRef.current || !hasMore) return;
         loadingRef.current = true;
 
+        const params = JSON.parse(searchParamsKey);
         startTransition(async () => {
             const result = await fetchCarsPaginated({
                 page,
                 pageSize: PAGE_SIZE,
-                ...searchParams,
+                ...params,
             });
             setCars(prev => {
-                // deduplicate by id just in case
                 const ids = new Set(prev.map(c => c.id));
                 const fresh = result.cars.filter(c => !ids.has(c.id));
                 return [...prev, ...fresh];
@@ -64,7 +78,7 @@ export default function InfiniteInventory({
             setPage(p => p + 1);
             loadingRef.current = false;
         });
-    }, [hasMore, page, searchParams]);
+    }, [hasMore, page, searchParamsKey]);
 
     // IntersectionObserver to trigger loadMore
     useEffect(() => {
@@ -90,23 +104,24 @@ export default function InfiniteInventory({
         <>
             {/* Count + Sort + View toggle */}
             <div className="flex items-center justify-between mb-6">
-                <div className="text-slate-600 text-sm">
-                    <span className="font-black text-slate-900 mr-1 text-base">{initialTotal}</span>
-                    voertuigen gevonden
+                <div className="theme-text-muted text-sm">
+                    <span className="font-black theme-text mr-1 text-base">{initialTotal}</span>
+                    {initialTotal === 1 ? dict.found : dict.foundPlural}
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                        Sorteer:
-                        <SortSelect />
+                    <div className="flex items-center gap-2 text-sm theme-text-muted">
+                        {dict.sort}:
+                        <SortSelect dict={dict} />
                     </div>
                     {/* Grid / List toggle */}
-                    <div className="flex rounded overflow-hidden border border-slate-200">
+                    <div className="hidden sm:flex rounded overflow-hidden" style={{ border: '1px solid var(--theme-border)' }}>
                         <button
                             onClick={() => setViewMode('grid')}
                             title="Kaartweergave"
                             className={`p-2 transition-colors ${
-                                viewMode === 'grid' ? 'bg-[#d91c1c] text-white' : 'text-slate-400 hover:bg-slate-50'
+                                viewMode === 'grid' ? 'bg-[#d91c1c] text-white' : 'theme-text-faint'
                             }`}
+                            style={viewMode !== 'grid' ? { backgroundColor: 'transparent' } : {}}
                         >
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                 <rect x="3" y="3" width="7" height="7" rx="1"/>
@@ -118,9 +133,10 @@ export default function InfiniteInventory({
                         <button
                             onClick={() => setViewMode('list')}
                             title="Lijstweergave"
-                            className={`p-2 transition-colors border-l border-slate-200 ${
-                                viewMode === 'list' ? 'bg-[#d91c1c] text-white' : 'text-slate-400 hover:bg-slate-50'
+                            className={`p-2 transition-colors ${
+                                viewMode === 'list' ? 'bg-[#d91c1c] text-white' : 'theme-text-faint'
                             }`}
+                            style={{ borderLeft: '1px solid var(--theme-border)', ...(viewMode !== 'list' ? { backgroundColor: 'transparent' } : {}) }}
                         >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <line x1="3" y1="6" x2="21" y2="6"/>
@@ -138,7 +154,7 @@ export default function InfiniteInventory({
                 : 'flex flex-col gap-4'
             }>
                 {cars.map((car) => (
-                    <CarCard key={car.id} car={car} listView={viewMode === 'list'} />
+                    <CarCard key={car.id} car={car} listView={viewMode === 'list'} commonDict={commonDict} locale={locale} />
                 ))}
 
                 {/* Skeleton cards while loading */}
@@ -153,12 +169,12 @@ export default function InfiniteInventory({
             {hasMore && (
                 <div ref={sentinelRef} className="h-16 flex items-center justify-center mt-8">
                     {isPending && (
-                        <div className="flex items-center gap-3 text-slate-400 text-sm font-medium">
+                        <div className="flex items-center gap-3 theme-text-faint text-sm font-medium">
                             <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                             </svg>
-                            Meer voertuigen laden...
+                            {dict.loadingMore}
                         </div>
                     )}
                 </div>
@@ -167,26 +183,27 @@ export default function InfiniteInventory({
             {/* End of results */}
             {!hasMore && cars.length > 0 && (
                 <div className="mt-12 text-center">
-                    <div className="inline-flex items-center gap-3 text-slate-400 text-sm font-medium border-t border-slate-200 pt-6 px-8">
-                        <div className="w-8 h-px bg-slate-300" />
-                        Alle {cars.length} voertuigen bekeken
-                        <div className="w-8 h-px bg-slate-300" />
+                    <div className="inline-flex items-center gap-3 theme-text-faint text-sm font-medium pt-6 px-8" style={{ borderTop: '1px solid var(--theme-border)' }}>
+                        <div className="w-8 h-px" style={{ backgroundColor: 'var(--theme-border)' }} />
+                        {cars.length} {cars.length === 1 ? dict.allViewedSingular : dict.allViewedPlural}
+                        <div className="w-8 h-px" style={{ backgroundColor: 'var(--theme-border)' }} />
                     </div>
                 </div>
             )}
 
             {/* Empty state */}
             {cars.length === 0 && !isPending && (
-                <div className="bg-white rounded-lg border border-slate-200 p-12 text-center flex flex-col items-center">
-                    <h3 className="text-2xl font-headings font-bold text-slate-900 mb-2">Geen Voertuigen Gevonden</h3>
-                    <p className="text-slate-500 mb-8 font-medium">
-                        We hebben momenteel geen voertuigen die aan uw specifieke criteria voldoen.
+                <div className="theme-surface rounded-lg p-12 text-center flex flex-col items-center" style={{ border: '1px solid var(--theme-border)' }}>
+                    <h3 className="text-2xl font-headings font-bold theme-text mb-2">{dict.noResultsTitle}</h3>
+                    <p className="theme-text-muted mb-8 font-medium">
+                        {dict.noResultsBody}
                     </p>
                     <a
-                        href="/inventory"
-                        className="px-6 py-3 border border-slate-300 text-slate-600 rounded hover:bg-slate-50 transition-colors uppercase tracking-widest text-sm font-bold"
+                        href={`/${locale}/inventory`}
+                        className="px-6 py-3 theme-text-secondary rounded transition-colors uppercase tracking-widest text-sm font-bold"
+                        style={{ border: '1px solid var(--theme-border)' }}
                     >
-                        Wis Alle Filters
+                        {dict.clearFilters}
                     </a>
                 </div>
             )}
