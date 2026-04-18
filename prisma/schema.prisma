@@ -42,6 +42,8 @@ model Image {
   carId     String
   car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([carId])
 }
 
 model Contact {

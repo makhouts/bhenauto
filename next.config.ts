@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// CSP lives in middleware.ts so each request gets a fresh nonce for inline scripts.
+// Other security headers are static and applied here.
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -12,29 +14,15 @@ const securityHeaders = [
     value: "max-age=63072000; includeSubDomains; preload",
   },
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: blob: https://*.r2.dev https://images.bhenauto.com https://images.unsplash.com https://maps.gstatic.com https://*.googleapis.com",
-      "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://wa.me https://api.whatsapp.com",
-      "frame-src https://www.google.com https://maps.google.com",
-      "frame-ancestors 'none'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self' https://wa.me",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
 ];
+
+const serverActionOrigins = ["bhenauto.be", "www.bhenauto.be"];
+if (isDev) serverActionOrigins.push("localhost:3000");
 
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
-      allowedOrigins: ["bhenauto.be", "www.bhenauto.be", "localhost:3000"],
+      allowedOrigins: serverActionOrigins,
     },
   },
   async headers() {

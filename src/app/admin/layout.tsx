@@ -1,10 +1,17 @@
 import { ReactNode } from "react";
 import { cookies } from "next/headers";
+import type { Metadata } from "next";
 import { isValidSession } from "@/lib/session";
 import Link from "next/link";
 import { Car, MessageSquare, LayoutDashboard, LogOut, CalendarCheck } from "lucide-react";
 import { Toaster } from "sonner";
 import prisma from "@/lib/prisma";
+
+// Ensure every /admin/* response carries X-Robots-Tag: noindex,nofollow.
+// robots.txt is advisory; this header is a hard signal to compliant crawlers.
+export const metadata: Metadata = {
+    robots: { index: false, follow: false },
+};
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
     const cookieStore = await cookies();

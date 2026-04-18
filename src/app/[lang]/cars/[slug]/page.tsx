@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Suspense, cache } from 'react';
@@ -74,7 +75,10 @@ export default async function CarDetailPage(
 ) {
     const params = await props.params;
     const { lang } = params;
-    const car = await getCar(params.slug);
+    const [car, nonce] = await Promise.all([
+        getCar(params.slug),
+        headers().then((h) => h.get('x-nonce') ?? undefined),
+    ]);
 
     if (!car) {
         notFound();
@@ -128,6 +132,7 @@ export default async function CarDetailPage(
         <div className="min-h-screen theme-bg">
             <script
                 type="application/ld+json"
+                nonce={nonce}
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
             />
 

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import LatestOccasionsCarousel from "@/components/LatestOccasionsCarousel";
 import ScrollReveal from "@/components/ScrollReveal";
 import WhyChooseUs from "@/components/WhyChooseUs";
@@ -64,28 +65,33 @@ export async function generateMetadata({
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const locale: Locale = isValidLocale(lang) ? lang : "fr";
-  const dict = await getDictionary(locale);
+  const [dict, nonce] = await Promise.all([
+    getDictionary(locale),
+    headers().then((h) => h.get("x-nonce") ?? undefined),
+  ]);
 
-  // 1. Fetch up to 9 featured cars
-  const featuredDb = await prisma.car.findMany({
-    where: { featured: true },
-    orderBy: { createdAt: "desc" },
-    take: 9,
-    include: { images: { take: 1 } },
-  });
-
-  let displayCarsDb = [...featuredDb];
-
-  // 2. If < 9, fill the rest with newest non-featured cars
-  if (displayCarsDb.length < 9) {
-    const additionalDb = await prisma.car.findMany({
+  // Fetch featured + fill candidates in parallel. We over-fetch the non-featured
+  // pool (up to 9) so we can top up regardless of how many featured we got,
+  // avoiding a second serial round-trip.
+  const [featuredDb, fillDb] = await Promise.all([
+    prisma.car.findMany({
+      where: { featured: true },
+      orderBy: { createdAt: "desc" },
+      take: 9,
+      include: { images: { take: 1 } },
+    }),
+    prisma.car.findMany({
       where: { featured: false },
       orderBy: { createdAt: "desc" },
-      take: 9 - displayCarsDb.length,
+      take: 9,
       include: { images: { take: 1 } },
-    });
-    displayCarsDb = [...displayCarsDb, ...additionalDb];
-  }
+    }),
+  ]);
+
+  const displayCarsDb =
+    featuredDb.length >= 9
+      ? featuredDb
+      : [...featuredDb, ...fillDb.slice(0, 9 - featuredDb.length)];
 
   // 3. Map to simple prop format
   const carouselData = displayCarsDb.map((c) => ({
@@ -147,7 +153,8 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     <main className="flex flex-col min-h-screen theme-bg">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd).replace(/<\//g, '<\\/') }}
       />
       {/* Hero Section */}
       <section className="relative h-screen flex items-center overflow-hidden bg-slate-900">

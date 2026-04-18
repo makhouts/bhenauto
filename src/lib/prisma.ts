@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client'
+// Side-effect import: validates env vars at boot, fails fast on misconfig.
+import '@/lib/env'
 
 const prismaClientSingleton = () => {
     return new PrismaClient()

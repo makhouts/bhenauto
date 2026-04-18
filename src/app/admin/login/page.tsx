@@ -34,10 +34,10 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen bg-slate-50 flex">
             {/* Left side: Premium Image */}
-            <div className="hidden lg:flex w-1/2 relative">
+            <div className="hidden lg:flex w-1/2 relative" aria-hidden="true">
                 <Image
                     src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2070&auto=format&fit=crop"
-                    alt="bhenauto Hoofdkantoor"
+                    alt=""
                     fill
                     className="object-cover"
                     priority
@@ -111,6 +111,8 @@ export default function LoginPage() {
                     >
                         {error && (
                             <motion.div
+                                role="alert"
+                                aria-live="assertive"
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 className="p-4 bg-red-50 border border-red-200 text-red-600 text-sm text-center rounded-lg font-medium"

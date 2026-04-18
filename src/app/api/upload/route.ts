@@ -8,6 +8,28 @@ import { v4 as uuidv4 } from "uuid";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file (before optimization)
 const MAX_FILES = 20;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/jpg"];
+// Cap concurrent sharp+R2 pipelines to bound peak memory. At 4×10MB plus
+// sharp's working set, peak stays well under typical serverless limits.
+const UPLOAD_CONCURRENCY = 4;
+
+/** Map items through an async worker with bounded concurrency. */
+async function mapWithConcurrency<T, R>(
+    items: T[],
+    limit: number,
+    worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+    const results = new Array<R>(items.length);
+    let cursor = 0;
+    const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (true) {
+            const i = cursor++;
+            if (i >= items.length) return;
+            results[i] = await worker(items[i], i);
+        }
+    });
+    await Promise.all(runners);
+    return results;
+}
 
 // Client ID for the R2 key prefix (multi-tenant structure)
 const CLIENT_ID = "bhenauto";
@@ -90,34 +112,34 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Optimize and upload all images in parallel
+        // Optimize and upload with bounded concurrency. Each pipeline holds
+        // a ~10MB raw buffer + sharp working set; unbounded parallelism on
+        // MAX_FILES=20 would peak at ~200MB and risk OOM on small instances.
         // Note: sharp validates actual image content during optimization,
         // rejecting files that claim to be images but aren't.
-        const uploadedKeys = await Promise.all(
-            files.map(async (file) => {
-                const bytes = await file.arrayBuffer();
-                const rawBuffer = Buffer.from(bytes);
+        const uploadedKeys = await mapWithConcurrency(files, UPLOAD_CONCURRENCY, async (file) => {
+            const bytes = await file.arrayBuffer();
+            const rawBuffer = Buffer.from(bytes);
 
-                // Optimize: resize to max 1600px width, convert to WebP
-                // This also serves as content-based validation — sharp will throw
-                // if the buffer is not a valid image, regardless of declared MIME type.
-                const optimized = await optimizeImage(rawBuffer);
+            // Optimize: resize to max 1600px width, convert to WebP
+            // This also serves as content-based validation — sharp will throw
+            // if the buffer is not a valid image, regardless of declared MIME type.
+            const optimized = await optimizeImage(rawBuffer);
 
-                const key = generateKey(carId);
+            const key = generateKey(carId);
 
-                await r2Client.send(
-                    new PutObjectCommand({
-                        Bucket: R2_BUCKET,
-                        Key: key,
-                        Body: optimized,
-                        ContentType: "image/webp",
-                        CacheControl: "public, max-age=31536000, immutable",
-                    })
-                );
+            await r2Client.send(
+                new PutObjectCommand({
+                    Bucket: R2_BUCKET,
+                    Key: key,
+                    Body: optimized,
+                    ContentType: "image/webp",
+                    CacheControl: "public, max-age=31536000, immutable",
+                })
+            );
 
-                return key;
-            })
-        );
+            return key;
+        });
 
         return NextResponse.json({ keys: uploadedKeys });
     } catch (error: unknown) {

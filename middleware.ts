@@ -15,8 +15,42 @@ function hasLocalePrefix(pathname: string): boolean {
   );
 }
 
+/** Build a CSP that pins inline scripts to a per-request nonce. */
+function buildCsp(nonce: string): string {
+  const isDev = process.env.NODE_ENV === 'development';
+  // 'strict-dynamic' lets nonced scripts load further scripts without needing a host list.
+  // 'unsafe-inline' and 'https:' are ignored by browsers that honour the nonce/strict-dynamic
+  // directives — they are fallbacks for older engines only.
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-inline' https:${isDev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https://*.r2.dev https://images.bhenauto.com https://images.unsplash.com https://maps.gstatic.com https://*.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' https://wa.me https://api.whatsapp.com",
+    "frame-src https://www.google.com https://maps.google.com",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self' https://wa.me",
+    "upgrade-insecure-requests",
+  ].join('; ');
+}
+
+/** Generate a base64 nonce using Edge-runtime-safe APIs. */
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
+
+  const nonce = generateNonce();
+  const csp = buildCsp(nonce);
 
   // ── Guard admin API routes ───────────────────────────────────────────────
   // Must come before the general /api passthrough below.
@@ -45,7 +79,10 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-pathname', pathname);
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    requestHeaders.set('x-nonce', nonce);
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
+    response.headers.set('Content-Security-Policy', csp);
+    return response;
   }
 
   // ── Pass through system paths immediately ────────────────────────────────
@@ -57,11 +94,14 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return NextResponse.next();
   }
 
-  // ── Already has a valid locale prefix → forward with x-pathname header ──
+  // ── Already has a valid locale prefix → forward with x-pathname + nonce ──
   if (hasLocalePrefix(pathname)) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-pathname', pathname);
-    return NextResponse.next({ request: { headers: requestHeaders } });
+    requestHeaders.set('x-nonce', nonce);
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
+    response.headers.set('Content-Security-Policy', csp);
+    return response;
   }
 
   // ── Determine preferred locale ───────────────────────────────────────────

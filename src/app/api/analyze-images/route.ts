@@ -16,9 +16,8 @@ function isAllowedImageUrl(urlOrKey: string): boolean {
         const host = parsed.hostname;
         // Custom CDN domain
         if (host === "images.bhenauto.com") return true;
-        // Cloudflare R2 public bucket domains
-        if (host.endsWith(".r2.dev")) return true;
-        // The configured R2 public URL domain
+        // Only the exact configured R2 public host — no wildcard *.r2.dev,
+        // which would allow any public R2 bucket on the internet.
         const r2PublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
         if (r2PublicUrl) {
             try {
