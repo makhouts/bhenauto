@@ -10,10 +10,17 @@ interface ScrollRevealProps {
 }
 
 export default function ScrollReveal({ children, className = "", delay = 0, direction = "up" }: ScrollRevealProps) {
+    const [hydrated, setHydrated] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
+    // Mark as hydrated on first client render to avoid SSR opacity:0 flash
     useEffect(() => {
+        setHydrated(true);
+    }, []);
+
+    useEffect(() => {
+        if (!hydrated) return;
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
@@ -23,10 +30,9 @@ export default function ScrollReveal({ children, className = "", delay = 0, dire
             },
             { threshold: 0.1, rootMargin: "0px 0px -50px 0px" }
         );
-
         if (ref.current) observer.observe(ref.current);
         return () => observer.disconnect();
-    }, []);
+    }, [hydrated]);
 
     const transforms: Record<string, string> = {
         up: "translateY(30px)",
@@ -34,6 +40,11 @@ export default function ScrollReveal({ children, className = "", delay = 0, dire
         right: "translateX(30px)",
         none: "translateY(0)",
     };
+
+    // Before hydration: render fully visible (SSR / no-JS path)
+    if (!hydrated) {
+        return <div className={className}>{children}</div>;
+    }
 
     return (
         <div

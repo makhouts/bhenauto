@@ -1,19 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { Suspense } from "react";
 import LatestOccasionsCarousel from "@/components/LatestOccasionsCarousel";
 import ScrollReveal from "@/components/ScrollReveal";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import prisma from "@/lib/prisma";
 import heroBg from "@/assets/wallpaper.avif";
-import { getDictionary } from "@/lib/dictionaries";
+import { getDictionary, type Dictionary } from "@/lib/dictionaries";
 import { getImageUrl } from "@/lib/image-url";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
 
-// Revalidate page every 60 seconds (ISR)
 export const revalidate = 60;
 
 export async function generateMetadata({
@@ -62,17 +61,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
-  const { lang } = await params;
-  const locale: Locale = isValidLocale(lang) ? lang : "fr";
-  const [dict, nonce] = await Promise.all([
-    getDictionary(locale),
-    headers().then((h) => h.get("x-nonce") ?? undefined),
-  ]);
-
-  // Fetch featured + fill candidates in parallel. We over-fetch the non-featured
-  // pool (up to 9) so we can top up regardless of how many featured we got,
-  // avoiding a second serial round-trip.
+// Async server component — runs its Prisma queries independently so the hero
+// renders immediately while this streams in behind a Suspense boundary.
+async function FeaturedCarsSection({ dict }: { dict: Dictionary }) {
   const [featuredDb, fillDb] = await Promise.all([
     prisma.car.findMany({
       where: { featured: true },
@@ -93,7 +84,6 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       ? featuredDb
       : [...featuredDb, ...fillDb.slice(0, 9 - featuredDb.length)];
 
-  // 3. Map to simple prop format
   const carouselData = displayCarsDb.map((c) => ({
     id: c.id,
     title: c.title,
@@ -112,58 +102,95 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     sold: c.sold,
   }));
 
-  const h = dict.home;
+  return (
+    <LatestOccasionsCarousel
+      cars={carouselData}
+      dict={dict.carousel}
+      homeDict={dict.home}
+      commonDict={dict.common}
+    />
+  );
+}
 
-  // LocalBusiness structured data for local SEO
-  const localBusinessJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "AutoDealer",
-    "name": "BhenAuto",
-    "url": "https://bhenauto.be",
-    "telephone": "+32 2 582 83 53",
-    "address": {
-      "@type": "PostalAddress",
-      "addressLocality": "Asse",
-      "addressRegion": "Vlaams-Brabant",
-      "postalCode": "1730",
-      "addressCountry": "BE",
+function CarouselSkeleton() {
+  return (
+    <div className="py-24 theme-bg">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="h-5 w-32 rounded mb-3 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+        <div className="h-10 w-64 rounded mb-14 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-2xl overflow-hidden animate-pulse" style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}>
+              <div className="h-52 w-full" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+              <div className="p-6 space-y-3">
+                <div className="h-6 w-3/4 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+                <div className="h-4 w-full rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+                <div className="h-10 w-full rounded mt-4" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const localBusinessJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "AutoDealer",
+  "name": "BhenAuto",
+  "url": "https://bhenauto.be",
+  "telephone": "+32 2 582 83 53",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Asse",
+    "addressRegion": "Vlaams-Brabant",
+    "postalCode": "1730",
+    "addressCountry": "BE",
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": 50.898611,
+    "longitude": 4.225758,
+  },
+  "openingHoursSpecification": [
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      "opens": "10:00",
+      "closes": "18:00",
     },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": 50.898611,
-      "longitude": 4.225758,
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": "Saturday",
+      "opens": "10:00",
+      "closes": "17:00",
     },
-    "openingHoursSpecification": [
-      {
-        "@type": "OpeningHoursSpecification",
-        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-        "opens": "10:00",
-        "closes": "18:00",
-      },
-      {
-        "@type": "OpeningHoursSpecification",
-        "dayOfWeek": "Saturday",
-        "opens": "10:00",
-        "closes": "17:00",
-      },
-    ],
-  };
+  ],
+};
+
+export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = await params;
+  const locale: Locale = isValidLocale(lang) ? lang : "fr";
+  const dict = await getDictionary(locale);
+  const h = dict.home;
 
   return (
     <main className="flex flex-col min-h-screen theme-bg">
       <script
         type="application/ld+json"
-        nonce={nonce}
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd).replace(/<\//g, '<\\/') }}
       />
-      {/* Hero Section */}
+
+      {/* Hero — renders immediately, no data dependency */}
       <section className="relative h-screen flex items-center overflow-hidden bg-slate-900">
         <div className="absolute inset-0 z-0">
           <Image
             src={heroBg}
             alt={h.heroLabel}
             fill
+            sizes="100vw"
             className="object-cover animate-slow-zoom"
             priority
           />
@@ -209,12 +236,14 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         </div>
       </section>
 
-      {/* Latest Occasions Carousel */}
-      <LatestOccasionsCarousel cars={carouselData} dict={dict.carousel} homeDict={dict.home} commonDict={dict.common} />
+      {/* Carousel — streams in once Prisma resolves, hero is already visible */}
+      <Suspense fallback={<CarouselSkeleton />}>
+        <FeaturedCarsSection dict={dict} />
+      </Suspense>
 
       <WhyChooseUs lang={locale} dict={dict.whyChooseUs} />
 
-      {/* Client Experiences Section - Google Reviews Styled */}
+      {/* Reviews Section */}
       <ScrollReveal>
         <section className="py-24 theme-bg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -226,13 +255,11 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                 <div className="flex items-center gap-3">
                   <span className="text-4xl font-black theme-text leading-none">5.0</span>
                   <div className="flex text-amber-500">
-                    {Array(5)
-                      .fill(0)
-                      .map((_, j) => (
-                        <svg key={j} className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                      ))}
+                    {Array(5).fill(0).map((_, j) => (
+                      <svg key={j} className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    ))}
                   </div>
                   <div className="flex items-center gap-1 text-sm font-bold theme-text-muted">
                     Google Reviews
@@ -267,13 +294,11 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                     </div>
                   </div>
                   <div className="flex gap-0.5 text-amber-400 mb-3">
-                    {Array(5)
-                      .fill(0)
-                      .map((_, j) => (
-                        <svg key={j} className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                      ))}
+                    {Array(5).fill(0).map((_, j) => (
+                      <svg key={j} className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                      </svg>
+                    ))}
                   </div>
                   <p className="theme-text-muted text-[13px] leading-relaxed mb-4 flex-grow">
                     {testimonial.quote}

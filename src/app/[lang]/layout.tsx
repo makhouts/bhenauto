@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { locales, isValidLocale, type Locale } from "@/lib/i18n";
 import { LocaleProvider } from "@/components/LocaleContext";
 import ConditionalLayout from "@/components/ConditionalLayout";
+import HtmlLangUpdater from "@/components/HtmlLangUpdater";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
 
@@ -85,6 +86,7 @@ export default async function LangLayout({
 
   return (
     <LocaleProvider locale={lang as Locale}>
+      <HtmlLangUpdater lang={lang} />
       <ConditionalLayout locale={lang as Locale}>{children}</ConditionalLayout>
     </LocaleProvider>
   );

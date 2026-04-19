@@ -1,6 +1,5 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { headers } from 'next/headers';
 import Link from 'next/link';
 import Image, { getImageProps } from 'next/image';
 import { Suspense, cache } from 'react';
@@ -75,10 +74,7 @@ export default async function CarDetailPage(
 ) {
     const params = await props.params;
     const { lang } = params;
-    const [car, nonce] = await Promise.all([
-        getCar(params.slug),
-        headers().then((h) => h.get('x-nonce') ?? undefined),
-    ]);
+    const car = await getCar(params.slug);
 
     if (!car) {
         notFound();
@@ -150,7 +146,6 @@ export default async function CarDetailPage(
             />
             <script
                 type="application/ld+json"
-                nonce={nonce}
                 suppressHydrationWarning
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
             />

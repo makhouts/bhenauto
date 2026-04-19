@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       allowedOrigins: serverActionOrigins,
     },
+    optimizePackageImports: ["lucide-react", "motion"],
   },
   async headers() {
     return [
