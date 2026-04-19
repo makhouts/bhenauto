@@ -82,6 +82,7 @@ export default async function RelatedVehicles({ currentCarId, brand, priceRange,
                                     fill
                                     className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                                    quality={80}
                                 />
                                 {car.reserved && (
                                     <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-md text-amber-600 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border border-amber-200/50">

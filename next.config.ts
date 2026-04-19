@@ -20,6 +20,10 @@ const serverActionOrigins = ["bhenauto.be", "www.bhenauto.be"];
 if (isDev) serverActionOrigins.push("localhost:3000");
 
 const nextConfig: NextConfig = {
+  // Force blocking metadata (no streaming) so <meta name="description">
+  // and other SEO tags are present in the initial HTML shell — needed for
+  // crawlers and audit tools that only inspect the document source.
+  htmlLimitedBots: /.*/,
   experimental: {
     serverActions: {
       allowedOrigins: serverActionOrigins,
@@ -31,9 +35,20 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: securityHeaders,
       },
+      {
+        // Aggressively cache immutable Next.js static chunks (they're content-hashed)
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
     ];
   },
   images: {
+    qualities: [25, 50, 75, 80, 90, 100],
     remotePatterns: [
       {
         protocol: "https",

@@ -154,6 +154,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       <script
         type="application/ld+json"
         nonce={nonce}
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd).replace(/<\//g, '<\\/') }}
       />
       {/* Hero Section */}

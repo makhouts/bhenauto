@@ -134,13 +134,13 @@ export default function WerkplaatsServices({ dict }: { dict: WerkplaatsDict }) {
   return (
     <section
       ref={sectionRef}
-      className="relative mb-28 mt-12 px-3 md:px-6 max-w-7xl mx-auto"
+      className="relative mb-28 mt-12 px-3 md:px-6 max-w-7xl mx-auto overflow-hidden"
       style={{ perspective: "1400px" }}
     >
       {/* ── Ambient red haze (very subtle) ── */}
       <motion.div
         aria-hidden
-        className="pointer-events-none absolute -inset-x-32 top-10 h-[400px] rounded-full blur-[140px] opacity-[0.04]"
+        className="pointer-events-none absolute inset-x-0 top-10 h-[400px] rounded-full blur-[140px] opacity-[0.04]"
         style={{
           background: "radial-gradient(ellipse at center, #d91c1c 0%, transparent 70%)",
           x: gradX,

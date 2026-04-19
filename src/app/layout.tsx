@@ -1,4 +1,5 @@
 import { Inter, Playfair_Display, Nunito_Sans } from "next/font/google";
+import { headers } from "next/headers";
 import { DARK_THEME } from "@/lib/themeConfig";
 import "./globals.css";
 
@@ -21,13 +22,22 @@ const nunitoSans = Nunito_Sans({
   display: "swap",
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read locale forwarded by proxy.ts — falls back to "fr" (site default)
+  const headersList = await headers();
+  const lang = headersList.get("x-locale") ?? "fr";
+
   return (
-    <html suppressHydrationWarning className={`scroll-smooth ${DARK_THEME ? "dark" : ""}`}>
+    <html lang={lang} suppressHydrationWarning className={`scroll-smooth ${DARK_THEME ? "dark" : ""}`}>
+      <head>
+        {/* Preconnect to image CDN — vehicle photos are served from R2 */}
+        <link rel="preconnect" href="https://images.bhenauto.com" />
+        <link rel="dns-prefetch" href="https://images.bhenauto.com" />
+      </head>
       <body
         className={`${inter.variable} ${playfair.variable} ${nunitoSans.variable} antialiased min-h-screen flex flex-col`}
       >

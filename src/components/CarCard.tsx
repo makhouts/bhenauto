@@ -229,7 +229,8 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                     src={img1}
                     alt={car.title}
                     fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                                    quality={80}
                     onError={() => setImgError(true)}
                     className={`object-cover transition-all duration-700 ${hovered && img2 ? "opacity-0" : "opacity-100"} ${hovered ? "scale-[1.04]" : "scale-100"}`}
                 />
@@ -239,7 +240,8 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                         src={img2}
                         alt={`${car.title} – 2`}
                         fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                                    quality={80}
                         className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
                     />
                 )}

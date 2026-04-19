@@ -112,9 +112,10 @@ export default function Header({ dict }: HeaderProps) {
                                 <Image
                                     src={logo}
                                     alt="Bhenauto"
-                                    height={64}
+                                    width={170}
                                     className="w-[170px] h-auto object-contain mix-blend-screen"
                                     priority
+                                    fetchPriority="high"
                                 />
                             </Link>
                         </div>

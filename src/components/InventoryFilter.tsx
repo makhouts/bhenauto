@@ -135,11 +135,16 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                     <h4 className="font-bold theme-text mb-4 text-sm">{dict.mileageLabel}</h4>
                     <div className="pb-2">
                         <input
+                            id="filter-mileage"
                             type="range"
                             min="0"
                             max="200000"
                             step="5000"
                             value={displayMileage}
+                            aria-label={dict.mileageLabel}
+                            aria-valuemin={0}
+                            aria-valuemax={200000}
+                            aria-valuenow={parseInt(displayMileage)}
                             onInput={(e) => {
                                 isDraggingMileage.current = true;
                                 setLocalMileage((e.target as HTMLInputElement).value);
@@ -170,11 +175,16 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                     <h4 className="font-bold theme-text mb-4 text-sm">{dict.priceLabel}</h4>
                     <div className="pb-2">
                         <input
+                            id="filter-price"
                             type="range"
                             min="10000"
                             max="250000"
                             step="5000"
                             value={displayPrice}
+                            aria-label={dict.priceLabel}
+                            aria-valuemin={10000}
+                            aria-valuemax={250000}
+                            aria-valuenow={parseInt(displayPrice)}
                             onInput={(e) => {
                                 isDraggingPrice.current = true;
                                 setLocalPrice((e.target as HTMLInputElement).value);
@@ -204,7 +214,14 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                 <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
                     <h4 className="font-bold theme-text mb-4 text-sm">{dict.fuelLabel}</h4>
                     <div className="relative">
+                        <label
+                            htmlFor="filter-fuel"
+                            className="sr-only"
+                        >
+                            {dict.fuelLabel}
+                        </label>
                         <select
+                            id="filter-fuel"
                             className="w-full appearance-none rounded-md py-2.5 pl-4 pr-10 text-sm theme-text focus:outline-none focus:ring-1 focus:ring-[#d91c1c] focus:border-[#d91c1c] cursor-pointer"
                             style={{ backgroundColor: 'var(--theme-surface)', border: '1px solid var(--theme-border)' }}
                             value={searchParams.get("fuel") || ""}

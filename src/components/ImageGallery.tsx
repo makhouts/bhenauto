@@ -73,6 +73,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 fill
                                 className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                                 priority
+                                fetchPriority="high"
                                 sizes="(max-width: 768px) 100vw, 70vw"
                             />
                         </motion.div>

@@ -47,7 +47,7 @@ export default function Footer({ dict }: FooterProps) {
                             <Image
                                 src={logo}
                                 alt="Bhenauto logo"
-                                height={64}
+                                width={170}
                                 className="h-16 w-auto object-contain mix-blend-lighten hover:opacity-80 transition-opacity duration-300"
                             />
                         </Link>
@@ -86,6 +86,7 @@ export default function Footer({ dict }: FooterProps) {
                         <ul className="space-y-3 text-sm">
                             <li><Link href={`/${locale}/privacy`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkPrivacy}</Link></li>
                             <li><Link href={`/${locale}/terms`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkTerms}</Link></li>
+                            <li><Link href={`/${locale}/sitemap`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkSitemap}</Link></li>
                         </ul>
                     </div>
 

@@ -235,7 +235,8 @@ export default function LatestOccasionsCarousel({
                       fill
                       draggable={false}
                       className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      quality={80}
                     />
 
                     {/* Bottom scrim for price readability */}

@@ -35,7 +35,11 @@ export default function SortSelect({ dict }: { dict: SortDict }) {
 
     return (
         <div className="relative">
+            <label htmlFor="sort-select" className="sr-only">
+                {dict.sortNewest}
+            </label>
             <select
+                id="sort-select"
                 title={dict.sortNewest}
                 name="sort"
                 className="appearance-none bg-transparent font-bold text-sm theme-text pr-4 cursor-pointer focus:outline-none"

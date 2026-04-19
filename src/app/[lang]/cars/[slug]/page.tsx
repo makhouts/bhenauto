@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import Link from 'next/link';
-import Image from 'next/image';
+import Image, { getImageProps } from 'next/image';
 import { Suspense, cache } from 'react';
 import prisma from '@/lib/prisma';
 import ImageGallery from '@/components/ImageGallery';
@@ -128,11 +128,30 @@ export default async function CarDetailPage(
     const whatsappMsg = encodeURIComponent(`${whatsappText}\n${carUrl}`);
     const whatsappUrl = `https://wa.me/3225828353?text=${whatsappMsg}`;
 
+    // Preload properties for the LCP ImageGallery hero image
+    const mainImageUrl = getImageUrl(car.images[0]?.url || '');
+    const { props: { srcSet, src: preloadSrc } } = getImageProps({
+        src: mainImageUrl,
+        alt: car.title,
+        fill: true,
+        priority: true,
+        sizes: "(max-width: 768px) 100vw, 70vw",
+    });
+
     return (
         <div className="min-h-screen theme-bg">
+            <link
+                rel="preload"
+                as="image"
+                href={preloadSrc}
+                imageSrcSet={srcSet}
+                imageSizes="(max-width: 768px) 100vw, 70vw"
+                fetchPriority="high"
+            />
             <script
                 type="application/ld+json"
                 nonce={nonce}
+                suppressHydrationWarning
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
             />
 

@@ -85,11 +85,6 @@ export default async function LangLayout({
 
   return (
     <LocaleProvider locale={lang as Locale}>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `document.documentElement.lang="${lang}"`,
-        }}
-      />
       <ConditionalLayout locale={lang as Locale}>{children}</ConditionalLayout>
     </LocaleProvider>
   );
