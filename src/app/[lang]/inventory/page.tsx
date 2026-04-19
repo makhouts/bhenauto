@@ -62,7 +62,7 @@ export default async function InventoryPage(props: {
   const maxMileage = searchParams.maxMileage as string | undefined;
   const fuel = searchParams.fuel as string | string[] | undefined;
 
-  // Fetch dynamic brands available in the DB
+  // Fetch brands for the filter sidebar + first page of cars in parallel
   const uBrands = await prisma.car.findMany({ select: { brand: true }, distinct: ["brand"] });
   const availableBrands = uBrands.map((c) => c.brand).filter(Boolean).sort();
 

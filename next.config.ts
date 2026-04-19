@@ -20,10 +20,6 @@ const serverActionOrigins = ["bhenauto.be", "www.bhenauto.be"];
 if (isDev) serverActionOrigins.push("localhost:3000");
 
 const nextConfig: NextConfig = {
-  // Force blocking metadata (no streaming) so <meta name="description">
-  // and other SEO tags are present in the initial HTML shell — needed for
-  // crawlers and audit tools that only inspect the document source.
-  htmlLimitedBots: /.*/,
   experimental: {
     serverActions: {
       allowedOrigins: serverActionOrigins,
