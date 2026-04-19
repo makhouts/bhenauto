@@ -156,7 +156,7 @@ export default function Header({ dict }: HeaderProps) {
                             <div className="relative" ref={langRef}>
                                 <button
                                     onClick={() => setLangOpen(!langOpen)}
-                                    className={`flex items-center gap-1.5 font-bold text-xs tracking-widest uppercase transition-all duration-300 ${
+                                    className={`cursor-pointer flex items-center gap-1.5 font-bold text-xs tracking-widest uppercase transition-all duration-300 ${
                                         isTransparent ? 'text-white drop-shadow-md hover:text-white/80' : 'text-slate-300 hover:text-white'
                                     }`}
                                     aria-expanded={langOpen}
@@ -202,7 +202,7 @@ export default function Header({ dict }: HeaderProps) {
                                                 role="option"
                                                 aria-selected={locale === lang.code}
                                                 onClick={() => { switchLocale(lang.code as Locale); setLangOpen(false); }}
-                                                className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold transition-all duration-200 group relative"
+                                                className="cursor-pointer w-full flex items-center gap-3 px-4 py-3.5 text-sm font-bold transition-all duration-200 group relative"
                                                 style={{
                                                     color: locale === lang.code ? '#fff' : 'rgba(180,190,210,1)',
                                                     background: locale === lang.code
