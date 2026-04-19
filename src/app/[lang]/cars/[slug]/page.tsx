@@ -24,6 +24,9 @@ const getCar = cache(async (slug: string) => {
     });
 });
 
+// ISR: car data changes when admin edits — revalidatePath is called on mutations
+export const revalidate = 60;
+
 export async function generateMetadata(
     props: { params: Promise<{ lang: string; slug: string }> }
 ): Promise<Metadata> {
@@ -110,7 +113,7 @@ export default async function CarDetailPage(
             priceCurrency: 'EUR',
             availability: car.sold ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
         },
-        image: car.images.map(img => getImageUrl(img.url)),
+        image: car.images.map((img: { url: string }) => getImageUrl(img.url)),
         description: car.description
     };
 

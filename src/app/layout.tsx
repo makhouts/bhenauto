@@ -1,5 +1,4 @@
 import { Inter, Playfair_Display, Nunito_Sans } from "next/font/google";
-import { DARK_THEME } from "@/lib/themeConfig";
 import "./globals.css";
 
 const inter = Inter({
@@ -27,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" suppressHydrationWarning className={`scroll-smooth ${DARK_THEME ? "dark" : ""}`}>
+    <html lang="fr" className="scroll-smooth">
       <head>
         {/* Preconnect to image CDN — vehicle photos are served from R2 */}
         <link rel="preconnect" href="https://images.bhenauto.com" />

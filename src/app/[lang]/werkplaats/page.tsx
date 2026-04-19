@@ -8,6 +8,9 @@ import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
 
+// Static content — revalidate once per hour
+export const revalidate = 3600;
+
 export async function generateMetadata({
   params,
 }: {

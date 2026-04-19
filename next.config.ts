@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
       allowedOrigins: serverActionOrigins,
     },
     optimizePackageImports: ["lucide-react", "motion"],
+    // Extend client-side router cache so navigating back to a page
+    // doesn't re-fetch when the content hasn't changed.
+    // static  = pages with `export const revalidate` (ISR) → 5 min client cache
+    // dynamic = pages without revalidate → 2 min client cache
+    staleTimes: {
+      static: 300,
+      dynamic: 120,
+    },
   },
   async headers() {
     return [

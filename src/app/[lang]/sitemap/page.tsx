@@ -7,6 +7,10 @@ import { MapPin, Car, Wrench, Phone, Globe, ChevronRight } from "lucide-react";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
 
+// Car list changes when admin manages inventory
+export const revalidate = 60;
+
+
 export async function generateMetadata({
   params,
 }: {
@@ -37,7 +41,9 @@ export default async function SitemapPage({
   const locale: Locale = isValidLocale(lang) ? lang : "fr";
   const dict = await getDictionary(locale);
 
-  const cars = await prisma.car.findMany({
+  type CarEntry = { slug: string; title: string; brand: string; model: string; year: number | null; sold: boolean };
+
+  const cars: CarEntry[] = await prisma.car.findMany({
     select: { slug: true, title: true, brand: true, model: true, year: true, sold: true },
     orderBy: [{ brand: "asc" }, { model: "asc" }],
   });
@@ -50,7 +56,7 @@ export default async function SitemapPage({
   ];
 
   // Group cars by brand
-  const carsByBrand = cars.reduce<Record<string, typeof cars>>((acc, car) => {
+  const carsByBrand = cars.reduce<Record<string, CarEntry[]>>((acc, car) => {
     const brand = car.brand || "Other";
     if (!acc[brand]) acc[brand] = [];
     acc[brand].push(car);
@@ -150,7 +156,7 @@ export default async function SitemapPage({
           </h2>
 
           <div className="space-y-8">
-            {Object.entries(carsByBrand).map(([brand, brandCars]) => (
+            {(Object.entries(carsByBrand) as [string, CarEntry[]][]).map(([brand, brandCars]) => (
               <div key={brand}>
                 {/* Brand header */}
                 <div className="flex items-center gap-3 mb-3">

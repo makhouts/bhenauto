@@ -12,6 +12,7 @@ import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
 const PAGE_SIZE = 9;
 
+// ISR: rebuild at most every 60 seconds; admin actions call revalidatePath to bust sooner
 export const revalidate = 60;
 
 export async function generateMetadata({
@@ -43,94 +44,6 @@ export async function generateMetadata({
   };
 }
 
-// ── Async server components — each owns its own data fetch ─────────────────
-
-async function FilterSection({
-  dict,
-}: {
-  dict: Awaited<ReturnType<typeof getDictionary>>["inventory"];
-}) {
-  const availableBrands = await getAllBrands();
-  return <InventoryFilter availableBrands={availableBrands} dict={dict} />;
-}
-
-
-
-async function CarsSection({
-  searchParams,
-  dict,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-  dict: Awaited<ReturnType<typeof getDictionary>>;
-}) {
-  const { query, brand, sort, maxPrice, maxMileage, fuel } = searchParams as {
-    query?: string;
-    brand?: string | string[];
-    sort?: string;
-    maxPrice?: string;
-    maxMileage?: string;
-    fuel?: string | string[];
-  };
-
-  const { cars: initialCars, hasMore: initialHasMore, total } = await fetchCarsPaginated({
-    page: 1,
-    pageSize: PAGE_SIZE,
-    brand,
-    query,
-    sort,
-    maxPrice,
-    maxMileage,
-    fuel,
-  });
-
-  return (
-    <InfiniteInventory
-      initialCars={initialCars}
-      initialHasMore={initialHasMore}
-      initialTotal={total}
-      searchParams={{ brand, query, sort, maxPrice, maxMileage, fuel }}
-      dict={dict.inventory}
-      commonDict={dict.common}
-    />
-  );
-}
-
-// ── Skeleton fallbacks ─────────────────────────────────────────────────────
-
-function FilterSkeleton() {
-  return (
-    <div className="rounded-lg p-6 animate-pulse space-y-6" style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}>
-      <div className="h-6 w-24 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-      <div className="space-y-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <div className="w-5 h-5 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-            <div className="h-4 w-28 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CarsGridSkeleton() {
-  return (
-    <>
-      <div className="flex justify-between mb-6">
-        <div className="h-5 w-32 rounded animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-        <div className="h-8 w-28 rounded animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-          <CarCardSkeleton key={i} />
-        ))}
-      </div>
-    </>
-  );
-}
-
-// ── Page ───────────────────────────────────────────────────────────────────
-
 export default async function InventoryPage(props: {
   params: Promise<{ lang: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -140,6 +53,22 @@ export default async function InventoryPage(props: {
   const searchParams = await props.searchParams;
   const dict = await getDictionary(locale);
   const inv = dict.inventory;
+
+  const query = searchParams.query as string | undefined;
+  const brand = searchParams.brand as string | string[] | undefined;
+  const sort = searchParams.sort as string | undefined;
+  const maxPrice = searchParams.maxPrice as string | undefined;
+  const maxMileage = searchParams.maxMileage as string | undefined;
+  const fuel = searchParams.fuel as string | string[] | undefined;
+
+  // Fetch both in parallel — single render pass, no Suspense flash on re-navigation
+  const [availableBrands, { cars: initialCars, hasMore: initialHasMore, total }] =
+    await Promise.all([
+      getAllBrands(),
+      fetchCarsPaginated({ page: 1, pageSize: PAGE_SIZE, brand, query, sort, maxPrice, maxMileage, fuel }),
+    ]);
+
+  const filterParams = { brand, query, sort, maxPrice, maxMileage, fuel };
 
   const renderPersonalRequestBlock = (className: string) => (
     <div className={`bg-[#d91c1c] rounded-xl p-8 text-white relative flex-col justify-center shadow-lg overflow-hidden group border border-[#d91c1c] ${className}`}>
@@ -162,7 +91,7 @@ export default async function InventoryPage(props: {
   return (
     <main className="min-h-screen theme-bg flex flex-col pt-8">
 
-      {/* Header Banner — no data dependency, renders immediately */}
+      {/* Header Banner */}
       <header className="theme-bg py-16" style={{ borderBottom: "1px solid var(--theme-border)" }}>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 text-xs font-bold theme-text-faint uppercase tracking-widest mb-4">
@@ -179,21 +108,33 @@ export default async function InventoryPage(props: {
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col lg:flex-row gap-8 w-full items-start">
 
-        {/* Sidebar Filter — streams in with brand list */}
+        {/* Sidebar Filter */}
         <aside className="w-full lg:w-80 shrink-0">
-          <Suspense fallback={<FilterSkeleton />}>
-            <FilterSection dict={inv} />
-          </Suspense>
-
+          <InventoryFilter availableBrands={availableBrands} dict={inv} />
           {renderPersonalRequestBlock("mt-8 hidden lg:flex")}
         </aside>
 
-        {/* Main Content — streams in with car results */}
+        {/* Car Grid — Suspense only covers the client-interactive grid,
+            which may suspend when InfiniteInventory fires a new filter fetch */}
         <section className="flex-1 w-full min-w-0">
-          <Suspense fallback={<CarsGridSkeleton />}>
-            <CarsSection searchParams={searchParams} dict={dict} />
+          <Suspense
+            fallback={
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                  <CarCardSkeleton key={i} />
+                ))}
+              </div>
+            }
+          >
+            <InfiniteInventory
+              initialCars={initialCars}
+              initialHasMore={initialHasMore}
+              initialTotal={total}
+              searchParams={filterParams}
+              dict={inv}
+              commonDict={dict.common}
+            />
           </Suspense>
-
           {renderPersonalRequestBlock("mt-8 flex lg:hidden")}
         </section>
       </div>

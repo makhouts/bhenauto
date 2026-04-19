@@ -3,35 +3,17 @@
 @theme inline {
   --font-sans: var(--font-inter);
   --font-headings: var(--font-inter);
-  /* Design uses Inter for everything */
 
   --color-primary-red: #d91c1c;
   --color-primary-red-hover: #b91515;
-  --color-background-light: #fdfdfd;
-  /* Lighter white/gray */
-  --color-background-dark: #211111;
-  --color-surface-light: #ffffff;
-  --color-surface-dark: #0f172a;
-  /* Slate 900 for dark surfaces or footers */
-  --color-border-light: #e2e8f0;
-  /* Slate 200 */
-  --color-border-dark: #1e293b;
-  /* Slate 800 */
-  --color-text-base: #0f172a;
-  /* Slate 900 */
-  --color-text-muted: #64748b;
-  /* Slate 500 */
 }
 
-/* ── Theme tokens (light mode – default) ────────────────────── */
+/* ── Design tokens ────────────────────────────────────────────── */
 @layer base {
   :root {
     --background: #f8f6f6;
     --foreground: #0f172a;
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
 
-    /* Theme-aware semantic tokens */
     --theme-bg: #f8f6f6;
     --theme-bg-alt: #ffffff;
     --theme-surface: #ffffff;
@@ -52,35 +34,6 @@
     --theme-badge-bg: #f1f5f9;
     --theme-overlay: rgba(255, 255, 255, 0.95);
     --theme-shadow-red: rgba(220, 38, 38, 0.15);
-  }
-
-  /* ── Dark theme tokens ────────────────────────────────────── */
-  .dark {
-    --background: #0a0a0f;
-    --foreground: #f1f5f9;
-    --muted: #1e293b;
-    --muted-foreground: #94a3b8;
-
-    --theme-bg: #0a0a0f;
-    --theme-bg-alt: #111118;
-    --theme-surface: #14141e;
-    --theme-surface-hover: #1a1a28;
-    --theme-border: #1e293b;
-    --theme-border-subtle: #1a1a28;
-    --theme-text: #f1f5f9;
-    --theme-text-secondary: #e2e8f0;
-    --theme-text-muted: #b0bec5;
-    --theme-text-faint: #8899aa;
-    --theme-skeleton: #1e293b;
-    --theme-skeleton-subtle: #14141e;
-    --theme-card-shadow: rgba(0, 0, 0, 0.3);
-    --theme-icon-bg: rgba(217, 28, 28, 0.15);
-    --theme-icon-bg-hover: #d91c1c;
-    --theme-input-bg: #14141e;
-    --theme-input-border: #2d3748;
-    --theme-badge-bg: #1e293b;
-    --theme-overlay: rgba(10, 10, 15, 0.95);
-    --theme-shadow-red: rgba(220, 38, 38, 0.3);
   }
 }
 
@@ -107,25 +60,8 @@ h6 {
   letter-spacing: -0.02em;
 }
 
-/* Custom utility classes for premium feel */
+/* ── Utility classes ── */
 @layer utilities {
-  .glassmorphism {
-    @apply bg-white/80 backdrop-blur-md border border-slate-200;
-  }
-
-  .glassmorphism-dark {
-    @apply bg-slate-900/80 backdrop-blur-md border border-slate-800;
-  }
-
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600;
-  }
-
-  .text-gradient-red {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#d91c1c] to-[#b91515];
-  }
-
-  /* ── Theme-aware utility classes ── */
   .theme-bg {
     background-color: var(--theme-bg);
   }
@@ -155,13 +91,12 @@ h6 {
   }
 }
 
-/* Animations */
+/* ── Animations ── */
 @keyframes fadeIn {
   from {
     opacity: 0;
     transform: translateY(10px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -184,12 +119,10 @@ h6 {
   animation-delay: 300ms;
 }
 
-/* AI Analysis Animations */
 @keyframes shimmer {
   0% {
     transform: translateX(-100%) rotate(-12deg);
   }
-
   100% {
     transform: translateX(100%) rotate(-12deg);
   }
@@ -199,11 +132,9 @@ h6 {
   0% {
     transform: translateX(-100%);
   }
-
   50% {
     transform: translateX(0%);
   }
-
   100% {
     transform: translateX(100%);
   }
@@ -221,7 +152,6 @@ h6 {
   from {
     transform: scale(1);
   }
-
   to {
     transform: scale(1.1);
   }
@@ -254,10 +184,6 @@ h6 {
   transition: transform 0.15s ease;
 }
 
-.dark .slider-input::-webkit-slider-thumb {
-  border-color: #1e293b;
-}
-
 .slider-input::-webkit-slider-thumb:hover {
   transform: scale(1.15);
 }
@@ -275,10 +201,6 @@ h6 {
   border: 2.5px solid white;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   cursor: pointer;
-}
-
-.dark .slider-input::-moz-range-thumb {
-  border-color: #1e293b;
 }
 
 .slider-input::-moz-range-track {
