@@ -247,8 +247,8 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       <ScrollReveal>
         <section className="py-24 theme-bg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-12">
-              <div>
+            <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-12">
+              <div className="flex flex-col items-center md:items-start text-center md:text-left">
                 <h2 className="text-3xl font-headings font-black theme-text inline-block border-b-2 border-[#d91c1c] pb-2 mb-3">
                   {h.reviewsTitle}
                 </h2>

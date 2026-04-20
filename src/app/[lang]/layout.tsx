@@ -61,11 +61,20 @@ export async function generateMetadata({
       siteName: "BhenAuto",
       title: titles[lang] || titles.fr,
       description: descriptions[lang] || descriptions.fr,
+      images: [
+        {
+          url: `${BASE_URL}/og-image.png`,
+          width: 1024,
+          height: 1024,
+          alt: "BhenAuto — Véhicules d'Occasion Premium",
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       title: titles[lang] || titles.fr,
       description: descriptions[lang] || descriptions.fr,
+      images: [`${BASE_URL}/og-image.png`],
     },
   };
 }

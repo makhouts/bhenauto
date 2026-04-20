@@ -59,9 +59,8 @@ export default function PageTransition({ children }: { children: React.ReactNode
             {/* Video Transition Overlay */}
             {showOverlay && (
                 <div
-                    className={`fixed inset-0 z-[60] bg-white flex items-center justify-center transition-opacity ease-in-out ${
-                        animateOut ? "opacity-0 pointer-events-none" : "opacity-100"
-                    }`}
+                    className={`fixed inset-0 z-[60] bg-white flex items-center justify-center transition-opacity ease-in-out ${animateOut ? "opacity-0 pointer-events-none" : "opacity-100"
+                        }`}
                     style={{ transitionDuration: "400ms" }}
                 >
                     <video
@@ -79,9 +78,8 @@ export default function PageTransition({ children }: { children: React.ReactNode
 
             {/* Underlying page with subtle reveal */}
             <div
-                className={`transition-all duration-500 ease-out ${
-                    animateOut ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-                }`}
+                className={`transition-all duration-500 ease-out ${animateOut ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                    }`}
             >
                 {children}
             </div>

@@ -154,7 +154,7 @@ export default async function CarDetailPage(
             />
 
             {/* ── PAGE WRAPPER with top padding for fixed header ── */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 md:pt-24 pb-20">
 
                 {/* ── BREADCRUMB ── */}
                 <div className="flex items-center gap-2 text-[11px] font-bold theme-text-faint uppercase tracking-widest mb-6">

@@ -98,11 +98,11 @@ export default function Header({ dict }: HeaderProps) {
 
     return (
         <>
-            <header className={`fixed w-full z-50 transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] ${isOpen
+            <header className={`relative md:fixed w-full z-50 transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] ${isOpen
                 ? 'bg-transparent py-2'
                 : isTransparent
-                    ? 'bg-transparent py-6'
-                    : 'bg-[#020214]/65 backdrop-blur-2xl shadow-[0_4px_30px_-10px_rgba(0,0,0,0.8)] py-2'
+                    ? 'bg-[#0d0d1f] md:bg-transparent py-2 md:py-6'
+                    : 'bg-[#0d0d1f] md:bg-[#020214]/65 md:backdrop-blur-2xl md:shadow-[0_4px_30px_-10px_rgba(0,0,0,0.8)] py-2'
                 }`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">

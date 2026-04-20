@@ -1,7 +1,7 @@
 export default function CarDetailLoading() {
   return (
     <div className="min-h-screen theme-bg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 md:pt-24 pb-20">
         {/* Breadcrumb skeleton */}
         <div className="flex items-center gap-2 mb-6">
           <div className="h-3 w-12 rounded animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
