@@ -1,4 +1,4 @@
-import { PrismaClient } from "@/generated/prisma";
+import { PrismaClient } from "@/generated/prisma/client";
 // Side-effect import: validates env vars at boot, fails fast on misconfig.
 import "@/lib/env";
 
