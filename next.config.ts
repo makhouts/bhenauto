@@ -20,6 +20,9 @@ const serverActionOrigins = ["bhenauto.be", "www.bhenauto.be"];
 if (isDev) serverActionOrigins.push("localhost:3000");
 
 const nextConfig: NextConfig = {
+  // Force webpack bundler — Turbopack has a known bug in 16.x that crashes
+  // production builds (TurbopackInternalError: Dependency tracking is disabled).
+  turbopack: false,
   experimental: {
     serverActions: {
       allowedOrigins: serverActionOrigins,
