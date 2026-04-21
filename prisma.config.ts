@@ -8,7 +8,6 @@ import { defineConfig } from "prisma/config";
  * - DIRECT_URL   : direct (non-pooled) connection (used by Prisma Migrate)
  */
 export default defineConfig({
-  earlyAccess: true,
   schema: path.join("prisma", "schema.prisma"),
   datasources: {
     db: {
