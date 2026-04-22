@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="scroll-smooth">
+    <html lang="fr" className="scroll-smooth" data-scroll-behavior="smooth">
       <head>
         {/* Preconnect to image CDN — vehicle photos are served from R2 */}
         <link rel="preconnect" href="https://images.bhenauto.com" />

@@ -8,16 +8,6 @@ import { generateDaySlots, APPOINTMENT_CONFIG } from "@/lib/appointmentConfig";
 
 const TZ = APPOINTMENT_CONFIG.timezone;
 
-export async function getAppointments() {
-  await requireAdmin();
-  return prisma.appointment.findMany({
-    orderBy: [
-      { status: "asc" },
-      { date: "asc" },
-      { timeSlot: "asc" },
-    ],
-  });
-}
 
 export async function confirmAppointment(
   id: string,
@@ -72,10 +62,7 @@ export async function cancelAppointment(id: string): Promise<{ success: boolean 
   }
 }
 
-export async function getPendingAppointmentCount(): Promise<number> {
-  await requireAdmin();
-  return prisma.appointment.count({ where: { status: "pending" } });
-}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helpers

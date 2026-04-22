@@ -5,7 +5,7 @@ import InventoryFilter from "@/components/InventoryFilter";
 import InfiniteInventory from "@/components/InfiniteInventory";
 import CarCardSkeleton from "@/components/CarCardSkeleton";
 import { fetchCarsPaginated } from "@/app/actions/fetchCars";
-import { getAllBrands } from "@/lib/brands";
+import prisma from "@/lib/prisma";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 
@@ -64,7 +64,8 @@ export default async function InventoryPage(props: {
   // Fetch both in parallel — single render pass, no Suspense flash on re-navigation
   const [availableBrands, { cars: initialCars, hasMore: initialHasMore, total }] =
     await Promise.all([
-      getAllBrands(),
+      prisma.car.findMany({ select: { brand: true }, distinct: ["brand"] })
+        .then(rows => rows.map(r => r.brand).filter(Boolean).sort() as string[]),
       fetchCarsPaginated({ page: 1, pageSize: PAGE_SIZE, brand, query, sort, maxPrice, maxMileage, fuel }),
     ]);
 

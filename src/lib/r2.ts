@@ -8,7 +8,6 @@ import { S3Client } from "@aws-sdk/client-s3";
  */
 
 export const R2_BUCKET = process.env.R2_BUCKET_NAME!;
-export const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL!;
 
 export const r2Client = new S3Client({
     region: "auto",

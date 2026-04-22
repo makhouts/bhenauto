@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import type { WerkplaatsDict } from "@/lib/dictionaries";
+import mechanic from "@/assets/mechanic-wallpaper.webp";
 
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -41,7 +42,7 @@ export default function WerkplaatsHero({ dict }: { dict: WerkplaatsDict }) {
       <div className="relative w-full overflow-hidden" style={{ height: "clamp(480px, 65vh, 720px)" }}>
         {/* Background image */}
         <Image
-          src="https://images.unsplash.com/photo-1530046339160-ce3e530c7d2f?q=80&w=2400&auto=format&fit=crop"
+          src={mechanic}
           alt={dict.heroTitle}
           fill
           className="object-cover"

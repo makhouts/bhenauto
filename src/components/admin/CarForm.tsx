@@ -88,7 +88,7 @@ function SortableImage({
                 index === 0 ? "border-[#d91c1c] ring-2 ring-[#d91c1c]/20" : isNew ? "border-[#d91c1c]/40" : "border-slate-200"
             } shadow-sm select-none`}
         >
-            <Image src={url.startsWith("blob:") ? url : getImageUrl(url)} alt={`Image ${index + 1}`} fill className="object-cover" />
+            <Image src={url.startsWith("blob:") ? url : getImageUrl(url)} alt={`Image ${index + 1}`} fill sizes="(max-width: 768px) 50vw, 200px" className="object-cover" />
 
             {/* Cover badge */}
             {index === 0 && (

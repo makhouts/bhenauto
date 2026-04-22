@@ -67,7 +67,7 @@ export default async function RelatedVehicles({ currentCarId, brand, priceRange,
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {related.map((car) => {
-                    const imgUrl = car.images[0]?.url ? getImageUrl(car.images[0].url) : "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2070&auto=format&fit=crop";
+                    const imgUrl = car.images[0]?.url ? getImageUrl(car.images[0].url) : null;
                     return (
                         <Link
                             key={car.id}
@@ -99,7 +99,7 @@ export default async function RelatedVehicles({ currentCarId, brand, priceRange,
                                         {car.year} · {car.mileage.toLocaleString("nl-BE")} km
                                     </span>
                                 </div>
-            </div>
+                            </div>
                         </Link>
                     );
                 })}

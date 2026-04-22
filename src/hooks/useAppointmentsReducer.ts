@@ -40,7 +40,7 @@ export interface AptForm {
     durationHours: number;
 }
 
-export const EMPTY_FORM: AptForm = { name: "", email: "", phone: "", service: "", notes: "", dateStr: "", slot: "", status: "confirmed", durationHours: 1 };
+const EMPTY_FORM: AptForm = { name: "", email: "", phone: "", service: "", notes: "", dateStr: "", slot: "", status: "confirmed", durationHours: 1 };
 
 interface BlockForm {
     dateStr: string;
@@ -50,7 +50,7 @@ interface BlockForm {
 
 // ─── State ─────────────────────────────────────────────────────────────────────
 
-export interface AppointmentsState {
+interface AppointmentsState {
     // Core data
     appointments: Appointment[];
     blocks: BlockedDateEntry[];

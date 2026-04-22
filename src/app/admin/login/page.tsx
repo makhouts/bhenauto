@@ -1,18 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/app/actions/auth";
-import { Lock, ArrowRight, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowRight, Loader2, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "motion/react";
 import logo from "@/assets/logo.png";
+import wallpaper from "@/assets/login-wallpaper.webp";
 
 export default function LoginPage() {
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const [authChecked, setAuthChecked] = useState(false);
+
+    // If already authenticated, redirect to dashboard; otherwise show the page
+    useEffect(() => {
+        fetch("/api/auth/check", { credentials: "same-origin" })
+            .then(res => {
+                if (res.ok) {
+                    router.replace("/admin");
+                } else {
+                    setAuthChecked(true);
+                }
+            })
+            .catch(() => { setAuthChecked(true); });
+    }, [router]);
+
+    if (!authChecked) return null;
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -36,7 +53,7 @@ export default function LoginPage() {
             {/* Left side: Premium Image */}
             <div className="hidden lg:flex w-1/2 relative" aria-hidden="true">
                 <Image
-                    src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2070&auto=format&fit=crop"
+                    src={wallpaper}
                     alt=""
                     fill
                     className="object-cover"

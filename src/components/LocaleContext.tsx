@@ -3,7 +3,7 @@
 import { createContext, useContext, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
-import { locales, isValidLocale } from "@/lib/i18n";
+import { isValidLocale } from "@/lib/i18n";
 
 const LOCALE_COOKIE = "NEXT_LOCALE";
 
@@ -59,4 +59,3 @@ export function useLocale() {
   return useContext(LocaleContext);
 }
 
-export { locales };

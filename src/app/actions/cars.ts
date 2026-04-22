@@ -25,23 +25,6 @@ export async function toggleFeatured(id: string, featured: boolean) {
     }
 }
 
-export async function toggleSold(id: string, sold: boolean) {
-    await requireAdmin();
-    try {
-        await prisma.car.update({
-            where: { id },
-            data: { sold },
-        });
-        revalidatePath("/admin/cars");
-        revalidatePath(`/cars/${id}`);
-        revalidatePath("/inventory");
-        return { success: true };
-    } catch (error) {
-        console.error("Failed to toggle sold status:", error);
-        return { error: "Failed to update car status." };
-    }
-}
-
 export async function updateCarStatus(id: string, status: "beschikbaar" | "gereserveerd" | "verkocht") {
     await requireAdmin();
     try {

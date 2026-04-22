@@ -35,8 +35,6 @@ interface CarCardProps {
     locale: string;
 }
 
-const PLACEHOLDER = "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2070&auto=format&fit=crop";
-
 function SpecPill({ icon, label }: { icon: React.ReactNode; label: string }) {
     return (
         <div className="flex flex-col items-center gap-1.5">
@@ -92,7 +90,7 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
     const [hovered, setHovered] = useState(false);
     const [imgError, setImgError] = useState(false);
 
-    const img1 = car.images[0]?.url ? getImageUrl(car.images[0].url) : PLACEHOLDER;
+    const img1 = car.images[0]?.url ? getImageUrl(car.images[0].url) : null;
     const img2 = car.images[1]?.url ? getImageUrl(car.images[1].url) : null;
     const href = `/${locale}/cars/${car.slug}`;
 
@@ -113,11 +111,11 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                 {/* Image */}
                 <div className="relative w-72 shrink-0 overflow-hidden" style={{ background: "var(--theme-skeleton)" }}>
                     {imgError && <ImageFallback />}
-                    <Image src={img1} alt={car.title} fill onError={() => setImgError(true)}
+                    <Image src={img1} alt={car.title} fill sizes="288px" onError={() => setImgError(true)}
                         className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.04]" : "scale-100"} ${hovered && img2 ? "opacity-0" : "opacity-100"}`}
                     />
                     {img2 && (
-                        <Image src={img2} alt={`${car.title} – 2`} fill
+                        <Image src={img2} alt={`${car.title} – 2`} fill sizes="288px"
                             className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
                         />
                     )}
