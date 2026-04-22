@@ -98,24 +98,34 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
         return (
             <Link
                 href={href}
-                className="group flex flex-row overflow-hidden transition-all duration-300 hover:-translate-y-0.5"
+                className="group relative flex flex-row overflow-hidden transition-all duration-300 hover:-translate-y-1"
                 style={{
                     background: "var(--theme-surface)",
                     border: "1px solid var(--theme-border)",
-                    borderRadius: "16px",
-                    boxShadow: "0 1px 8px rgba(0,0,0,0.04)",
+                    borderRadius: "20px",
+                    boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
+                    minHeight: "200px",
                 }}
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
             >
-                {/* Image */}
-                <div className="relative w-72 shrink-0 overflow-hidden" style={{ background: "var(--theme-skeleton)" }}>
+                {/* Red hover accent bar */}
+                <div
+                    className="absolute left-0 inset-y-0 w-[3px] rounded-l-full transition-all duration-300 z-20"
+                    style={{ background: hovered ? "#d91c1c" : "transparent" }}
+                />
+
+                {/* Image — 40% width, bleeds into content via gradient */}
+                <div className="relative shrink-0 overflow-hidden" style={{ width: "40%" }}>
                     {imgError && <ImageFallback />}
-                    <Image src={img1} alt={car.title} fill sizes="288px" onError={() => setImgError(true)}
-                        className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.04]" : "scale-100"} ${hovered && img2 ? "opacity-0" : "opacity-100"}`}
+                    <Image
+                        src={img1} alt={car.title} fill sizes="520px"
+                        onError={() => setImgError(true)}
+                        className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.05]" : "scale-100"} ${hovered && img2 ? "opacity-0" : "opacity-100"}`}
                     />
                     {img2 && (
-                        <Image src={img2} alt={`${car.title} – 2`} fill sizes="288px"
+                        <Image
+                            src={img2} alt={`${car.title} – 2`} fill sizes="520px"
                             className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
                         />
                     )}
@@ -124,42 +134,72 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                 </div>
 
                 {/* Content */}
-                <div className="flex flex-col flex-1 p-7 min-w-0">
-                    <div className="flex items-start justify-between gap-4 mb-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--theme-text-secondary)" }}>
+                <div className="flex flex-col flex-1 pl-2 pr-8 py-6 min-w-0">
+                    {/* Brand + Price row */}
+                    <div className="flex items-center justify-between gap-4 mb-2">
+                        <span
+                            className="text-[10px] font-black uppercase tracking-[0.22em] px-2.5 py-1 rounded-full"
+                            style={{ background: "var(--theme-border-subtle)", color: "var(--theme-text-secondary)" }}
+                        >
                             {car.brand}
                         </span>
-                        <span className="text-2xl font-black shrink-0 leading-none" style={{ color: "var(--theme-text)" }}>
+                        <span className="text-[1.6rem] font-black shrink-0 leading-none tabular-nums" style={{ color: "#d91c1c" }}>
                             €{car.price.toLocaleString("nl-BE")}
                         </span>
                     </div>
 
-                    <h3 className="text-xl font-headings font-bold leading-tight mb-1 group-hover:text-[#d91c1c] transition-colors duration-200 truncate" style={{ color: "var(--theme-text)" }}>
+                    {/* Title */}
+                    <h3
+                        className="text-[1.25rem] font-headings font-bold leading-snug mb-0.5 group-hover:text-[#d91c1c] transition-colors duration-200 truncate"
+                        style={{ color: "var(--theme-text)" }}
+                    >
                         {car.brand} {car.model}
                     </h3>
 
-                    <p className="text-[13px] font-medium mb-3 truncate" style={{ color: "var(--theme-text-muted)" }} title={car.title}>
+                    {/* Subtitle */}
+                    <p className="text-[12px] font-medium mb-4 truncate" style={{ color: "var(--theme-text-muted)" }} title={car.title}>
                         {car.title}
                     </p>
 
+                    {/* Description */}
                     {car.description && (
-                        <p className="text-sm leading-relaxed line-clamp-2 mb-5" style={{ color: "var(--theme-text-muted)" }}>
+                        <p className="text-[13px] leading-relaxed line-clamp-2 mb-5" style={{ color: "var(--theme-text-muted)" }}>
                             {car.description}
                         </p>
                     )}
 
-                    <div className="flex gap-5 mb-5 pt-4" style={{ borderTop: "1px solid var(--theme-border-subtle)" }}>
-                        <SpecPill icon={CalIcon} label={`${car.year}`} />
-                        <SpecPill icon={OdoIcon} label={`${car.mileage.toLocaleString("nl-BE")} km`} />
-                        <SpecPill icon={FuelIcon} label={car.fuel_type} />
-                        {car.transmission && <SpecPill icon={GearIcon} label={car.transmission} />}
-                    </div>
+                    {/* Spec chips + CTA on same row */}
+                    <div className="mt-auto flex items-center flex-wrap gap-2">
+                        {[
+                            { icon: CalIcon, label: `${car.year}` },
+                            { icon: OdoIcon, label: `${car.mileage.toLocaleString("nl-BE")} km` },
+                            { icon: FuelIcon, label: car.fuel_type },
+                            ...(car.transmission ? [{ icon: GearIcon, label: car.transmission }] : []),
+                        ].map(({ icon, label }, i) => (
+                            <div
+                                key={i}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold"
+                                style={{
+                                    background: "var(--theme-bg, #f4f4f6)",
+                                    border: "1px solid var(--theme-border-subtle)",
+                                    color: "var(--theme-text-secondary)",
+                                }}
+                            >
+                                <span style={{ color: "var(--theme-text-faint)" }}>{icon}</span>
+                                {label}
+                            </div>
+                        ))}
 
-                    <div className="mt-auto flex items-center gap-2 text-sm font-bold transition-colors duration-200 group-hover:text-[#d91c1c]" style={{ color: "var(--theme-text)" }}>
-                        {commonDict.viewDetails}
-                        <span className={`transition-transform duration-200 ${hovered ? "translate-x-1" : ""}`}>
-                            {ArrowIcon}
-                        </span>
+                        {/* CTA pushed right */}
+                        <div
+                            className="ml-auto flex items-center gap-1.5 text-[13px] font-bold transition-colors duration-200 group-hover:text-[#d91c1c] shrink-0"
+                            style={{ color: "var(--theme-text)" }}
+                        >
+                            {commonDict.viewDetails}
+                            <span className={`transition-transform duration-200 ${hovered ? "translate-x-1.5" : ""}`}>
+                                {ArrowIcon}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </Link>
