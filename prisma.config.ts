@@ -10,10 +10,8 @@ import { defineConfig } from "prisma/config";
 export default defineConfig({
   schema: path.join("prisma", "schema.prisma"),
   datasource: {
-    db: {
-      url: process.env.DATABASE_URL!,
-      // directUrl is used by Migrate for direct connections (bypass pooler)
-      ...(process.env.DIRECT_URL ? { directUrl: process.env.DIRECT_URL } : {}),
-    },
+    url: process.env.DATABASE_URL!,
+    // shadowDatabaseUrl is used by Migrate for direct connections (bypass pooler)
+    ...(process.env.DIRECT_URL ? { shadowDatabaseUrl: process.env.DIRECT_URL } : {}),
   },
 });
