@@ -117,13 +117,15 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
 
                 {/* Image — 40% width, bleeds into content via gradient */}
                 <div className="relative shrink-0 overflow-hidden" style={{ width: "40%" }}>
-                    {imgError && <ImageFallback />}
-                    <Image
-                        src={img1} alt={car.title} fill sizes="520px"
-                        onError={() => setImgError(true)}
-                        className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.05]" : "scale-100"} ${hovered && img2 ? "opacity-0" : "opacity-100"}`}
-                    />
-                    {img2 && (
+                    {(!img1 || imgError) && <ImageFallback />}
+                    {img1 && !imgError && (
+                        <Image
+                            src={img1} alt={car.title} fill sizes="520px"
+                            onError={() => setImgError(true)}
+                            className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.05]" : "scale-100"} ${hovered && img2 ? "opacity-0" : "opacity-100"}`}
+                        />
+                    )}
+                    {img1 && img2 && (
                         <Image
                             src={img2} alt={`${car.title} – 2`} fill sizes="520px"
                             className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
@@ -224,19 +226,21 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                 className="relative overflow-hidden"
                 style={{ height: "clamp(200px, 22vw, 260px)", background: "var(--theme-skeleton)", borderRadius: "18px 18px 0 0" }}
             >
-                {imgError && <ImageFallback />}
+                {(!img1 || imgError) && <ImageFallback />}
 
-                <Image
-                    src={img1}
-                    alt={car.title}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
-                    quality={80}
-                    onError={() => setImgError(true)}
-                    className={`object-cover transition-all duration-700 ${hovered && img2 ? "opacity-0" : "opacity-100"} ${hovered ? "scale-[1.04]" : "scale-100"}`}
-                />
+                {img1 && !imgError && (
+                    <Image
+                        src={img1}
+                        alt={car.title}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                        quality={80}
+                        onError={() => setImgError(true)}
+                        className={`object-cover transition-all duration-700 ${hovered && img2 ? "opacity-0" : "opacity-100"} ${hovered ? "scale-[1.04]" : "scale-100"}`}
+                    />
+                )}
 
-                {img2 && (
+                {img1 && img2 && (
                     <Image
                         src={img2}
                         alt={`${car.title} – 2`}
