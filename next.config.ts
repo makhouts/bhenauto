@@ -20,6 +20,7 @@ const serverActionOrigins = ["bhenauto.be", "www.bhenauto.be"];
 if (isDev) serverActionOrigins.push("localhost:3000");
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["@prisma/adapter-pg", "pg"],
   experimental: {
     serverActions: {
       allowedOrigins: serverActionOrigins,
