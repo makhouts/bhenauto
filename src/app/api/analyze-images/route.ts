@@ -74,29 +74,46 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const body = await request.json();
-        const { imageUrls } = body;
+        const formData = await request.formData();
 
-        if (!imageUrls || !Array.isArray(imageUrls) || imageUrls.length === 0) {
-            return NextResponse.json({ error: "No image URLs provided" }, { status: 400 });
+        // Reconstruct the ordered list of image sources.
+        // Each entry is either a URL string (existing R2 image) or a File (new upload).
+        // The form sends them as indexed entries: entries[0], entries[1], ...
+        // with type "url" or "file" indicated by entriesType[i].
+        const entryTypes = formData.getAll("entryTypes") as string[];    // "url" | "file"
+        const entryUrls  = formData.getAll("entryUrls")  as string[];    // R2 key for "url" entries, empty for "file"
+        const entryFiles  = formData.getAll("entryFiles") as (File | string)[];  // File for "file" entries, empty string for "url"
+
+        if (entryTypes.length === 0) {
+            return NextResponse.json({ error: "No images provided" }, { status: 400 });
         }
 
-        if (imageUrls.length > 50) {
+        if (entryTypes.length > 50) {
             return NextResponse.json({ error: "Too many images (max 50)" }, { status: 400 });
         }
 
-        // SSRF protection — validate all URLs before fetching
-        for (const url of imageUrls) {
-            if (typeof url !== "string" || !isAllowedImageUrl(url)) {
-                return NextResponse.json({ error: "Invalid image URL" }, { status: 400 });
+        // Build an identifier list to return in the response (URL for existing, index-based for files)
+        const imageIdentifiers: string[] = [];
+
+        // SSRF protection — validate all URL entries before fetching
+        for (let i = 0; i < entryTypes.length; i++) {
+            if (entryTypes[i] === "url") {
+                const url = entryUrls[i];
+                if (typeof url !== "string" || !isAllowedImageUrl(url)) {
+                    return NextResponse.json({ error: "Invalid image URL" }, { status: 400 });
+                }
+                imageIdentifiers.push(url);
+            } else {
+                // For file entries, use a placeholder identifier that the client can map back
+                imageIdentifiers.push(`__file_${i}__`);
             }
         }
 
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
             return NextResponse.json({
-                ordered: imageUrls.map((url: string, i: number) => ({
-                    url, score: 50 - i, angle: "unknown", reason: "AI niet geconfigureerd"
+                ordered: imageIdentifiers.map((id: string, i: number) => ({
+                    url: id, score: 50 - i, angle: "unknown", reason: "AI niet geconfigureerd"
                 })),
                 aiEnabled: false,
             });
@@ -105,17 +122,28 @@ export async function POST(request: NextRequest) {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        // Fetch all thumbnails in parallel
+        // Build inline image data for Gemini — from R2 URLs or raw file bytes
         const imageDataParts = await Promise.all(
-            imageUrls.map(async (url: string, i: number) => {
-                const fetchUrl = toFetchableUrl(url);
-                const imgResponse = await globalThis.fetch(fetchUrl);
-                if (!imgResponse.ok) throw new Error(`Failed to fetch thumbnail ${i + 1}`);
-                const buffer = await imgResponse.arrayBuffer();
+            entryTypes.map(async (type, i) => {
+                let buffer: ArrayBuffer;
+                let mimeType = "image/jpeg";
+
+                if (type === "url") {
+                    const fetchUrl = toFetchableUrl(entryUrls[i]);
+                    const imgResponse = await globalThis.fetch(fetchUrl);
+                    if (!imgResponse.ok) throw new Error(`Failed to fetch image ${i + 1}`);
+                    buffer = await imgResponse.arrayBuffer();
+                } else {
+                    const file = entryFiles[i] as File;
+                    if (!file || typeof file === "string") throw new Error(`Missing file for entry ${i}`);
+                    buffer = await file.arrayBuffer();
+                    mimeType = file.type || "image/jpeg";
+                }
+
                 return {
                     inlineData: {
                         data: Buffer.from(buffer).toString("base64"),
-                        mimeType: "image/jpeg",
+                        mimeType,
                     },
                 };
             })
@@ -131,8 +159,8 @@ export async function POST(request: NextRequest) {
         } catch (aiErr: any) {
             console.warn("[AI Images] Gemini call failed:", aiErr.message);
             return NextResponse.json({
-                ordered: imageUrls.map((url: string, i: number) => ({
-                    url, score: 50 - i, angle: "unknown", reason: "AI analyse niet bereikbaar (netwerk)"
+                ordered: imageIdentifiers.map((id: string, i: number) => ({
+                    url: id, score: 50 - i, angle: "unknown", reason: "AI analyse niet bereikbaar (netwerk)"
                 })),
                 aiEnabled: false,
             });
@@ -142,8 +170,8 @@ export async function POST(request: NextRequest) {
         if (text.trimStart().startsWith("<")) {
             console.warn("[AI Images] Response looks like HTML. Falling back to original order.");
             return NextResponse.json({
-                ordered: imageUrls.map((url: string, i: number) => ({
-                    url, score: 50 - i, angle: "unknown", reason: "AI analyse onderschept door netwerk proxy"
+                ordered: imageIdentifiers.map((id: string, i: number) => ({
+                    url: id, score: 50 - i, angle: "unknown", reason: "AI analyse onderschept door netwerk proxy"
                 })),
                 aiEnabled: false,
             });
@@ -155,11 +183,11 @@ export async function POST(request: NextRequest) {
 
         const parsed: Array<{ index: number; score: number; angle: string; reason: string }> = JSON.parse(jsonMatch[0]);
 
-        // Map scores back to image URLs
-        const scoredImages = imageUrls.map((url: string, i: number) => {
+        // Map scores back to image identifiers
+        const scoredImages = imageIdentifiers.map((id: string, i: number) => {
             const entry = parsed.find((p) => p.index === i);
             return {
-                url,
+                url: id,
                 score: entry ? Math.min(100, Math.max(0, Number(entry.score) || 50)) : 50,
                 angle: entry?.angle || "unknown",
                 reason: entry?.reason || "",

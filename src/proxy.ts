@@ -3,6 +3,30 @@ import { locales, defaultLocale, isValidLocale, parseAcceptLanguage } from "@/li
 import type { Locale } from "@/lib/i18n";
 
 const COOKIE_NAME = "PREFERRED_LOCALE";
+const SESSION_CONTEXT = "bhenauto-admin-session-v1";
+
+/** Validates the admin_session cookie value in the Edge runtime. */
+async function isValidAdminSession(sessionValue: string | undefined): Promise<boolean> {
+  if (!sessionValue) return false;
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret) return false;
+  try {
+    const enc = new TextEncoder();
+    const key = await globalThis.crypto.subtle.importKey(
+      "raw",
+      enc.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign", "verify"]
+    );
+    const sessionBytes = new Uint8Array(
+      (sessionValue.match(/.{1,2}/g) ?? []).map((b) => parseInt(b, 16))
+    );
+    return globalThis.crypto.subtle.verify("HMAC", key, sessionBytes, enc.encode(SESSION_CONTEXT));
+  } catch {
+    return false;
+  }
+}
 
 /** Map Vercel's x-vercel-ip-country (ISO 3166-1 alpha-2) → locale */
 const countryToLocale: Record<string, Locale> = {
@@ -53,14 +77,30 @@ function pathnameHasLocale(pathname: string): boolean {
   );
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip static files, API routes, admin routes, Next.js internals
+  // ── Admin auth guard ──────────────────────────────────────────────────────
+  // All /admin/* routes require a valid session, except /admin/login itself.
+  // Always return early for /admin/* — never fall through to locale detection
+  // (locale detection would redirect /admin/login → /nl/admin/login → 404).
+  if (pathname.startsWith("/admin")) {
+    if (pathname !== "/admin/login") {
+      const sessionCookie = request.cookies.get("admin_session")?.value;
+      const authenticated = await isValidAdminSession(sessionCookie);
+      if (!authenticated) {
+        const notFoundUrl = request.nextUrl.clone();
+        notFoundUrl.pathname = "/_not-found";
+        return NextResponse.rewrite(notFoundUrl, { status: 404 });
+      }
+    }
+    return NextResponse.next(); // skip locale detection for all /admin/* paths
+  }
+
+  // Skip static files, API routes, Next.js internals (no locale handling needed)
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/admin") ||
     pathname.startsWith("/icon") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/robots") ||

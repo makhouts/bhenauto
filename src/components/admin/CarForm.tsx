@@ -489,20 +489,32 @@ export default function CarForm({ initialData }: CarFormProps) {
 
         setAiAnalyzing(true);
         setAiOrdered(false);
-        setAiProgress("Foto's uploaden naar cloud...");
+        setAiProgress("Foto's voorbereiden...");
 
         try {
-            // First ensure all blob images are uploaded to R2
-            const updatedImages = await uploadBlobImages(images);
+            // Build FormData with both existing URLs and new file blobs
+            const formData = new FormData();
 
-            const allUrls = updatedImages.map((i) => i.url);
+            for (let i = 0; i < images.length; i++) {
+                const item = images[i];
+                if (item.url.startsWith("blob:") && item.file) {
+                    // New file — send the raw file data
+                    formData.append("entryTypes", "file");
+                    formData.append("entryUrls", "");           // placeholder
+                    formData.append("entryFiles", item.file);   // actual file
+                } else {
+                    // Existing R2 image — send the URL/key
+                    formData.append("entryTypes", "url");
+                    formData.append("entryUrls", item.url);
+                    formData.append("entryFiles", "");          // placeholder
+                }
+            }
 
             setAiProgress("AI analyseert elke foto...");
 
             const aiRes = await fetch("/api/analyze-images", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ imageUrls: allUrls }),
+                body: formData,
             });
 
             if (!aiRes.ok) {
@@ -514,18 +526,31 @@ export default function CarForm({ initialData }: CarFormProps) {
 
             const aiData = await aiRes.json();
             if (aiData.ordered && aiData.aiEnabled) {
-                // Rebuild images in AI-scored order
+                // Rebuild images in AI-scored order.
+                // The API returns identifiers: R2 URLs for existing images,
+                // or "__file_N__" placeholders for new file entries.
                 setImages((prev) => {
-                    const urlToItem = new Map(prev.map((item) => [item.url, item]));
-                    const reordered: ImageItem[] = [];
-                    for (const scored of aiData.ordered) {
-                        const existing = urlToItem.get(scored.url);
-                        if (existing) {
-                            reordered.push({ ...existing, aiScore: scored.score, aiAngle: scored.angle });
-                            urlToItem.delete(scored.url);
+                    // Build a map: identifier → original item
+                    const idToItem = new Map<string, ImageItem>();
+                    for (let i = 0; i < prev.length; i++) {
+                        const item = prev[i];
+                        if (item.url.startsWith("blob:")) {
+                            idToItem.set(`__file_${i}__`, item);
+                        } else {
+                            idToItem.set(item.url, item);
                         }
                     }
-                    for (const remaining of urlToItem.values()) {
+
+                    const reordered: ImageItem[] = [];
+                    for (const scored of aiData.ordered) {
+                        const existing = idToItem.get(scored.url);
+                        if (existing) {
+                            reordered.push({ ...existing, aiScore: scored.score, aiAngle: scored.angle });
+                            idToItem.delete(scored.url);
+                        }
+                    }
+                    // Append any remaining items that weren't in the AI response
+                    for (const remaining of idToItem.values()) {
                         reordered.push(remaining);
                     }
                     return reordered;
@@ -569,8 +594,7 @@ export default function CarForm({ initialData }: CarFormProps) {
             // do NOT add it to carData (FormData only supports strings).
             // It will be passed directly as an array to saveCar() below.
 
-            // All images should already be uploaded to R2 at this point
-            // (uploaded during AI analysis or we upload now)
+            // Upload any new blob images to R2 now (only happens at save time)
             const newFiles = images
                 .filter((i) => i.type === "new" && i.file && i.url.startsWith("blob:"))
                 .map((i) => i.file!);

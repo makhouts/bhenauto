@@ -3,9 +3,11 @@ import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { isValidSession } from "@/lib/session";
 import Link from "next/link";
+import Image from "next/image";
 import { Car, MessageSquare, LayoutDashboard, LogOut, CalendarCheck } from "lucide-react";
 import { Toaster } from "sonner";
 import prisma from "@/lib/prisma";
+import logo from "@/assets/logo.webp";
 
 // Ensure every /admin/* response carries X-Robots-Tag: noindex,nofollow.
 // robots.txt is advisory; this header is a hard signal to compliant crawlers.
@@ -18,10 +20,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     const session = cookieStore.get("admin_session");
     const isAuthenticated = await isValidSession(session?.value);
 
-    // Middleware already guards all /admin/* routes (except /admin/login).
-    // If the user is NOT authenticated here, they can only be on /admin/login
-    // (middleware would have redirected them otherwise).
-    // Render login without the sidebar shell — no redirect needed.
+    // The proxy guards all /admin/* routes except /admin/login.
+    // When unauthenticated, we can only be on /admin/login — render it
+    // without the sidebar shell. Do NOT redirect here: this layout wraps
+    // /admin/login itself, so redirecting would create an infinite loop.
     if (!isAuthenticated) {
         return <>{children}</>;
     }
@@ -51,9 +53,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                 }}
             >
                 {/* Logo */}
-                <div className="h-[72px] flex items-center px-7" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                    <Link href="/admin" className="text-[1.3rem] font-headings font-black tracking-tight text-white">
-                        bhen<span style={{ color: "#d91c1c" }}>admin</span>
+                <div className="h-[72px] flex items-center justify-center px-6" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <Link href="/admin">
+                        <Image
+                            src={logo}
+                            alt="BhenAuto"
+                            height={48}
+                            style={{ width: "auto", height: "48px" }}
+                            priority
+                        />
                     </Link>
                 </div>
 
