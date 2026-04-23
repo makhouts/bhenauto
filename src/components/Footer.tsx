@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 import { MapPin, Phone, Mail, ChevronUp, Globe } from "lucide-react";
 import { useLocale } from "@/components/LocaleContext";
 import { locales, localeNames, localeFlags, type Locale } from "@/lib/i18n";

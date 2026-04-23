@@ -120,14 +120,19 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                     {(!img1 || imgError) && <ImageFallback />}
                     {img1 && !imgError && (
                         <Image
-                            src={img1} alt={car.title} fill sizes="520px"
+                            src={img1} alt={car.title} fill
+                            sizes="(max-width: 768px) 100vw, 40vw"
+                            quality={75}
                             onError={() => setImgError(true)}
                             className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.05]" : "scale-100"} ${hovered && img2 ? "opacity-0" : "opacity-100"}`}
                         />
                     )}
                     {img1 && img2 && (
                         <Image
-                            src={img2} alt={`${car.title} – 2`} fill sizes="520px"
+                            src={img2} alt={`${car.title} – 2`} fill
+                            sizes="(max-width: 768px) 100vw, 40vw"
+                            quality={75}
+                            loading="lazy"
                             className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
                         />
                     )}
@@ -246,7 +251,8 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                         alt={`${car.title} – 2`}
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
-                        quality={80}
+                        quality={75}
+                        loading="lazy"
                         className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
                     />
                 )}

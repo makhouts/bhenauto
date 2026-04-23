@@ -7,7 +7,7 @@ import { ArrowRight, Loader2, ShieldCheck } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "motion/react";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 import wallpaper from "@/assets/login-wallpaper.webp";
 
 export default function LoginPage() {
@@ -56,6 +56,8 @@ export default function LoginPage() {
                     src={wallpaper}
                     alt=""
                     fill
+                    sizes="50vw"
+                    quality={65}
                     className="object-cover"
                     priority
                 />

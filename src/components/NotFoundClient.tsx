@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { ArrowLeft, Home, Search } from "lucide-react";
 import type { NotFoundDict } from "@/lib/dictionaries";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 
 /* ── Floating particle dot ─────────────────────────────────── */
 function Particle({ delay, x, y, size }: { delay: number; x: number; y: number; size: number }) {

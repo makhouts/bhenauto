@@ -75,6 +75,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 priority
                                 fetchPriority="high"
                                 sizes="(max-width: 768px) 100vw, 70vw"
+                                quality={80}
                             />
                         </motion.div>
                     </AnimatePresence>
@@ -134,6 +135,8 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                         fill
                                         className="object-cover transition-transform duration-500 group-hover/thumb:scale-110"
                                         sizes="20vw"
+                                        quality={60}
+                                        loading="lazy"
                                     />
                                     {/* Show "View All" overlay on last thumbnail */}
                                     {isLast && (

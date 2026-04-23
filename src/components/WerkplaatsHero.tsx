@@ -45,6 +45,8 @@ export default function WerkplaatsHero({ dict }: { dict: WerkplaatsDict }) {
           src={mechanic}
           alt={dict.heroTitle}
           fill
+          sizes="100vw"
+          quality={70}
           className="object-cover"
           style={{ filter: "grayscale(60%) brightness(0.45)" }}
           priority

@@ -132,6 +132,7 @@ function FeatureCard({
             alt=""
             fill
             sizes="(max-width: 768px) 100vw, 33vw"
+            quality={70}
             className={imgClass || "object-cover object-center"}
           />
         </div>
@@ -271,6 +272,7 @@ export default function WhyChooseUs({ lang, dict }: { lang: string; dict: WhyCho
           fill
           priority
           sizes="100vw"
+          quality={65}
           className="object-cover object-center"
         />
       </div>

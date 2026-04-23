@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useScrollState } from "@/hooks/useScrollState";
 import Link from "next/link";
 import Image from "next/image";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 import { usePathname } from "next/navigation";
 import { Menu, X, Globe } from "lucide-react";
 import { useLocale } from "@/components/LocaleContext";
@@ -113,6 +113,7 @@ export default function Header({ dict }: HeaderProps) {
                                     src={logo}
                                     alt="Bhenauto"
                                     width={170}
+                                    loading="eager"
                                     className="w-[170px] h-auto object-contain mix-blend-screen"
                                     priority
                                     fetchPriority="high"
