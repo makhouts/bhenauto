@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth-guard";
 import { fromZonedTime } from "date-fns-tz";
 import { generateDaySlots, APPOINTMENT_CONFIG } from "@/lib/appointmentConfig";
+import { sendAppointmentConfirmed } from "@/lib/appointment-emails";
 
 const TZ = APPOINTMENT_CONFIG.timezone;
 
@@ -15,12 +16,24 @@ export async function confirmAppointment(
 ): Promise<{ success: boolean } | { error: string }> {
   await requireAdmin();
   try {
-    await prisma.appointment.update({
+    const apt = await prisma.appointment.update({
       where: { id },
       data: { status: "confirmed", durationHours },
     });
     revalidatePath("/admin/appointments");
     revalidatePath("/werkplaats");
+
+    // Fire-and-forget: send confirmation email in the customer's language
+    sendAppointmentConfirmed({
+      name: apt.name,
+      email: apt.email,
+      date: apt.date,
+      timeSlot: apt.timeSlot,
+      service: apt.service,
+      notes: apt.notes,
+      locale: apt.locale,
+    }).catch(() => {/* already logged inside sendMail */});
+
     return { success: true };
   } catch {
     return { error: "Kon de afspraak niet bevestigen." };

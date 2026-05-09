@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Shield, FileText, ChevronRight, Mail, Phone, MapPin } from "lucide-react";
+import { Shield, FileText, ChevronRight, Mail, Phone, MapPin, Cookie } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 
 /* ─── tiny prose helpers ─── */
@@ -108,7 +108,7 @@ function PrivacyContent({ locale }: { locale: Locale }) {
       <InfoGrid items={[
         { icon: <MapPin size={15} />, label: t.addr, value: "Brusselsesteenweg 223, 1730 Asse" },
         { icon: <FileText size={15} />, label: t.vat, value: "BE 0542.809.426" },
-        { icon: <Mail size={15} />, label: t.email, value: "info@bhenauto.be" },
+        { icon: <Mail size={15} />, label: t.email, value: "info@bhenauto.com" },
         { icon: <Phone size={15} />, label: t.phone, value: "02 582 83 53" },
       ]} />
       <SectionTitle>{t.what}</SectionTitle>
@@ -119,7 +119,7 @@ function PrivacyContent({ locale }: { locale: Locale }) {
       <SectionTitle>{t.share}</SectionTitle>
       <P>{t.shareText}</P>
       <SectionTitle>{t.rights}</SectionTitle>
-      <P>{t.rightsText}{" "}<a href="mailto:info@bhenauto.be" className="text-[#d91c1c] font-semibold hover:underline">info@bhenauto.be</a>.</P>
+      <P>{t.rightsText}{" "}<a href="mailto:info@bhenauto.com" className="text-[#d91c1c] font-semibold hover:underline">info@bhenauto.com</a>.</P>
     </>
   );
 }
@@ -164,40 +164,109 @@ function TermsContent({ locale }: { locale: Locale }) {
   );
 }
 
+function CookieContent({ locale }: { locale: Locale }) {
+  const t = {
+    nl: {
+      intro: "Deze website maakt gebruik van uitsluitend technisch noodzakelijke cookies. Er worden geen tracking-, marketing- of analytische cookies gebruikt. Hierdoor is geen cookiebanner of toestemming vereist.",
+      whatTitle: "2.1 — Welke cookies gebruiken wij?",
+      whatItems: [
+        "<strong>Sessiecookies (functioneel):</strong> Tijdelijke cookies die verdwijnen wanneer u uw browser sluit. Ze zorgen voor een correcte werking van beveiligde pagina's (bijv. het beheerderspaneel).",
+        "<strong>Geen tracking:</strong> Wij plaatsen geen Google Analytics, Facebook Pixel, Hotjar of andere marketing- of analysetools.",
+        "<strong>Geen derde partijen:</strong> Er worden geen externe cookies geladen van advertentienetwerken of sociale media.",
+      ],
+      noConsentTitle: "2.2 — Waarom geen cookiebanner?",
+      noConsentText: "Conform de Belgische implementatie van de ePrivacy-richtlijn (Wet van 13 juni 2005) en de GDPR/AVG zijn strikt noodzakelijke cookies vrijgesteld van de toestemmingsverplichting. Omdat deze website uitsluitend dergelijke cookies gebruikt, is er geen cookiebanner vereist.",
+      retentionTitle: "2.3 — Bewaartermijn",
+      retentionText: "Sessiecookies worden automatisch verwijderd bij het sluiten van uw browser. Er worden geen permanente tracking-cookies opgeslagen.",
+      contactTitle: "2.4 — Vragen?",
+      contactText: "Voor vragen over het cookiebeleid kunt u contact opnemen via",
+    },
+    fr: {
+      intro: "Ce site web utilise uniquement des cookies strictement nécessaires au fonctionnement technique. Aucun cookie de suivi, de marketing ou d'analyse n'est utilisé. De ce fait, aucune bannière de consentement n'est requise.",
+      whatTitle: "2.1 — Quels cookies utilisons-nous ?",
+      whatItems: [
+        "<strong>Cookies de session (fonctionnels) :</strong> Cookies temporaires supprimés à la fermeture du navigateur. Ils assurent le bon fonctionnement des pages sécurisées (ex. panneau d'administration).",
+        "<strong>Pas de suivi :</strong> Nous n'utilisons pas Google Analytics, Facebook Pixel, Hotjar ni aucun autre outil de marketing ou d'analyse.",
+        "<strong>Pas de tiers :</strong> Aucun cookie externe provenant de réseaux publicitaires ou de médias sociaux n'est chargé.",
+      ],
+      noConsentTitle: "2.2 — Pourquoi pas de bannière de cookies ?",
+      noConsentText: "Conformément à la transposition belge de la directive ePrivacy (loi du 13 juin 2005) et au RGPD, les cookies strictement nécessaires sont exemptés de l'obligation de consentement. Ce site n'utilisant que de tels cookies, aucune bannière n'est requise.",
+      retentionTitle: "2.3 — Durée de conservation",
+      retentionText: "Les cookies de session sont automatiquement supprimés à la fermeture du navigateur. Aucun cookie de suivi permanent n'est stocké.",
+      contactTitle: "2.4 — Questions ?",
+      contactText: "Pour toute question relative à cette politique, contactez-nous à",
+    },
+    en: {
+      intro: "This website uses only strictly necessary technical cookies. No tracking, marketing, or analytics cookies are used. As a result, no cookie banner or consent is required.",
+      whatTitle: "2.1 — Which cookies do we use?",
+      whatItems: [
+        "<strong>Session cookies (functional):</strong> Temporary cookies that are deleted when you close your browser. They ensure secure pages function correctly (e.g. the admin panel).",
+        "<strong>No tracking:</strong> We do not use Google Analytics, Facebook Pixel, Hotjar, or any other marketing or analytics tools.",
+        "<strong>No third parties:</strong> No external cookies from ad networks or social media platforms are loaded.",
+      ],
+      noConsentTitle: "2.2 — Why no cookie banner?",
+      noConsentText: "Under the Belgian implementation of the ePrivacy Directive (Law of 13 June 2005) and the GDPR, strictly necessary cookies are exempt from the consent requirement. Since this website uses only such cookies, no cookie banner is required.",
+      retentionTitle: "2.3 — Retention period",
+      retentionText: "Session cookies are automatically deleted when you close your browser. No persistent tracking cookies are stored.",
+      contactTitle: "2.4 — Questions?",
+      contactText: "For any questions about this cookie policy, please contact us at",
+    },
+  }[locale];
+
+  return (
+    <>
+      <P>{t.intro}</P>
+      <SectionTitle>{t.whatTitle}</SectionTitle>
+      <UL items={t.whatItems} />
+      <SectionTitle>{t.noConsentTitle}</SectionTitle>
+      <P>{t.noConsentText}</P>
+      <SectionTitle>{t.retentionTitle}</SectionTitle>
+      <P>{t.retentionText}</P>
+      <SectionTitle>{t.contactTitle}</SectionTitle>
+      <P>{t.contactText}{" "}<a href="mailto:info@bhenauto.com" className="text-[#d91c1c] font-semibold hover:underline">info@bhenauto.com</a>.</P>
+    </>
+  );
+}
+
 /* ─── page labels ─── */
 const labels: Record<Locale, {
   pageLabel: string; pageTitle: string; pageSubtitle: string;
   privacyLabel: string; privacyTitle: string; privacyUpdated: string;
   termsLabel: string; termsTitle: string; termsUpdated: string;
+  cookieLabel: string; cookieTitle: string; cookieUpdated: string;
 }> = {
   nl: {
     pageLabel: "Juridische Informatie", pageTitle: "Privacybeleid & Algemene Voorwaarden",
     pageSubtitle: "Bhenauto BV — Brusselsesteenweg 223, 1730 Asse",
     privacyLabel: "GDPR / AVG", privacyTitle: "Privacybeleid", privacyUpdated: "Bijgewerkt: 21 april 2026",
     termsLabel: "Voorwaarden", termsTitle: "Algemene Voorwaarden", termsUpdated: "Versie: april 2026",
+    cookieLabel: "Cookies", cookieTitle: "Cookiebeleid", cookieUpdated: "Bijgewerkt: mei 2026",
   },
   fr: {
     pageLabel: "Informations Juridiques", pageTitle: "Politique de Confidentialité & Conditions Générales",
     pageSubtitle: "Bhenauto BV — Brusselsesteenweg 223, 1730 Asse",
     privacyLabel: "RGPD", privacyTitle: "Politique de Confidentialité", privacyUpdated: "Mis à jour : 21 avril 2026",
     termsLabel: "Conditions", termsTitle: "Conditions Générales de Vente", termsUpdated: "Version : avril 2026",
+    cookieLabel: "Cookies", cookieTitle: "Politique relative aux cookies", cookieUpdated: "Mis à jour : mai 2026",
   },
   en: {
     pageLabel: "Legal Information", pageTitle: "Privacy Policy & Terms and Conditions",
     pageSubtitle: "Bhenauto BV — Brusselsesteenweg 223, 1730 Asse",
     privacyLabel: "GDPR", privacyTitle: "Privacy Policy", privacyUpdated: "Updated: 21 April 2026",
     termsLabel: "Terms", termsTitle: "Terms & Conditions", termsUpdated: "Version: April 2026",
+    cookieLabel: "Cookies", cookieTitle: "Cookie Policy", cookieUpdated: "Updated: May 2026",
   },
 };
 
 /* ─── main export ─── */
 export default function LegalClient({ locale }: { locale: Locale }) {
   const t = labels[locale];
-  const [active, setActive] = useState<"privacy" | "terms">("privacy");
+  const [active, setActive] = useState<"privacy" | "terms" | "cookie">("privacy");
 
   const navItems = [
     { id: "privacy" as const, icon: <Shield size={16} />, label: t.privacyLabel, title: t.privacyTitle, updated: t.privacyUpdated },
     { id: "terms" as const, icon: <FileText size={16} />, label: t.termsLabel, title: t.termsTitle, updated: t.termsUpdated },
+    { id: "cookie" as const, icon: <Cookie size={16} />, label: t.cookieLabel, title: t.cookieTitle, updated: t.cookieUpdated },
   ];
 
   return (
@@ -286,9 +355,13 @@ export default function LegalClient({ locale }: { locale: Locale }) {
 
             {/* Animated panel body */}
             <div key={active} style={{ animation: "fadeSlideIn 0.25s ease" }}>
-              {active === "privacy"
-                ? <PrivacyContent locale={locale} />
-                : <TermsContent locale={locale} />}
+              {active === "privacy" ? (
+                <PrivacyContent locale={locale} />
+              ) : active === "terms" ? (
+                <TermsContent locale={locale} />
+              ) : (
+                <CookieContent locale={locale} />
+              )}
             </div>
           </div>
 

@@ -16,7 +16,7 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
-const serverActionOrigins = ["bhenauto.be", "www.bhenauto.be"];
+const serverActionOrigins = ["bhenauto.com", "www.bhenauto.com"];
 if (isDev) serverActionOrigins.push("localhost:3000");
 
 const nextConfig: NextConfig = {

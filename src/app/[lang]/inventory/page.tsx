@@ -9,7 +9,7 @@ import prisma from "@/lib/prisma";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 const PAGE_SIZE = 9;
 
 // ISR: rebuild at most every 60 seconds; admin actions call revalidatePath to bust sooner

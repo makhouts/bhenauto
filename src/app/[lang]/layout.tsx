@@ -5,7 +5,7 @@ import { LocaleProvider } from "@/components/LocaleContext";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import HtmlLangUpdater from "@/components/HtmlLangUpdater";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
 // Generate static params for all locales
 export function generateStaticParams() {

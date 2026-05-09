@@ -15,7 +15,7 @@ export default function MobileContactBar({ carSlug, carTitle, locale, dict }: Mo
     const whatsappMessage = encodeURIComponent(
         dict.whatsappMessage.replace("{title}", carTitle)
     );
-    const whatsappUrl = `https://wa.me/3225828353?text=${whatsappMessage}`;
+    const whatsappUrl = `https://wa.me/32477544294?text=${whatsappMessage}`;
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 py-3 safe-area-bottom" style={{ backgroundColor: 'var(--theme-overlay)', borderTop: '1px solid var(--theme-border)' }}>

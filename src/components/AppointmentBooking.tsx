@@ -69,7 +69,7 @@ function stepIndex(step: WizardStep): number {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function AppointmentBooking({ dict }: { dict: AppointmentDict }) {
+export default function AppointmentBooking({ dict, locale = "fr" }: { dict: AppointmentDict; locale?: string }) {
   // Build services from dict to keep icons static but titles/descs dynamic
   const SERVICE_ICONS: Record<string, React.ElementType> = {
     "Onderhoud": Wrench,
@@ -189,6 +189,7 @@ export default function AppointmentBooking({ dict }: { dict: AppointmentDict }) 
         timeSlot: selectedSlot,
         ...formData,
         service: selectedService || formData.service,
+        locale,
       });
       if ("error" in result) {
         setSubmitError(result.error);

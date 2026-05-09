@@ -41,7 +41,7 @@ export async function generateMetadata(
     const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
     const ogDescription = `${car.brand} ${car.model} · ${car.year} · ${car.mileage.toLocaleString('nl-BE')} km · ${priceFormatted}`;
 
-    const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bhenauto.be';
+    const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bhenauto.com';
     const ogLocales: Record<string, string> = { nl: 'nl_BE', fr: 'fr_BE', en: 'en_GB' };
 
     return {
@@ -121,11 +121,11 @@ export default async function CarDetailPage(
     const transmissionLabel = car.transmission === 'Automatic' ? t.transmissionAuto : t.transmissionManual;
 
     // WhatsApp — include lang in the shared URL so the link resolves correctly
-    const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bhenauto.be';
+    const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bhenauto.com';
     const carUrl = `${BASE_URL}/${lang}/cars/${car.slug}`;
     const whatsappText = t.whatsappMessage.replace('{title}', car.title);
     const whatsappMsg = encodeURIComponent(`${whatsappText}\n${carUrl}`);
-    const whatsappUrl = `https://wa.me/3225828353?text=${whatsappMsg}`;
+    const whatsappUrl = `https://wa.me/32477544294?text=${whatsappMsg}`;
 
     // Preload properties for the LCP ImageGallery hero image
     const mainImageUrl = getImageUrl(car.images[0]?.url || '');

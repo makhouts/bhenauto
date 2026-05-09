@@ -105,7 +105,7 @@ export default function Footer({ dict }: FooterProps) {
                                 </li>
                                 <li className="flex items-center gap-2 group">
                                     <Mail className="w-4 h-4 text-[#d91c1c] shrink-0 group-hover:scale-110 transition-all duration-300" />
-                                    <a href="mailto:info@bhenauto.be" className="text-white group-hover:text-white/80 transition-colors duration-300">info@bhenauto.be</a>
+                                    <a href="mailto:info@bhenauto.com" className="text-white group-hover:text-white/80 transition-colors duration-300">info@bhenauto.com</a>
                                 </li>
                             </ul>
                         </div>

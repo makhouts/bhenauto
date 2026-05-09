@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { locales, isValidLocale, type Locale } from "@/lib/i18n";
 import LegalClient from "./LegalClient";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
 export const revalidate = 86400; // once per day
 

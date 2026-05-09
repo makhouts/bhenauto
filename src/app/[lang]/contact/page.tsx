@@ -5,7 +5,7 @@ import { Mail, MapPin, Phone, Clock, ArrowRight, CheckCircle2 } from "lucide-rea
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
 // Static content — revalidate once per hour
 export const revalidate = 3600;
@@ -171,7 +171,7 @@ export default async function ContactPage({
                     <p className="theme-text font-bold text-sm">02 582 83 53</p>
                   </div>
                 </a>
-                <a href="mailto:info@bhenauto.be" className="flex items-center gap-3 group/link">
+                <a href="mailto:info@bhenauto.com" className="flex items-center gap-3 group/link">
                   <div
                     className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-300"
                     style={{ backgroundColor: "var(--theme-badge-bg)", border: "1px solid var(--theme-border)" }}
@@ -180,7 +180,7 @@ export default async function ContactPage({
                   </div>
                   <div>
                     <p className="text-[10px] theme-text-faint font-bold uppercase tracking-wider">{c.emailLabel}</p>
-                    <p className="theme-text font-bold text-sm">info@bhenauto.be</p>
+                    <p className="theme-text font-bold text-sm">info@bhenauto.com</p>
                   </div>
                 </a>
               </div>

@@ -11,7 +11,7 @@ import { getDictionary, type Dictionary } from "@/lib/dictionaries";
 import { getImageUrl } from "@/lib/image-url";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
 export const revalidate = 60;
 
@@ -139,7 +139,7 @@ const localBusinessJsonLd = {
   "@context": "https://schema.org",
   "@type": "AutoDealer",
   "name": "BhenAuto",
-  "url": "https://bhenauto.be",
+  "url": "https://bhenauto.com",
   "telephone": "+32 2 582 83 53",
   "address": {
     "@type": "PostalAddress",

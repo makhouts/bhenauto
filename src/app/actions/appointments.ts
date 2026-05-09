@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { APPOINTMENT_CONFIG, generateDaySlots } from "@/lib/appointmentConfig";
 import { startOfDay, isBefore, format } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
+import { sendBookingReceived } from "@/lib/appointment-emails";
 
 // Simple in-memory rate limiter (per-process; for production use Redis/Upstash)
 const bookingRateLimit = new Map<string, number[]>();
@@ -197,12 +198,13 @@ type BookingInput = {
   phone: string;
   service: string;
   notes?: string;
+  locale?: string;
 };
 
 type BookingResult = { success: true; id: string } | { error: string };
 
 export async function bookAppointment(input: BookingInput): Promise<BookingResult> {
-  const { dateStr, timeSlot, name, email, phone, service, notes } = input;
+  const { dateStr, timeSlot, name, email, phone, service, notes, locale } = input;
 
   // Rate limiting
   const headerStore = await headers();
@@ -302,11 +304,24 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
           name: name.trim(), email: email.trim().toLowerCase(),
           phone: phone.trim(), service,
           notes: notes?.trim() || null, status: "pending",
+          locale: locale || "fr",
         },
       });
     });
 
     revalidatePath("/admin/appointments");
+
+    // Fire-and-forget: send booking confirmation email
+    sendBookingReceived({
+      name: appointment.name,
+      email: appointment.email,
+      date: appointment.date,
+      timeSlot: appointment.timeSlot,
+      service: appointment.service,
+      notes: appointment.notes,
+      locale: appointment.locale,
+    }).catch(() => {/* already logged inside sendMail */});
+
     return { success: true, id: appointment.id };
   } catch (err: unknown) {
     if (err instanceof Error) return { error: err.message };

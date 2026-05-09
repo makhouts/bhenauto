@@ -74,6 +74,7 @@ model Appointment {
   phone         String
   service       String
   notes         String?
+  locale        String            @default("fr") // nl | fr | en — language for email notifications
   status        AppointmentStatus @default(pending)
   durationHours Int               @default(1) // how many hours this appointment occupies
   createdAt     DateTime          @default(now())

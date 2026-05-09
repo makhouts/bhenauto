@@ -5,7 +5,7 @@ import { getDictionary } from "@/lib/dictionaries";
 import { locales, isValidLocale, type Locale } from "@/lib/i18n";
 import { MapPin, Car, Wrench, Phone, Globe, ChevronRight } from "lucide-react";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
 // Car list changes when admin manages inventory
 export const revalidate = 60;

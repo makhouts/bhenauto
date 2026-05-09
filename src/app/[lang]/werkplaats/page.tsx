@@ -6,7 +6,7 @@ import WerkplaatsServices from "@/components/WerkplaatsServices";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.be";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
 // Static content — revalidate once per hour
 export const revalidate = 3600;
@@ -65,7 +65,7 @@ export default async function WerkplaatsPage({
 
         {/* ── Inline appointment wizard ─────────────────────────────── */}
         <div id="afspraak-wizard" className="mb-16 scroll-mt-24">
-          <AppointmentBooking dict={dict.appointment} />
+          <AppointmentBooking dict={dict.appointment} locale={locale} />
         </div>
 
 
