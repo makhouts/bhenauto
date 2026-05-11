@@ -280,7 +280,9 @@
     "newBadge": "Nieuw",
     "premiumBadge": "Premium",
     "featuredBadge": "In de kijker",
-    "viewDetails": "Bekijk Details"
+    "viewDetails": "Bekijk Details",
+    "whatsappLabel": "Chat met ons",
+    "whatsappGenericMessage": "Hallo, ik heb een vraag over uw voertuigen."
   },
   "carDetail": {
     "breadcrumbStock": "Voorraad",

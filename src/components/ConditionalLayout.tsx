@@ -23,7 +23,12 @@ export default async function ConditionalLayout({
     <ClientConditionalLayout
       header={<Header dict={dict.nav} />}
       footer={<Footer dict={dict.footer} />}
-      whatsApp={<WhatsAppButton />}
+      whatsApp={
+        <WhatsAppButton
+          label={dict.common.whatsappLabel}
+          message={dict.common.whatsappGenericMessage}
+        />
+      }
     >
       <PageTransition>{children}</PageTransition>
     </ClientConditionalLayout>

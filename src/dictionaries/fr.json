@@ -280,7 +280,9 @@
     "newBadge": "Nouveau",
     "premiumBadge": "Premium",
     "featuredBadge": "En vedette",
-    "viewDetails": "Voir les Détails"
+    "viewDetails": "Voir les Détails",
+    "whatsappLabel": "Chattez avec nous",
+    "whatsappGenericMessage": "Bonjour, j'ai une question concernant vos véhicules."
   },
   "carDetail": {
     "breadcrumbStock": "Stock",
