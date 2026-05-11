@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Phone, Mail, ArrowLeft, CheckCircle2, Loader2, ArrowRight, RotateCcw } from "lucide-react";
 import { submitContact } from "@/app/actions/contact";
@@ -18,9 +18,45 @@ interface CarContactPanelProps {
 
 // ── Inline form (no router dependency, receives carSlug directly) ──────────
 function InlineContactForm({ carSlug, carTitle, onBack, dict }: { carSlug: string; carTitle: string; onBack: () => void; dict: CarDetailDict }) {
+    // ── Turnstile (invisible) ─────────────────────────────────────────────────
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+    const turnstileRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!document.getElementById("cf-turnstile-script")) {
+            const script = document.createElement("script");
+            script.id = "cf-turnstile-script";
+            script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+        const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+        if (!siteKey || !turnstileRef.current) return;
+        const tryRender = () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const w = window as any;
+            if (w.turnstile && turnstileRef.current) {
+                w.turnstile.render(turnstileRef.current, {
+                    sitekey: siteKey,
+                    callback: (token: string) => setTurnstileToken(token),
+                    "expired-callback": () => setTurnstileToken(null),
+                    "error-callback": () => setTurnstileToken(null),
+                    size: "invisible",
+                });
+            } else {
+                setTimeout(tryRender, 300);
+            }
+        };
+        tryRender();
+    }, []);
+
     const submitFn = useCallback(
-        async (formData: FormData) => submitContact(formData),
-        []
+        async (formData: FormData) => {
+            if (turnstileToken) formData.set("cf-turnstile-response", turnstileToken);
+            return submitContact(formData);
+        },
+        [turnstileToken]
     );
     const { isSubmitting, error, success, handleSubmit, reset } = useFormSubmit(submitFn);
 
@@ -125,6 +161,9 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict }: { carSlug: strin
                     placeholder={`${dict.ctaAskQuestion}: ${carTitle}…`}
                 />
             </div>
+
+            {/* Cloudflare Turnstile — invisible widget */}
+            <div ref={turnstileRef} className="hidden" aria-hidden="true" />
 
             {/* Submit */}
             <button

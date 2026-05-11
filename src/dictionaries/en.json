@@ -207,7 +207,8 @@
         "title": "Other",
         "desc": "Specific requests or other repairs."
       }
-    ]
+    ],
+    "weekdays": ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
   },
   "contact": {
     "pageLabel": "Direct Communication",

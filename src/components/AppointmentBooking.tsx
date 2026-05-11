@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useTransition } from "react";
+import { useState, useEffect, useCallback, useTransition, useRef } from "react";
 import {
   format,
   parseISO,
@@ -10,7 +10,7 @@ import {
   eachDayOfInterval,
   getDay,
 } from "date-fns";
-import { nl } from "date-fns/locale";
+import { nl, fr as frLocale, enGB } from "date-fns/locale";
 import {
   Wrench,
   Zap,
@@ -93,8 +93,9 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
     { id: "details", label: dict.stepDetails, num: 3 },
   ];
 
-  // Weekday labels are locale-neutral (abbreviated Mon—Sun starting Monday)
-  const WEEKDAY_LABELS = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+  // Weekday labels and date-fns locale derived from the locale prop
+  const WEEKDAY_LABELS = dict.weekdays;
+  const dateFnsLocale = locale === "fr" ? frLocale : locale === "en" ? enGB : nl;
 
   const [step, setStep] = useState<WizardStep>("service");
 
@@ -121,23 +122,7 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
 
   // Turnstile
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const turnstileRef = useCallback((node: HTMLDivElement | null) => {
-    if (!node) return;
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-    if (!siteKey) return;
-    // Render invisible widget — auto-executes and calls callback with token
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    if (w.turnstile) {
-      w.turnstile.render(node, {
-        sitekey: siteKey,
-        callback: (token: string) => setTurnstileToken(token),
-        "expired-callback": () => setTurnstileToken(null),
-        "error-callback": () => setTurnstileToken(null),
-        size: "invisible",
-      });
-    }
-  }, []);
+  const turnstileRef = useRef<HTMLDivElement>(null);
 
   // Load Turnstile script once
   useEffect(() => {
@@ -149,6 +134,30 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
     script.defer = true;
     document.head.appendChild(script);
   }, []);
+
+  // Render widget when details step mounts — retry until CF script is ready
+  useEffect(() => {
+    if (step !== "details" || !turnstileRef.current) return;
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    if (!siteKey) return;
+    const tryRender = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = window as any;
+      if (w.turnstile && turnstileRef.current) {
+        w.turnstile.render(turnstileRef.current, {
+          sitekey: siteKey,
+          callback: (token: string) => setTurnstileToken(token),
+          "expired-callback": () => setTurnstileToken(null),
+          "error-callback": () => setTurnstileToken(null),
+          size: "invisible",
+        });
+      } else {
+        setTimeout(tryRender, 300);
+      }
+    };
+    tryRender();
+  }, [step]);
+
 
   // ── Fetch dates whenever step reaches "date" or month changes ─────────────
 
@@ -384,7 +393,7 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
                     <ChevronLeft size={16} />
                   </button>
                   <p className="font-bold text-slate-800 text-sm capitalize">
-                    {format(currentMonth, "MMMM yyyy", { locale: nl })}
+                    {format(currentMonth, "MMMM yyyy", { locale: dateFnsLocale })}
                   </p>
                   <button
                     onClick={() => setCurrentMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
@@ -471,7 +480,7 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
                 ) : (
                   <>
                     <p className="text-xs font-medium text-slate-500 mb-3">
-                      {format(parseISO(selectedDate), "EEEE d MMMM", { locale: nl })}
+                      {format(parseISO(selectedDate), "EEEE d MMMM", { locale: dateFnsLocale })}
                     </p>
                     <div className="grid grid-cols-3 gap-2">
                       {availableSlots.map((slot) => (
@@ -511,7 +520,7 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
                 <div className="w-6 h-6 rounded-lg bg-[#d91c1c]/10 flex items-center justify-center text-[#d91c1c]">
                   <Calendar size={12} />
                 </div>
-                {selectedDate && format(parseISO(selectedDate), "d MMMM yyyy", { locale: nl })}
+                {selectedDate && format(parseISO(selectedDate), "d MMMM yyyy", { locale: dateFnsLocale })}
               </div>
               <div className="w-px h-4 bg-slate-200 hidden sm:block" />
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
@@ -618,9 +627,9 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
                   className="group inline-flex items-center gap-2 bg-[#d91c1c] text-white px-8 py-3.5 rounded-xl font-bold text-sm uppercase tracking-widest hover:bg-[#b91515] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-[#d91c1c]/20 hover:shadow-[#d91c1c]/40 hover:-translate-y-0.5 active:translate-y-0"
                 >
                   {submitting ? (
-                    <><Loader2 size={15} className="animate-spin" /> Bezig…</>
+                    <><Loader2 size={15} className="animate-spin" /> {dict.submitting}</>
                   ) : (
-                    <>Afspraak bevestigen <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform duration-200" /></>
+                    <>{dict.submitButton} <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform duration-200" /></>
                   )}
                 </button>
               </div>
@@ -649,7 +658,7 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
             <p className="text-slate-500 font-medium mb-2 max-w-sm mx-auto">
               {dict.successBody}{" "}
               <span className="font-bold text-slate-700">
-                {selectedDate && format(parseISO(selectedDate), "d MMMM yyyy", { locale: nl })}
+                {selectedDate && format(parseISO(selectedDate), "d MMMM yyyy", { locale: dateFnsLocale })}
               </span>{" "}
               {dict.successBodyAt} <span className="font-bold text-slate-700">{selectedSlot}</span> {dict.successBodyReceived}
             </p>

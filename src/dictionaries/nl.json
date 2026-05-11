@@ -207,7 +207,8 @@
         "title": "Andere",
         "desc": "Specifieke wensen of andere reparaties."
       }
-    ]
+    ],
+    "weekdays": ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"]
   },
   "contact": {
     "pageLabel": "Directe Communicatie",

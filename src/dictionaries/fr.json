@@ -207,7 +207,8 @@
         "title": "Autre",
         "desc": "Demandes spécifiques ou autres réparations."
       }
-    ]
+    ],
+    "weekdays": ["Lu", "Ma", "Me", "Je", "Ve", "Sa", "Di"]
   },
   "contact": {
     "pageLabel": "Communication Directe",
