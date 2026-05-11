@@ -54,7 +54,7 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.bhenauto.com",
       },
-      // R2 public bucket URL
+      // R2 public bucket URL (kept for backward compat)
       {
         protocol: "https",
         hostname: "*.r2.dev",
