@@ -7,11 +7,12 @@ import { APPOINTMENT_CONFIG, generateDaySlots } from "@/lib/appointmentConfig";
 import { startOfDay, isBefore, format } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { sendBookingReceived } from "@/lib/appointment-emails";
+import { verifyTurnstile } from "@/lib/turnstile";
 
-// Simple in-memory rate limiter (per-process; for production use Redis/Upstash)
+// Rate limiter: 2 booking attempts per hour per IP (self-hosted: in-memory is reliable)
 const bookingRateLimit = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 3; // max 3 booking attempts per minute per IP
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_MAX = 2;
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -199,18 +200,25 @@ type BookingInput = {
   service: string;
   notes?: string;
   locale?: string;
+  turnstileToken?: string;
 };
 
 type BookingResult = { success: true; id: string } | { error: string };
 
 export async function bookAppointment(input: BookingInput): Promise<BookingResult> {
-  const { dateStr, timeSlot, name, email, phone, service, notes, locale } = input;
+  const { dateStr, timeSlot, name, email, phone, service, notes, locale, turnstileToken } = input;
 
-  // Rate limiting
+  // ── Layer 1: Turnstile CAPTCHA ───────────────────────────────────────────
+  const turnstileValid = await verifyTurnstile(turnstileToken);
+  if (!turnstileValid) {
+    return { error: "Beveiligingscontrole mislukt. Vernieuw de pagina en probeer opnieuw." };
+  }
+
+  // ── Layer 2: Rate limiting — 2/hour per IP ───────────────────────────────
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (isRateLimited(ip)) {
-    return { error: "Te veel verzoeken. Probeer het over een minuut opnieuw." };
+    return { error: "Te veel verzoeken. Probeer het over een uur opnieuw." };
   }
 
   if (!dateStr || !timeSlot || !name || !email || !phone || !service) {
@@ -224,6 +232,20 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
 
   if (!(APPOINTMENT_CONFIG.services as readonly string[]).includes(service)) {
     return { error: "Ongeldige service geselecteerd." };
+  }
+
+  // ── Layer 3: Per-email 24h lock — same email can't book multiple times ───
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentBooking = await prisma.appointment.findFirst({
+    where: {
+      email: email.trim().toLowerCase(),
+      createdAt: { gte: oneDayAgo },
+      status: { not: "cancelled" },
+    },
+    select: { id: true },
+  });
+  if (recentBooking) {
+    return { error: "Er staat al een afspraak open voor dit e-mailadres. Neem contact op via telefoon of WhatsApp." };
   }
 
   const allSlots = generateDaySlots();

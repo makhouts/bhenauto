@@ -119,6 +119,37 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
 
+  // Turnstile
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    if (!siteKey) return;
+    // Render invisible widget — auto-executes and calls callback with token
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    if (w.turnstile) {
+      w.turnstile.render(node, {
+        sitekey: siteKey,
+        callback: (token: string) => setTurnstileToken(token),
+        "expired-callback": () => setTurnstileToken(null),
+        "error-callback": () => setTurnstileToken(null),
+        size: "invisible",
+      });
+    }
+  }, []);
+
+  // Load Turnstile script once
+  useEffect(() => {
+    if (document.getElementById("cf-turnstile-script")) return;
+    const script = document.createElement("script");
+    script.id = "cf-turnstile-script";
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }, []);
+
   // ── Fetch dates whenever step reaches "date" or month changes ─────────────
 
   useEffect(() => {
@@ -190,9 +221,14 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
         ...formData,
         service: selectedService || formData.service,
         locale,
+        turnstileToken: turnstileToken ?? undefined,
       });
       if ("error" in result) {
         setSubmitError(result.error);
+        // Reset token after failed attempt so user can retry
+        setTurnstileToken(null);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).turnstile?.reset();
       } else {
         setStep("success");
       }
@@ -588,6 +624,12 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
                   )}
                 </button>
               </div>
+
+              {/* Honeypot — invisible to users, bots fill it */}
+              <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+
+              {/* Cloudflare Turnstile — invisible widget */}
+              <div ref={turnstileRef} className="hidden" aria-hidden="true" />
             </form>
           </div>
         )}

@@ -43,6 +43,9 @@
     "tsx": "^4.21.0",
     "typescript": "^5"
   },
+  "engines": {
+    "node": ">=22.12"
+  },
   "browserslist": [
     "chrome >= 89",
     "firefox >= 89",

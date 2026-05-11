@@ -28,7 +28,8 @@ async function isValidAdminSession(sessionValue: string | undefined): Promise<bo
   }
 }
 
-/** Map Vercel's x-vercel-ip-country (ISO 3166-1 alpha-2) → locale */
+/** Map ISO 3166-1 alpha-2 country code → locale.
+ *  Header priority: cf-ipcountry (Cloudflare) → absent (skip GeoIP). */
 const countryToLocale: Record<string, Locale> = {
   // Dutch-speaking
   NL: "nl",
@@ -60,9 +61,11 @@ function detectLocale(request: NextRequest): Locale {
     if (matched) return matched;
   }
 
-  // 3. GeoIP country (Vercel provides this header)
-  const country = request.headers.get("x-vercel-ip-country");
-  if (country && countryToLocale[country]) {
+  // 3. GeoIP country — cf-ipcountry is set by Cloudflare (Hetzner + Coolify stack).
+  //    If Cloudflare is not in the chain the header is absent and we fall through.
+  const country =
+    request.headers.get("cf-ipcountry");
+  if (country && country !== "XX" && countryToLocale[country]) {
     return countryToLocale[country];
   }
 
