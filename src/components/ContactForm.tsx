@@ -45,7 +45,8 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
                     callback: (token: string) => setTurnstileToken(token),
                     "expired-callback": () => setTurnstileToken(null),
                     "error-callback": () => setTurnstileToken(null),
-                    size: "invisible",
+                    size: "flexible",
+                    appearance: "interaction-only",
                 });
             } else {
                 setTimeout(tryRender, 300);

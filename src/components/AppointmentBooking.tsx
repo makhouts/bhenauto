@@ -159,7 +159,8 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
           },
           "expired-callback": () => setTurnstileToken(null),
           "error-callback": () => { setTurnstileToken(null); pendingSubmit.current = false; },
-          size: "invisible",
+          size: "flexible",
+          appearance: "interaction-only",
         });
       } else {
         setTimeout(tryRender, 300);
