@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { submitContact } from "@/app/actions/contact";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, Loader2, ArrowRight, RotateCcw } from "lucide-react";
+import { CheckCircle2, Loader2, ArrowRight, RotateCcw, ShieldCheck } from "lucide-react";
 import { useFormSubmit } from "@/hooks/useFormSubmit";
 import type { ContactDict } from "@/lib/dictionaries";
 
@@ -19,7 +19,13 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
 
     // ── Turnstile ──────────────────────────────────────────────────────────────
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+    const [awaitingToken, setAwaitingToken] = useState(false);
     const turnstileRef = useRef<HTMLDivElement>(null);
+    const turnstileWidgetId = useRef<string | null>(null);
+    const pendingFormData = useRef<FormData | null>(null);
+
+    // Always-fresh ref — avoids stale closure in Turnstile callback
+    const doSubmitRef = useRef<(formData: FormData) => Promise<void>>(async () => {});
 
     useEffect(() => {
         // Load Turnstile script once
@@ -32,7 +38,6 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
             document.head.appendChild(script);
         }
 
-        // Render widget after script may have loaded
         const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
         if (!siteKey || !turnstileRef.current) return;
 
@@ -40,11 +45,24 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const w = window as any;
             if (w.turnstile && turnstileRef.current) {
-                w.turnstile.render(turnstileRef.current, {
+                turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
                     sitekey: siteKey,
-                    callback: (token: string) => setTurnstileToken(token),
+                    callback: (token: string) => {
+                        setTurnstileToken(token);
+                        setAwaitingToken(false);
+                        // If a submit was waiting for a fresh token, proceed now
+                        if (pendingFormData.current) {
+                            const fd = pendingFormData.current;
+                            pendingFormData.current = null;
+                            doSubmitRef.current(fd);
+                        }
+                    },
                     "expired-callback": () => setTurnstileToken(null),
-                    "error-callback": () => setTurnstileToken(null),
+                    "error-callback": () => {
+                        setTurnstileToken(null);
+                        setAwaitingToken(false);
+                        pendingFormData.current = null;
+                    },
                     size: "flexible",
                     appearance: "interaction-only",
                 });
@@ -58,13 +76,80 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
     // ── Wrap submitContact to inject Turnstile token + locale ─────────────────
     const submitFn = useCallback(
         async (formData: FormData) => {
-            if (turnstileToken) formData.set("cf-turnstile-response", turnstileToken);
             if (locale) formData.set("locale", locale);
             return submitContact(formData);
         },
-        [turnstileToken, locale]
+        [locale]
     );
-    const { isSubmitting, error, success, handleSubmit, reset } = useFormSubmit(submitFn);
+    const { isSubmitting, error, success, handleSubmit: baseHandleSubmit, reset } = useFormSubmit(submitFn);
+
+    // Keep ref fresh on every render so Turnstile callback always has live state
+    doSubmitRef.current = async (formData: FormData) => {
+        formData.set("cf-turnstile-response", turnstileToken ?? "");
+        if (locale) formData.set("locale", locale);
+        const result = await submitContact(formData);
+        // Re-use the hook's dispatch indirectly by triggering a synthetic submit
+        // We call baseHandleSubmit's underlying logic via a custom path below
+        // Instead: dispatch result through a local state update
+        if ("error" in result && result.error) {
+            setPendingError(result.error);
+        } else {
+            setPendingSuccess(true);
+        }
+        // Reset widget for next use
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const w = window as any;
+        if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
+    };
+
+    // Local state for the pending-submit path (bypasses useFormSubmit)
+    const [pendingError, setPendingError] = useState<string | null>(null);
+    const [pendingSuccess, setPendingSuccess] = useState(false);
+    const [isWaiting, setIsWaiting] = useState(false);
+
+    // Combine states: either the hook is submitting, or we're waiting for token, or we're in the pending path
+    const busy = isSubmitting || awaitingToken || isWaiting;
+    const showSuccess = success || pendingSuccess;
+    const showError = error || pendingError || null;
+
+    // ── Custom submit handler — waits for token if not ready ──────────────────
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setPendingError(null);
+
+        const formData = new FormData(e.currentTarget);
+
+        if (turnstileToken) {
+            // Token ready — use it immediately, then reset widget
+            formData.set("cf-turnstile-response", turnstileToken);
+            setTurnstileToken(null);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const w = window as any;
+            if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
+            // Submit via the hook
+            baseHandleSubmit(e);
+        } else {
+            // No token yet — queue the submission and trigger Turnstile
+            pendingFormData.current = formData;
+            setAwaitingToken(true);
+            setIsWaiting(true);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const w = window as any;
+            if (turnstileWidgetId.current) {
+                w.turnstile?.reset(turnstileWidgetId.current);
+            }
+        }
+    };
+
+    // ── Reset handler ──────────────────────────────────────────────────────────
+    const handleReset = () => {
+        reset();
+        setPendingError(null);
+        setPendingSuccess(false);
+        setIsWaiting(false);
+        setAwaitingToken(false);
+        pendingFormData.current = null;
+    };
 
     // ── shared input style ──
     const inputBase = dark
@@ -76,7 +161,7 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
         ? "block text-[10px] font-black text-slate-500 uppercase tracking-[0.18em] mb-2"
         : "block text-xs font-bold theme-text-muted uppercase tracking-widest mb-2";
 
-    if (success) {
+    if (showSuccess) {
         return (
             <div className={`p-8 text-center animate-fade-in relative overflow-hidden rounded-2xl flex flex-col items-center justify-center h-full min-h-[300px] ${dark ? "bg-white/4 border border-white/8" : "shadow-sm"}`} style={!dark ? { backgroundColor: 'var(--theme-surface)', border: '1px solid var(--theme-border)' } : {}}>
                 {dark && <div className="absolute inset-0 bg-[#d91c1c]/5 blur-3xl rounded-full" />}
@@ -90,7 +175,7 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
                     {dict.successBody}
                 </p>
                 <button
-                    onClick={reset}
+                    onClick={handleReset}
                     className={`mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold uppercase tracking-widest transition-all duration-300 ${dark ? "border border-white/10 text-slate-300 hover:text-white hover:border-white/20 hover:bg-white/6" : "theme-text-secondary shadow-sm"}`}
                     style={!dark ? { border: '1px solid var(--theme-border)', backgroundColor: 'var(--theme-surface)' } : {}}
                 >
@@ -103,9 +188,9 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
+            {showError && (
                 <div className={`p-4 text-sm animate-fade-in rounded-xl border ${dark ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-red-500/10 border-red-500 text-red-500"}`}>
-                    {error}
+                    {showError}
                 </div>
             )}
 
@@ -133,7 +218,7 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
                         id="name"
                         name="name"
                         required
-                        disabled={isSubmitting}
+                        disabled={busy}
                         className={inputBase}
                         style={!dark ? { backgroundColor: 'var(--theme-input-bg)', border: '1px solid var(--theme-input-border)' } : {}}
                         placeholder={dict.placeholderName}
@@ -147,7 +232,7 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
                         type="tel"
                         id="phone"
                         name="phone"
-                        disabled={isSubmitting}
+                        disabled={busy}
                         className={inputBase}
                         style={!dark ? { backgroundColor: 'var(--theme-input-bg)', border: '1px solid var(--theme-input-border)' } : {}}
                         placeholder={dict.placeholderPhone}
@@ -165,7 +250,7 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
                     id="email"
                     name="email"
                     required
-                    disabled={isSubmitting}
+                    disabled={busy}
                     className={inputBase}
                     style={!dark ? { backgroundColor: 'var(--theme-input-bg)', border: '1px solid var(--theme-input-border)' } : {}}
                     placeholder={dict.placeholderEmail}
@@ -182,7 +267,7 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
                     name="message"
                     rows={5}
                     required
-                    disabled={isSubmitting}
+                    disabled={busy}
                     className={`${inputBase} resize-none`}
                     style={!dark ? { backgroundColor: 'var(--theme-input-bg)', border: '1px solid var(--theme-input-border)' } : {}}
                     placeholder={dict.placeholderMessage}
@@ -195,13 +280,18 @@ export default function ContactForm({ dark = false, dict, locale }: ContactFormP
             {/* Submit */}
             <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={busy}
                 className="group w-full bg-[#d91c1c] hover:bg-[#b91515] text-white py-3.5 font-black rounded-xl uppercase tracking-widest text-sm flex justify-center items-center gap-2 transition-all duration-300 shadow-lg shadow-[#d91c1c]/20 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-xl hover:shadow-[#d91c1c]/30 hover:-translate-y-0.5 relative overflow-hidden"
             >
                 {/* shimmer */}
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500 ease-in-out" />
                 <span className="relative flex items-center gap-2">
-                    {isSubmitting ? (
+                    {awaitingToken ? (
+                        <>
+                            <ShieldCheck size={16} className="animate-pulse" />
+                            {dict.verifying}
+                        </>
+                    ) : busy ? (
                         <>
                             <Loader2 className="animate-spin" size={16} />
                             {dict.submitting}

@@ -126,6 +126,10 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
   const turnstileWidgetId = useRef<string | null>(null);
   const pendingSubmit = useRef(false);
 
+  // Always-fresh ref to doBooking — avoids stale closure in Turnstile callback
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const doBookingRef = useRef<(token: string) => void>(() => {});
+
   // Load Turnstile script once
   useEffect(() => {
     if (document.getElementById("cf-turnstile-script")) return;
@@ -154,7 +158,7 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
             // If submit was waiting for a fresh token, proceed now
             if (pendingSubmit.current) {
               pendingSubmit.current = false;
-              doBooking(token);
+              doBookingRef.current(token);
             }
           },
           "expired-callback": () => setTurnstileToken(null),
@@ -231,7 +235,9 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
     return Object.keys(errors).length === 0;
   };
 
-  const doBooking = (token: string) => {
+  // Keep the ref up-to-date on every render so the Turnstile callback always
+  // reads the latest formData / selectedDate / selectedSlot / selectedService.
+  doBookingRef.current = (token: string) => {
     startSubmit(async () => {
       const result = await bookAppointment({
         dateStr: selectedDate!,
@@ -252,6 +258,8 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
       }
     });
   };
+
+  const doBooking = (token: string) => doBookingRef.current(token);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

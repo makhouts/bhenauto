@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Phone, Mail, ArrowLeft, CheckCircle2, Loader2, ArrowRight, RotateCcw } from "lucide-react";
+import { Phone, Mail, ArrowLeft, CheckCircle2, Loader2, ArrowRight, RotateCcw, ShieldCheck } from "lucide-react";
 import { submitContact } from "@/app/actions/contact";
-import { useFormSubmit } from "@/hooks/useFormSubmit";
 import type { CarDetailDict } from "@/lib/dictionaries";
 
 interface CarContactPanelProps {
@@ -18,9 +17,18 @@ interface CarContactPanelProps {
 
 // ── Inline form (no router dependency, receives carSlug directly) ──────────
 function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlug: string; carTitle: string; onBack: () => void; dict: CarDetailDict; locale: string }) {
-    // ── Turnstile (invisible) ─────────────────────────────────────────────────
+    // ── State ─────────────────────────────────────────────────────────────────
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+    const [awaitingToken, setAwaitingToken] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
     const turnstileRef = useRef<HTMLDivElement>(null);
+    const turnstileWidgetId = useRef<string | null>(null);
+    const pendingFormData = useRef<FormData | null>(null);
+
+    // Always-fresh ref — avoids stale closure in Turnstile callback
+    const doSubmitRef = useRef<(formData: FormData, token: string) => Promise<void>>(async () => {});
 
     useEffect(() => {
         if (!document.getElementById("cf-turnstile-script")) {
@@ -37,11 +45,24 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const w = window as any;
             if (w.turnstile && turnstileRef.current) {
-                w.turnstile.render(turnstileRef.current, {
+                turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
                     sitekey: siteKey,
-                    callback: (token: string) => setTurnstileToken(token),
+                    callback: (token: string) => {
+                        setTurnstileToken(token);
+                        setAwaitingToken(false);
+                        // If a submit was waiting for a fresh token, proceed now
+                        if (pendingFormData.current) {
+                            const fd = pendingFormData.current;
+                            pendingFormData.current = null;
+                            doSubmitRef.current(fd, token);
+                        }
+                    },
                     "expired-callback": () => setTurnstileToken(null),
-                    "error-callback": () => setTurnstileToken(null),
+                    "error-callback": () => {
+                        setTurnstileToken(null);
+                        setAwaitingToken(false);
+                        pendingFormData.current = null;
+                    },
                     size: "flexible",
                     appearance: "interaction-only",
                 });
@@ -52,15 +73,58 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
         tryRender();
     }, []);
 
-    const submitFn = useCallback(
-        async (formData: FormData) => {
-            if (turnstileToken) formData.set("cf-turnstile-response", turnstileToken);
-            formData.set("locale", locale);
-            return submitContact(formData);
-        },
-        [turnstileToken, locale]
-    );
-    const { isSubmitting, error, success, handleSubmit, reset } = useFormSubmit(submitFn);
+    // Keep ref fresh on every render
+    doSubmitRef.current = async (formData: FormData, token: string) => {
+        setIsSubmitting(true);
+        setError(null);
+        formData.set("cf-turnstile-response", token);
+        formData.set("locale", locale);
+        try {
+            const result = await submitContact(formData);
+            if (result.error) {
+                setError(result.error);
+            } else {
+                setSuccess(true);
+            }
+        } catch {
+            setError("Une erreur inattendue s'est produite.");
+        } finally {
+            setIsSubmitting(false);
+            // Reset widget for next use
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const w = window as any;
+            if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
+            setTurnstileToken(null);
+        }
+    };
+
+    const busy = isSubmitting || awaitingToken;
+
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setError(null);
+        const formData = new FormData(e.currentTarget);
+        if (turnstileToken) {
+            // Token ready — use it immediately
+            const token = turnstileToken;
+            setTurnstileToken(null);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const w = window as any;
+            if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
+            doSubmitRef.current(formData, token);
+        } else {
+            // No token yet — queue and wait
+            pendingFormData.current = formData;
+            setAwaitingToken(true);
+        }
+    };
+
+    const reset = () => {
+        setSuccess(false);
+        setError(null);
+        setAwaitingToken(false);
+        pendingFormData.current = null;
+    };
 
     const inputBase =
         "w-full px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] transition-colors font-medium theme-text placeholder:theme-text-faint disabled:opacity-50";
@@ -118,7 +182,7 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
                     </label>
                     <input
                         type="text" id="cf-name" name="name" required
-                        disabled={isSubmitting}
+                        disabled={busy}
                         className={inputBase}
                         style={{ backgroundColor: "var(--theme-input-bg)", border: "1px solid var(--theme-input-border)" }}
                         placeholder={dict.formPlaceholderName}
@@ -128,7 +192,7 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
                     <label htmlFor="cf-phone" className={labelBase}>{dict.formFieldPhone}</label>
                     <input
                         type="tel" id="cf-phone" name="phone"
-                        disabled={isSubmitting}
+                        disabled={busy}
                         className={inputBase}
                         style={{ backgroundColor: "var(--theme-input-bg)", border: "1px solid var(--theme-input-border)" }}
                         placeholder={dict.formPlaceholderPhone}
@@ -143,7 +207,7 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
                 </label>
                 <input
                     type="email" id="cf-email" name="email" required
-                    disabled={isSubmitting}
+                    disabled={busy}
                     className={inputBase}
                     style={{ backgroundColor: "var(--theme-input-bg)", border: "1px solid var(--theme-input-border)" }}
                     placeholder={dict.formPlaceholderEmail}
@@ -157,7 +221,7 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
                 </label>
                 <textarea
                     id="cf-message" name="message" rows={4} required
-                    disabled={isSubmitting}
+                    disabled={busy}
                     className={`${inputBase} resize-none`}
                     style={{ backgroundColor: "var(--theme-input-bg)", border: "1px solid var(--theme-input-border)" }}
                     placeholder={`${dict.ctaAskQuestion}: ${carTitle}…`}
@@ -170,12 +234,14 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
             {/* Submit */}
             <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={busy}
                 className="group relative w-full bg-[#d91c1c] hover:bg-[#b91515] text-white py-3 font-black rounded-xl uppercase tracking-widest text-xs flex justify-center items-center gap-2 transition-all duration-300 shadow-lg shadow-[#d91c1c]/20 disabled:opacity-60 disabled:cursor-not-allowed hover:shadow-xl hover:shadow-[#d91c1c]/30 hover:-translate-y-0.5 overflow-hidden"
             >
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500 ease-in-out" />
                 <span className="relative flex items-center gap-2">
-                    {isSubmitting ? (
+                    {awaitingToken ? (
+                        <><ShieldCheck size={14} className="animate-pulse" /> {dict.formVerifying}</>
+                    ) : isSubmitting ? (
                         <><Loader2 className="animate-spin" size={14} /> {dict.formSubmitting}</>
                     ) : (
                         <>{dict.formSubmit} <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform duration-300" /></>
