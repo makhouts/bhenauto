@@ -110,6 +110,8 @@ type AdminCreateInput = {
   dateStr: string; timeSlot: string;
   name: string; email: string; phone: string; service: string; notes?: string;
   durationHours?: number;
+  sendConfirmation?: boolean;
+  emailLocale?: "nl" | "fr" | "en";
 };
 
 export async function createAdminAppointment(
@@ -137,10 +139,24 @@ export async function createAdminAppointment(
           phone: input.phone.trim(), service: input.service,
           notes: input.notes?.trim() || null, status: "confirmed",
           durationHours: input.durationHours ?? 1,
+          locale: input.emailLocale ?? "fr",
         },
       });
     });
     revalidatePath("/admin/appointments");
+
+    if (input.sendConfirmation) {
+      sendAppointmentConfirmed({
+        name: apt.name,
+        email: apt.email,
+        date: apt.date,
+        timeSlot: apt.timeSlot,
+        service: apt.service,
+        notes: apt.notes,
+        locale: input.emailLocale ?? "fr",
+      }).catch(() => {/* already logged inside sendMail */});
+    }
+
     return { success: true, id: apt.id };
   } catch (e: unknown) {
     return { error: e instanceof Error ? e.message : "Er is een onverwachte fout opgetreden." };
@@ -157,6 +173,8 @@ type AdminUpdateInput = {
   status: "pending" | "confirmed" | "cancelled";
   name: string; email: string; phone: string; service: string; notes?: string;
   durationHours?: number;
+  sendConfirmation?: boolean;
+  emailLocale?: "nl" | "fr" | "en";
 };
 
 export async function updateAppointment(
@@ -203,6 +221,19 @@ export async function updateAppointment(
       });
     });
     revalidatePath("/admin/appointments");
+
+    if (input.sendConfirmation) {
+      sendAppointmentConfirmed({
+        name: input.name.trim(),
+        email: input.email.trim().toLowerCase(),
+        date: utcDate,
+        timeSlot: input.timeSlot,
+        service: input.service,
+        notes: input.notes?.trim() || null,
+        locale: input.emailLocale ?? "fr",
+      }).catch(() => {/* already logged inside sendMail */});
+    }
+
     return { success: true };
   } catch (e: unknown) {
     return { error: e instanceof Error ? e.message : "Er is een onverwachte fout opgetreden." };

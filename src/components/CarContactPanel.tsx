@@ -17,7 +17,7 @@ interface CarContactPanelProps {
 }
 
 // ── Inline form (no router dependency, receives carSlug directly) ──────────
-function InlineContactForm({ carSlug, carTitle, onBack, dict }: { carSlug: string; carTitle: string; onBack: () => void; dict: CarDetailDict }) {
+function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlug: string; carTitle: string; onBack: () => void; dict: CarDetailDict; locale: string }) {
     // ── Turnstile (invisible) ─────────────────────────────────────────────────
     const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
     const turnstileRef = useRef<HTMLDivElement>(null);
@@ -54,9 +54,10 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict }: { carSlug: strin
     const submitFn = useCallback(
         async (formData: FormData) => {
             if (turnstileToken) formData.set("cf-turnstile-response", turnstileToken);
+            formData.set("locale", locale);
             return submitContact(formData);
         },
-        [turnstileToken]
+        [turnstileToken, locale]
     );
     const { isSubmitting, error, success, handleSubmit, reset } = useFormSubmit(submitFn);
 
@@ -310,7 +311,7 @@ export default function CarContactPanel({ lang, carSlug, carTitle, whatsappUrl, 
                 {/* Divider */}
                 <div className="h-px mb-5" style={{ background: "var(--theme-border-subtle)" }} />
 
-                <InlineContactForm carSlug={carSlug} carTitle={carTitle} onBack={() => setShowForm(false)} dict={dict} />
+                <InlineContactForm carSlug={carSlug} carTitle={carTitle} onBack={() => setShowForm(false)} dict={dict} locale={lang} />
             </div>
         </div>
     );

@@ -10,9 +10,10 @@ import type { ContactDict } from "@/lib/dictionaries";
 interface ContactFormProps {
     dark?: boolean;
     dict: ContactDict;
+    locale?: string;
 }
 
-export default function ContactForm({ dark = false, dict }: ContactFormProps) {
+export default function ContactForm({ dark = false, dict, locale }: ContactFormProps) {
     const searchParams = useSearchParams();
     const carRef = searchParams.get("car");
 
@@ -53,13 +54,14 @@ export default function ContactForm({ dark = false, dict }: ContactFormProps) {
         tryRender();
     }, []);
 
-    // ── Wrap submitContact to inject Turnstile token ───────────────────────────
+    // ── Wrap submitContact to inject Turnstile token + locale ─────────────────
     const submitFn = useCallback(
         async (formData: FormData) => {
             if (turnstileToken) formData.set("cf-turnstile-response", turnstileToken);
+            if (locale) formData.set("locale", locale);
             return submitContact(formData);
         },
-        [turnstileToken]
+        [turnstileToken, locale]
     );
     const { isSubmitting, error, success, handleSubmit, reset } = useFormSubmit(submitFn);
 

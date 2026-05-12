@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { getDictionary } from "@/lib/dictionaries";
+import type { Locale } from "@/lib/i18n";
 
 // ─── Rate limiter: 3 submissions per hour per IP (self-hosted: in-memory is reliable) ──
 const rateLimitMap = new Map<string, number[]>();
@@ -20,11 +22,15 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function submitContact(formData: FormData) {
+  const locale = formData.get("locale") as string | null;
+  const safeLocale = (locale === "nl" || locale === "fr" || locale === "en" ? locale : "fr") as Locale;
+  const dict = await getDictionary(safeLocale);
+  const e = (key: keyof typeof dict.errors) => dict.errors[key];
+
   try {
     // ── Layer 1: Honeypot — bots fill hidden fields ──────────────────────────
     const honeypot = formData.get("website") as string;
     if (honeypot) {
-      // Silent success — don't reveal the check to bots
       return { success: true };
     }
 
@@ -32,14 +38,14 @@ export async function submitContact(formData: FormData) {
     const turnstileToken = formData.get("cf-turnstile-response") as string | null;
     const turnstileValid = await verifyTurnstile(turnstileToken);
     if (!turnstileValid) {
-      return { error: "Beveiligingscontrole mislukt. Vernieuw de pagina en probeer opnieuw." };
+      return { error: e("turnstileFailed") };
     }
 
     // ── Layer 3: Rate limiting — 3/hour per IP ────────────────────────────────
     const headerStore = await headers();
     const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
     if (isRateLimited(ip)) {
-      return { error: "Te veel verzoeken. Probeer het over een uur opnieuw." };
+      return { error: e("rateLimited") };
     }
 
     // ── Extract & sanitize inputs ─────────────────────────────────────────────
@@ -51,11 +57,11 @@ export async function submitContact(formData: FormData) {
 
     // ── Validation ────────────────────────────────────────────────────────────
     if (!name || !email || !message) {
-      return { error: "Naam, e-mailadres en bericht zijn verplichte velden." };
+      return { error: e("contactMissing") };
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return { error: "Ongeldig e-mailadres." };
+      return { error: e("invalidEmail") };
     }
 
     // ── Store in database ─────────────────────────────────────────────────────
@@ -67,6 +73,6 @@ export async function submitContact(formData: FormData) {
     return { success: true };
   } catch (error) {
     console.error("Failed to submit contact form:", error);
-    return { error: "Er is een onverwachte fout opgetreden. Probeer het later opnieuw." };
+    return { error: e("unexpected") };
   }
 }

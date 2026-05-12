@@ -8,6 +8,8 @@ import { startOfDay, isBefore, format } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { sendBookingReceived } from "@/lib/appointment-emails";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { getDictionary } from "@/lib/dictionaries";
+import type { Locale } from "@/lib/i18n";
 
 // Rate limiter: 2 booking attempts per hour per IP (self-hosted: in-memory is reliable)
 const bookingRateLimit = new Map<string, number[]>();
@@ -208,30 +210,34 @@ type BookingResult = { success: true; id: string } | { error: string };
 export async function bookAppointment(input: BookingInput): Promise<BookingResult> {
   const { dateStr, timeSlot, name, email, phone, service, notes, locale, turnstileToken } = input;
 
+  const safeLocale = (locale === "nl" || locale === "fr" || locale === "en" ? locale : "fr") as Locale;
+  const dict = await getDictionary(safeLocale);
+  const e = (key: keyof typeof dict.errors) => dict.errors[key];
+
   // ── Layer 1: Turnstile CAPTCHA ───────────────────────────────────────────
   const turnstileValid = await verifyTurnstile(turnstileToken);
   if (!turnstileValid) {
-    return { error: "Beveiligingscontrole mislukt. Vernieuw de pagina en probeer opnieuw." };
+    return { error: e("turnstileFailed") };
   }
 
   // ── Layer 2: Rate limiting — 2/hour per IP ───────────────────────────────
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (isRateLimited(ip)) {
-    return { error: "Te veel verzoeken. Probeer het over een uur opnieuw." };
+    return { error: e("rateLimited") };
   }
 
   if (!dateStr || !timeSlot || !name || !email || !phone || !service) {
-    return { error: "Alle verplichte velden moeten worden ingevuld." };
+    return { error: e("missingFields") };
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return { error: "Ongeldig e-mailadres." };
+    return { error: e("invalidEmail") };
   }
 
   if (!(APPOINTMENT_CONFIG.services as readonly string[]).includes(service)) {
-    return { error: "Ongeldige service geselecteerd." };
+    return { error: e("invalidService") };
   }
 
   // ── Layer 3: Per-email 24h lock — same email can't book multiple times ───
@@ -245,12 +251,12 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
     select: { id: true },
   });
   if (recentBooking) {
-    return { error: "Er staat al een afspraak open voor dit e-mailadres. Neem contact op via telefoon of WhatsApp." };
+    return { error: e("emailLocked") };
   }
 
   const allSlots = generateDaySlots();
   if (!allSlots.includes(timeSlot)) {
-    return { error: "Ongeldig tijdslot." };
+    return { error: e("invalidSlot") };
   }
 
   const [year, month, day] = dateStr.split("-").map(Number);
@@ -264,12 +270,12 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
 
   // Reject today and past — bookings only from tomorrow onwards
   if (isBefore(startOfDay(localSelectedDay), tomorrowLocal)) {
-    return { error: "Afspraken kunnen pas vanaf morgen worden gepland." };
+    return { error: e("pastDate") };
   }
 
   const dayOfWeek = localSelectedDay.getDay();
   if (!(APPOINTMENT_CONFIG.workingDays as number[]).includes(dayOfWeek)) {
-    return { error: "Geselecteerde dag is geen werkdag." };
+    return { error: e("notWorkingDay") };
   }
 
   try {
@@ -285,7 +291,7 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
         },
       });
       if (blockedEntry) {
-        throw new Error("Dit tijdslot is niet beschikbaar.");
+        throw new Error(e("slotUnavailable"));
       }
 
       // Check if slot is directly booked
@@ -298,7 +304,7 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
       });
 
       if (slotCount >= APPOINTMENT_CONFIG.maxBookingsPerSlot) {
-        throw new Error("Dit tijdslot is zojuist geboekt door iemand anders. Kies een ander tijdslot.");
+        throw new Error(e("slotJustBooked"));
       }
 
       // Check if slot is covered by a multi-hour appointment starting earlier
@@ -316,7 +322,7 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
         const aptStart = allSlots.indexOf(apt.timeSlot);
         const aptEnd = aptStart + (apt.durationHours ?? 1);
         if (slotIdx >= aptStart && slotIdx < aptEnd) {
-          throw new Error("Dit tijdslot is bezet door een lopende afspraak. Kies een ander tijdslot.");
+          throw new Error(e("slotCoveredByApt"));
         }
       }
 
@@ -347,6 +353,6 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
     return { success: true, id: appointment.id };
   } catch (err: unknown) {
     if (err instanceof Error) return { error: err.message };
-    return { error: "Er is een onverwachte fout opgetreden. Probeer opnieuw." };
+    return { error: e("unexpected") };
   }
 }

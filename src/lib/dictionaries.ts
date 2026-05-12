@@ -20,6 +20,7 @@ export type FooterDict       = Dictionary['footer'];
 export type CommonDict       = Dictionary['common'];
 export type NotFoundDict     = Dictionary['notFound'];
 export type CarDetailDict    = Dictionary['carDetail'];
+export type ErrorsDict       = Dictionary['errors'];
 
 /**
  * Lazy-load dictionaries per locale — only the requested locale is imported.

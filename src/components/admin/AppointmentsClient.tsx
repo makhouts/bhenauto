@@ -232,11 +232,12 @@ export default function AppointmentsClient({
                   </div>
                 ))}
               </div>
-              {weekDays.map(day=>{
+              {weekDays.map((day,dayIdx)=>{
                 const ds=format(day,"yyyy-MM-dd");
                 const tod=isToday(day);
                 const dayBlocked=blockedDays.has(ds);
                 const renderedSlots = new Set<string>();
+                const flipLeft = dayIdx >= weekDays.length - 2;
                 return(
                   <div key={ds} className="relative border-r border-slate-100 last:border-r-0">
                     {ALL_SLOTS.map((slot)=>{
@@ -291,6 +292,7 @@ export default function AppointmentsClient({
                             const cardH=dur*ROW_H-4;
                             const startIdx=ALL_SLOTS.indexOf(apt.timeSlot);
                             const maxExtra=ALL_SLOTS.length-startIdx-dur;
+                            const flipUp = ALL_SLOTS.length - startIdx <= 4;
                             return(
                               <div key={apt.id} className="relative">
                                 <div id={`apt-card-${apt.id}`} style={{height:cardH,zIndex:20}}
@@ -302,7 +304,7 @@ export default function AppointmentsClient({
                                   </button>
                                   <DragHandle apt={apt} maxExtra={maxExtra} onResize={handleResizeDrag}/>
                                 </div>
-                                {popoverId===apt.id&&<CalendarPopover apt={apt} onClose={()=>dispatch({type:"SET_POPOVER",id:null})} onEdit={()=>openEdit(apt)} onConfirm={openConfirm} onCancel={handleCancel} isPending={isPending}/>}
+                                {popoverId===apt.id&&<CalendarPopover apt={apt} flipUp={flipUp} flipLeft={flipLeft} onClose={()=>dispatch({type:"SET_POPOVER",id:null})} onEdit={()=>openEdit(apt)} onConfirm={openConfirm} onCancel={handleCancel} isPending={isPending}/>}
                               </div>
                             );
                           })}
@@ -901,6 +903,28 @@ function AptModal({title,icon,form,setForm,errors,serverError,submitting,pickerM
                 <Field label="Dienst *" id="f-svc" error={errors.service} cls="sm:col-span-2"><select id="f-svc" value={form.service} onChange={e=>setForm({...form,service:e.target.value})} className={ic(!!errors.service)+" bg-white"}><option value="">Selecteer een dienst...</option>{APPOINTMENT_CONFIG.services.map(s=><option key={s} value={s}>{s}</option>)}</select></Field>
                 <Field label="Opmerkingen" id="f-notes" cls="sm:col-span-2"><textarea id="f-notes" rows={2} placeholder="Optionele notitie…" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className={ic(false)+" resize-none"}/></Field>
               </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-3">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" checked={form.sendConfirmation} onChange={e=>setForm({...form,sendConfirmation:e.target.checked})} className="mt-0.5 w-4 h-4 accent-[#d91c1c] cursor-pointer"/>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Bevestigingsmail sturen</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Stuur een bevestigingsmail naar de klant met de afspraakdetails.</p>
+                    </div>
+                  </label>
+                  {form.sendConfirmation&&(
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Taal e-mail</label>
+                      <div className="flex gap-1.5">
+                        {(["fr","nl","en"] as const).map(loc=>(
+                          <button key={loc} type="button" onClick={()=>setForm({...form,emailLocale:loc})}
+                            className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all ${form.emailLocale===loc?"bg-[#d91c1c] border-[#d91c1c] text-white":"bg-white border-slate-200 text-slate-600 hover:border-[#d91c1c] hover:text-[#d91c1c]"}`}>
+                            {loc==="fr"?"Français":loc==="nl"?"Nederlands":"English"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
               {serverError&&<div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 font-medium"><X size={15} className="shrink-0 mt-0.5"/>{serverError}</div>}
               {infoNote&&<p className="text-xs text-slate-400 font-medium bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">{infoNote}</p>}
               <div className="flex gap-3">
@@ -924,13 +948,13 @@ function Field({label,id,error,children,cls=""}:{label:string;id:string;error?:s
 
 // ─── Calendar cell popover ────────────────────────────────────────────────────
 
-function CalendarPopover({apt,onClose,onEdit,onConfirm,onCancel,isPending}:{
+function CalendarPopover({apt,onClose,onEdit,onConfirm,onCancel,isPending,flipUp,flipLeft}:{
     apt:Appointment;onClose:()=>void;onEdit:()=>void;
-    onConfirm:(id:string)=>void;onCancel:(id:string)=>void;isPending:boolean;
+    onConfirm:(id:string)=>void;onCancel:(id:string)=>void;isPending:boolean;flipUp?:boolean;flipLeft?:boolean;
 }){return(
-    <div className="relative z-30 mt-1">
+    <div className="relative z-30">
       <div className="fixed inset-0 z-10" onClick={onClose}/>
-      <div className="absolute left-0 top-0 z-30 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-4">
+      <div className={`absolute z-30 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-4 ${flipUp?"bottom-full mb-1":"top-0 mt-1"} ${flipLeft?"right-0":"left-0"}`}>
         <div className="flex items-start justify-between mb-3">
           <div>
             <p className="font-black text-slate-900 text-sm">{apt.name}</p>

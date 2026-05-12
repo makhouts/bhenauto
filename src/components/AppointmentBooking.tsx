@@ -123,6 +123,8 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
   // Turnstile
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
+  const pendingSubmit = useRef(false);
 
   // Load Turnstile script once
   useEffect(() => {
@@ -135,7 +137,7 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
     document.head.appendChild(script);
   }, []);
 
-  // Render widget when details step mounts — retry until CF script is ready
+  // Render widget when details step mounts — use execution:"execute" so we control when it fires
   useEffect(() => {
     if (step !== "details" || !turnstileRef.current) return;
     const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -144,11 +146,19 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const w = window as any;
       if (w.turnstile && turnstileRef.current) {
-        w.turnstile.render(turnstileRef.current, {
+        turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
           sitekey: siteKey,
-          callback: (token: string) => setTurnstileToken(token),
+          execution: "execute",
+          callback: (token: string) => {
+            setTurnstileToken(token);
+            // If submit was waiting for a fresh token, proceed now
+            if (pendingSubmit.current) {
+              pendingSubmit.current = false;
+              doBooking(token);
+            }
+          },
           "expired-callback": () => setTurnstileToken(null),
-          "error-callback": () => setTurnstileToken(null),
+          "error-callback": () => { setTurnstileToken(null); pendingSubmit.current = false; },
           size: "invisible",
         });
       } else {
@@ -156,6 +166,7 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
       }
     };
     tryRender();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
 
@@ -219,29 +230,49 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate() || !selectedDate || !selectedSlot) return;
-    setSubmitError(null);
+  const doBooking = (token: string) => {
     startSubmit(async () => {
       const result = await bookAppointment({
-        dateStr: selectedDate,
-        timeSlot: selectedSlot,
+        dateStr: selectedDate!,
+        timeSlot: selectedSlot!,
         ...formData,
         service: selectedService || formData.service,
         locale,
-        turnstileToken: turnstileToken ?? undefined,
+        turnstileToken: token,
       });
       if ("error" in result) {
         setSubmitError(result.error);
-        // Reset token after failed attempt so user can retry
         setTurnstileToken(null);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (window as any).turnstile?.reset();
+        const w = window as any;
+        if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
       } else {
         setStep("success");
       }
     });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate() || !selectedDate || !selectedSlot) return;
+    setSubmitError(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    if (turnstileToken) {
+      // Token is fresh — use it immediately and reset for any future submit
+      const token = turnstileToken;
+      setTurnstileToken(null);
+      if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
+      doBooking(token);
+    } else {
+      // No token yet (expired or not run) — reset first then execute to avoid
+      // "already executing" error if the widget is mid-challenge from a prior attempt
+      pendingSubmit.current = true;
+      if (turnstileWidgetId.current) {
+        w.turnstile?.reset(turnstileWidgetId.current);
+        w.turnstile?.execute(turnstileWidgetId.current);
+      }
+    }
   };
 
   // ── Calendar grid ─────────────────────────────────────────────────────────

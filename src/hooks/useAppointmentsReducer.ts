@@ -38,9 +38,11 @@ export interface AptForm {
     notes: string; dateStr: string; slot: string;
     status: "pending" | "confirmed" | "cancelled";
     durationHours: number;
+    sendConfirmation: boolean;
+    emailLocale: "nl" | "fr" | "en";
 }
 
-const EMPTY_FORM: AptForm = { name: "", email: "", phone: "", service: "", notes: "", dateStr: "", slot: "", status: "confirmed", durationHours: 1 };
+const EMPTY_FORM: AptForm = { name: "", email: "", phone: "", service: "", notes: "", dateStr: "", slot: "", status: "confirmed", durationHours: 1, sendConfirmation: true, emailLocale: "fr" };
 
 interface BlockForm {
     dateStr: string;
@@ -427,6 +429,7 @@ export function useAppointmentsReducer(
                 service: apt.service, notes: apt.notes ?? "", dateStr: ds,
                 slot: apt.timeSlot, status: apt.status as "pending" | "confirmed" | "cancelled",
                 durationHours: apt.durationHours ?? 1,
+                sendConfirmation: false, emailLocale: "fr",
             },
             month: new Date(ds),
         });
@@ -448,6 +451,8 @@ export function useAppointmentsReducer(
                 name: state.createForm.name, email: state.createForm.email,
                 phone: state.createForm.phone, service: state.createForm.service,
                 notes: state.createForm.notes, durationHours: dur,
+                sendConfirmation: state.createForm.sendConfirmation,
+                emailLocale: state.createForm.emailLocale,
             });
             if ("error" in r) { dispatch({ type: "SET_CREATE_ERROR", error: r.error }); return; }
             const [y, m, d] = state.createForm.dateStr.split("-").map(Number);
@@ -489,6 +494,8 @@ export function useAppointmentsReducer(
                 status: state.editForm.status, name: state.editForm.name, email: state.editForm.email,
                 phone: state.editForm.phone, service: state.editForm.service, notes: state.editForm.notes,
                 durationHours: state.editForm.durationHours,
+                sendConfirmation: state.editForm.sendConfirmation,
+                emailLocale: state.editForm.emailLocale,
             });
             if ("error" in r) { dispatch({ type: "SET_EDIT_ERROR", error: r.error }); return; }
             const [y, m, d] = state.editForm.dateStr.split("-").map(Number);
