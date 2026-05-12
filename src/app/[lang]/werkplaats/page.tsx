@@ -48,9 +48,6 @@ export default async function WerkplaatsPage({
   const { lang } = await params;
   const locale: Locale = isValidLocale(lang) ? lang : "fr";
   const dict = await getDictionary(locale);
-  const w = dict.werkplaats;
-
-
 
   return (
     <main className="min-h-screen theme-bg">
@@ -65,7 +62,11 @@ export default async function WerkplaatsPage({
 
         {/* ── Inline appointment wizard ─────────────────────────────── */}
         <div id="afspraak-wizard" className="mb-16 scroll-mt-24">
-          <AppointmentBooking dict={dict.appointment} locale={locale} />
+          <AppointmentBooking
+            dict={dict.appointment}
+            locale={locale}
+            securityError={dict.errors.turnstileFailed}
+          />
         </div>
 
 

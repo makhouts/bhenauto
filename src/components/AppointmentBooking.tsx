@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useTransition, useRef } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import {
   format,
   parseISO,
@@ -14,7 +14,6 @@ import { nl, fr as frLocale, enGB } from "date-fns/locale";
 import {
   Wrench,
   Zap,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
   ArrowRight,
@@ -32,12 +31,12 @@ import {
   Microscope,
   MoreHorizontal,
 } from "lucide-react";
-import { APPOINTMENT_CONFIG } from "@/lib/appointmentConfig";
 import {
   getAvailableDates,
   getAvailableSlots,
   bookAppointment,
 } from "@/app/actions/appointments";
+import { useTurnstile } from "@/hooks/useTurnstile";
 import type { AppointmentDict } from "@/lib/dictionaries";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -69,7 +68,15 @@ function stepIndex(step: WizardStep): number {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function AppointmentBooking({ dict, locale = "fr" }: { dict: AppointmentDict; locale?: string }) {
+export default function AppointmentBooking({
+  dict,
+  locale = "fr",
+  securityError,
+}: {
+  dict: AppointmentDict;
+  locale?: string;
+  securityError?: string;
+}) {
   // Build services from dict to keep icons static but titles/descs dynamic
   const SERVICE_ICONS: Record<string, React.ElementType> = {
     "Onderhoud": Wrench,
@@ -120,59 +127,12 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
 
-  // Turnstile
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const turnstileRef = useRef<HTMLDivElement>(null);
-  const turnstileWidgetId = useRef<string | null>(null);
-  const pendingSubmit = useRef(false);
-
-  // Always-fresh ref to doBooking — avoids stale closure in Turnstile callback
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const doBookingRef = useRef<(token: string) => void>(() => {});
-
-  // Load Turnstile script once
-  useEffect(() => {
-    if (document.getElementById("cf-turnstile-script")) return;
-    const script = document.createElement("script");
-    script.id = "cf-turnstile-script";
-    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-  }, []);
-
-  // Render widget when details step mounts — use execution:"execute" so we control when it fires
-  useEffect(() => {
-    if (step !== "details" || !turnstileRef.current) return;
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-    if (!siteKey) return;
-    const tryRender = () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const w = window as any;
-      if (w.turnstile && turnstileRef.current) {
-        turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
-          sitekey: siteKey,
-          execution: "execute",
-          callback: (token: string) => {
-            setTurnstileToken(token);
-            // If submit was waiting for a fresh token, proceed now
-            if (pendingSubmit.current) {
-              pendingSubmit.current = false;
-              doBookingRef.current(token);
-            }
-          },
-          "expired-callback": () => setTurnstileToken(null),
-          "error-callback": () => { setTurnstileToken(null); pendingSubmit.current = false; },
-          size: "flexible",
-          appearance: "interaction-only",
-        });
-      } else {
-        setTimeout(tryRender, 300);
-      }
-    };
-    tryRender();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+  const {
+    containerRef: turnstileRef,
+    execute: executeTurnstile,
+    reset: resetTurnstile,
+    isVerifying,
+  } = useTurnstile({ action: "appointment" });
 
 
   // ── Fetch dates whenever step reaches "date" or month changes ─────────────
@@ -235,9 +195,7 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
     return Object.keys(errors).length === 0;
   };
 
-  // Keep the ref up-to-date on every render so the Turnstile callback always
-  // reads the latest formData / selectedDate / selectedSlot / selectedService.
-  doBookingRef.current = (token: string) => {
+  const doBooking = (token: string) => {
     startSubmit(async () => {
       const result = await bookAppointment({
         dateStr: selectedDate!,
@@ -249,38 +207,25 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
       });
       if ("error" in result) {
         setSubmitError(result.error);
-        setTurnstileToken(null);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const w = window as any;
-        if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
       } else {
         setStep("success");
       }
+      resetTurnstile();
     });
   };
 
-  const doBooking = (token: string) => doBookingRef.current(token);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting || isVerifying) return;
     if (!validate() || !selectedDate || !selectedSlot) return;
     setSubmitError(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    if (turnstileToken) {
-      // Token is fresh — use it immediately and reset for any future submit
-      const token = turnstileToken;
-      setTurnstileToken(null);
-      if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
+
+    try {
+      const token = await executeTurnstile();
       doBooking(token);
-    } else {
-      // No token yet (expired or not run) — reset first then execute to avoid
-      // "already executing" error if the widget is mid-challenge from a prior attempt
-      pendingSubmit.current = true;
-      if (turnstileWidgetId.current) {
-        w.turnstile?.reset(turnstileWidgetId.current);
-        w.turnstile?.execute(turnstileWidgetId.current);
-      }
+    } catch {
+      resetTurnstile();
+      setSubmitError(securityError ?? "Security check failed. Please refresh the page and try again.");
     }
   };
 
@@ -663,10 +608,12 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
               <div className="sm:col-span-2 flex justify-end pt-1">
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || isVerifying}
                   className="group inline-flex items-center gap-2 bg-[#d91c1c] text-white px-8 py-3.5 rounded-xl font-bold text-sm uppercase tracking-widest hover:bg-[#b91515] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-[#d91c1c]/20 hover:shadow-[#d91c1c]/40 hover:-translate-y-0.5 active:translate-y-0"
                 >
-                  {submitting ? (
+                  {isVerifying ? (
+                    <><ShieldCheck size={15} className="animate-pulse" /> {dict.verifying}</>
+                  ) : submitting ? (
                     <><Loader2 size={15} className="animate-spin" /> {dict.submitting}</>
                   ) : (
                     <>{dict.submitButton} <ArrowRight size={15} className="group-hover:translate-x-1 transition-transform duration-200" /></>
@@ -677,8 +624,8 @@ export default function AppointmentBooking({ dict, locale = "fr" }: { dict: Appo
               {/* Honeypot — invisible to users, bots fill it */}
               <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
-              {/* Cloudflare Turnstile — invisible widget */}
-              <div ref={turnstileRef} className="hidden" aria-hidden="true" />
+              {/* Cloudflare Turnstile */}
+              <div ref={turnstileRef} className="sm:col-span-2 flex justify-end" />
             </form>
           </div>
         )}

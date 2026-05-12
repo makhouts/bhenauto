@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Phone, Mail, ArrowLeft, CheckCircle2, Loader2, ArrowRight, RotateCcw, ShieldCheck } from "lucide-react";
 import { submitContact } from "@/app/actions/contact";
+import { useTurnstile } from "@/hooks/useTurnstile";
 import type { CarDetailDict } from "@/lib/dictionaries";
 
 interface CarContactPanelProps {
@@ -13,117 +14,68 @@ interface CarContactPanelProps {
     whatsappUrl: string;
     sold: boolean;
     dict: CarDetailDict;
+    securityError?: string;
 }
 
 // ── Inline form (no router dependency, receives carSlug directly) ──────────
-function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlug: string; carTitle: string; onBack: () => void; dict: CarDetailDict; locale: string }) {
+function InlineContactForm({
+    carSlug,
+    carTitle,
+    dict,
+    locale,
+    securityError,
+}: {
+    carSlug: string;
+    carTitle: string;
+    dict: CarDetailDict;
+    locale: string;
+    securityError?: string;
+}) {
     // ── State ─────────────────────────────────────────────────────────────────
-    const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-    const [awaitingToken, setAwaitingToken] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
-    const turnstileRef = useRef<HTMLDivElement>(null);
-    const turnstileWidgetId = useRef<string | null>(null);
-    const pendingFormData = useRef<FormData | null>(null);
+    const {
+        containerRef: turnstileRef,
+        execute: executeTurnstile,
+        reset: resetTurnstile,
+        isVerifying,
+    } = useTurnstile({ action: "car-contact", cData: carSlug.slice(0, 255) });
 
-    // Always-fresh ref — avoids stale closure in Turnstile callback
-    const doSubmitRef = useRef<(formData: FormData, token: string) => Promise<void>>(async () => {});
+    const busy = isSubmitting || isVerifying;
 
-    useEffect(() => {
-        if (!document.getElementById("cf-turnstile-script")) {
-            const script = document.createElement("script");
-            script.id = "cf-turnstile-script";
-            script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
-            script.async = true;
-            script.defer = true;
-            document.head.appendChild(script);
-        }
-        const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-        if (!siteKey || !turnstileRef.current) return;
-        const tryRender = () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const w = window as any;
-            if (w.turnstile && turnstileRef.current) {
-                turnstileWidgetId.current = w.turnstile.render(turnstileRef.current, {
-                    sitekey: siteKey,
-                    callback: (token: string) => {
-                        setTurnstileToken(token);
-                        setAwaitingToken(false);
-                        // If a submit was waiting for a fresh token, proceed now
-                        if (pendingFormData.current) {
-                            const fd = pendingFormData.current;
-                            pendingFormData.current = null;
-                            doSubmitRef.current(fd, token);
-                        }
-                    },
-                    "expired-callback": () => setTurnstileToken(null),
-                    "error-callback": () => {
-                        setTurnstileToken(null);
-                        setAwaitingToken(false);
-                        pendingFormData.current = null;
-                    },
-                    size: "flexible",
-                    appearance: "interaction-only",
-                });
-            } else {
-                setTimeout(tryRender, 300);
-            }
-        };
-        tryRender();
-    }, []);
-
-    // Keep ref fresh on every render
-    doSubmitRef.current = async (formData: FormData, token: string) => {
-        setIsSubmitting(true);
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (busy) return;
         setError(null);
-        formData.set("cf-turnstile-response", token);
-        formData.set("locale", locale);
+        const form = e.currentTarget;
+        const formData = new FormData(e.currentTarget);
+
         try {
+            setIsSubmitting(true);
+            const token = await executeTurnstile();
+            if (token) formData.set("cf-turnstile-response", token);
+            formData.set("locale", locale);
+
             const result = await submitContact(formData);
             if (result.error) {
                 setError(result.error);
             } else {
                 setSuccess(true);
+                form.reset();
             }
         } catch {
-            setError("Une erreur inattendue s'est produite.");
+            setError(securityError ?? "Security check failed. Please refresh the page and try again.");
         } finally {
+            resetTurnstile();
             setIsSubmitting(false);
-            // Reset widget for next use
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const w = window as any;
-            if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
-            setTurnstileToken(null);
-        }
-    };
-
-    const busy = isSubmitting || awaitingToken;
-
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        setError(null);
-        const formData = new FormData(e.currentTarget);
-        if (turnstileToken) {
-            // Token ready — use it immediately
-            const token = turnstileToken;
-            setTurnstileToken(null);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const w = window as any;
-            if (turnstileWidgetId.current) w.turnstile?.reset(turnstileWidgetId.current);
-            doSubmitRef.current(formData, token);
-        } else {
-            // No token yet — queue and wait
-            pendingFormData.current = formData;
-            setAwaitingToken(true);
         }
     };
 
     const reset = () => {
         setSuccess(false);
         setError(null);
-        setAwaitingToken(false);
-        pendingFormData.current = null;
+        resetTurnstile();
     };
 
     const inputBase =
@@ -228,8 +180,8 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
                 />
             </div>
 
-            {/* Cloudflare Turnstile — invisible widget */}
-            <div ref={turnstileRef} className="hidden" aria-hidden="true" />
+            {/* Cloudflare Turnstile */}
+            <div ref={turnstileRef} className="flex justify-center" />
 
             {/* Submit */}
             <button
@@ -239,7 +191,7 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
             >
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500 ease-in-out" />
                 <span className="relative flex items-center gap-2">
-                    {awaitingToken ? (
+                    {isVerifying ? (
                         <><ShieldCheck size={14} className="animate-pulse" /> {dict.formVerifying}</>
                     ) : isSubmitting ? (
                         <><Loader2 className="animate-spin" size={14} /> {dict.formSubmitting}</>
@@ -253,7 +205,7 @@ function InlineContactForm({ carSlug, carTitle, onBack, dict, locale }: { carSlu
 }
 
 // ── Main panel ─────────────────────────────────────────────────────────────
-export default function CarContactPanel({ lang, carSlug, carTitle, whatsappUrl, sold, dict }: CarContactPanelProps) {
+export default function CarContactPanel({ lang, carSlug, carTitle, whatsappUrl, sold, dict, securityError }: CarContactPanelProps) {
     const [showForm, setShowForm] = useState(false);
 
     return (
@@ -378,7 +330,13 @@ export default function CarContactPanel({ lang, carSlug, carTitle, whatsappUrl, 
                 {/* Divider */}
                 <div className="h-px mb-5" style={{ background: "var(--theme-border-subtle)" }} />
 
-                <InlineContactForm carSlug={carSlug} carTitle={carTitle} onBack={() => setShowForm(false)} dict={dict} locale={lang} />
+                <InlineContactForm
+                    carSlug={carSlug}
+                    carTitle={carTitle}
+                    dict={dict}
+                    locale={lang}
+                    securityError={securityError}
+                />
             </div>
         </div>
     );

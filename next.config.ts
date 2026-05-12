@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// CSP lives in middleware.ts so each request gets a fresh nonce for inline scripts.
-// Other security headers are static and applied here.
+// Static security headers applied by the app. If a CSP is added here or at
+// the edge, allow Turnstile scripts and frames from challenges.cloudflare.com.
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },

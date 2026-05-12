@@ -110,7 +110,11 @@ export default async function ContactPage({
                   </div>
                 }
               >
-                <ContactForm dict={dict.contact} locale={locale} />
+                <ContactForm
+                  dict={dict.contact}
+                  locale={locale}
+                  securityError={dict.errors.turnstileFailed}
+                />
               </Suspense>
             </div>
           </div>

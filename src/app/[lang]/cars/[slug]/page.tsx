@@ -9,7 +9,7 @@ import RelatedVehicles from '@/components/RelatedVehicles';
 import MobileContactBar from '@/components/MobileContactBar';
 import ExpandableDescription from '@/components/ExpandableDescription';
 import { getImageUrl } from '@/lib/image-url';
-import { MapPin, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import CarContactPanel from '@/components/CarContactPanel';
 import CarWhatsAppButton from '@/components/CarWhatsAppButton';
 import carpassImg from '@/assets/carpass.webp';
@@ -343,6 +343,7 @@ export default async function CarDetailPage(
                                 whatsappUrl={whatsappUrl}
                                 sold={car.sold ?? false}
                                 dict={dict.carDetail}
+                                securityError={dict.errors.turnstileFailed}
                             />
 
                             {/* ── Location Card Google Maps ── */}
