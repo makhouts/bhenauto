@@ -339,8 +339,7 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
 
     revalidatePath("/admin/appointments");
 
-    // Fire-and-forget: send booking confirmation email
-    sendBookingReceived({
+    const mailResult = await sendBookingReceived({
       name: appointment.name,
       email: appointment.email,
       date: appointment.date,
@@ -348,7 +347,14 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
       service: appointment.service,
       notes: appointment.notes,
       locale: appointment.locale,
-    }).catch(() => {/* already logged inside sendMail */});
+    });
+    if (!mailResult.success) {
+      console.error("Booking saved, but confirmation email failed", {
+        appointmentId: appointment.id,
+        email: appointment.email,
+        error: mailResult.error,
+      });
+    }
 
     return { success: true, id: appointment.id };
   } catch (err: unknown) {

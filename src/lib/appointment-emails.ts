@@ -1,4 +1,4 @@
-import { sendMail } from "./mail";
+import { sendMail, type MailResult } from "./mail";
 import { format } from "date-fns";
 import { nl, fr, enGB } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
@@ -215,7 +215,7 @@ function statusBadge(text: string, color: string): string {
  * Send "booking received" email to the customer.
  * Called immediately after a successful booking.
  */
-export async function sendBookingReceived(apt: AppointmentData): Promise<void> {
+export async function sendBookingReceived(apt: AppointmentData): Promise<MailResult> {
   const locale = (apt.locale as Locale) || "fr";
   const t = i18n[locale];
 
@@ -231,7 +231,7 @@ export async function sendBookingReceived(apt: AppointmentData): Promise<void> {
     <p style="margin:16px 0 0;font-size:14px;color:#374151;">${t.seeYou}<br/><strong style="color:#d91c1c;">${t.team}</strong></p>
   `;
 
-  await sendMail({
+  return sendMail({
     to: apt.email,
     subject: t.bookingSubject,
     html: emailLayout(t.bookingTitle, body),
@@ -242,7 +242,7 @@ export async function sendBookingReceived(apt: AppointmentData): Promise<void> {
  * Send "appointment confirmed" email to the customer.
  * Called when the admin confirms an appointment.
  */
-export async function sendAppointmentConfirmed(apt: AppointmentData): Promise<void> {
+export async function sendAppointmentConfirmed(apt: AppointmentData): Promise<MailResult> {
   const locale = (apt.locale as Locale) || "fr";
   const t = i18n[locale];
 
@@ -262,7 +262,7 @@ export async function sendAppointmentConfirmed(apt: AppointmentData): Promise<vo
     <p style="margin:16px 0 0;font-size:14px;color:#374151;">${t.seeYou}<br/><strong style="color:#d91c1c;">${t.team}</strong></p>
   `;
 
-  await sendMail({
+  return sendMail({
     to: apt.email,
     subject: t.confirmedSubject,
     html: emailLayout(t.confirmedTitle, body),

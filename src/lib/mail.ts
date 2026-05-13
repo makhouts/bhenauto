@@ -24,11 +24,20 @@ export interface MailOptions {
   html: string;
 }
 
+export type MailResult =
+  | { success: true; skipped?: boolean }
+  | { success: false; error: string };
+
+function getMailErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
 /**
  * Send an email. If SMTP is not configured, logs the email to console instead.
- * Always fire-and-forget — never throws.
+ * Never throws; callers should inspect the returned status in production logs.
  */
-export async function sendMail(options: MailOptions): Promise<void> {
+export async function sendMail(options: MailOptions): Promise<MailResult> {
   try {
     if (!transporter) {
       console.log("═══ EMAIL (dev — no SMTP configured) ═══");
@@ -36,19 +45,26 @@ export async function sendMail(options: MailOptions): Promise<void> {
       console.log(`  Subject: ${options.subject}`);
       console.log(`  HTML:    ${options.html.slice(0, 200)}…`);
       console.log("═════════════════════════════════════════");
-      return;
+      return { success: true, skipped: true };
     }
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"BhenAuto" <${SMTP_USER}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,
     });
 
-    console.log(`✉️  Email sent to ${options.to}: ${options.subject}`);
+    console.log(`Email sent to ${options.to}: ${options.subject}`, {
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      response: info.response,
+    });
+    return { success: true };
   } catch (err) {
-    // Never crash the server action over email failure
-    console.error("❌ Failed to send email:", err);
+    const message = getMailErrorMessage(err);
+    console.error(`Failed to send email to ${options.to}: ${options.subject}`, err);
+    return { success: false, error: message };
   }
 }

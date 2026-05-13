@@ -23,8 +23,7 @@ export async function confirmAppointment(
     revalidatePath("/admin/appointments");
     revalidatePath("/werkplaats");
 
-    // Fire-and-forget: send confirmation email in the customer's language
-    sendAppointmentConfirmed({
+    const mailResult = await sendAppointmentConfirmed({
       name: apt.name,
       email: apt.email,
       date: apt.date,
@@ -32,7 +31,14 @@ export async function confirmAppointment(
       service: apt.service,
       notes: apt.notes,
       locale: apt.locale,
-    }).catch(() => {/* already logged inside sendMail */});
+    });
+    if (!mailResult.success) {
+      console.error("Appointment confirmed, but confirmation email failed", {
+        appointmentId: apt.id,
+        email: apt.email,
+        error: mailResult.error,
+      });
+    }
 
     return { success: true };
   } catch {
@@ -146,7 +152,7 @@ export async function createAdminAppointment(
     revalidatePath("/admin/appointments");
 
     if (input.sendConfirmation) {
-      sendAppointmentConfirmed({
+      const mailResult = await sendAppointmentConfirmed({
         name: apt.name,
         email: apt.email,
         date: apt.date,
@@ -154,7 +160,14 @@ export async function createAdminAppointment(
         service: apt.service,
         notes: apt.notes,
         locale: input.emailLocale ?? "fr",
-      }).catch(() => {/* already logged inside sendMail */});
+      });
+      if (!mailResult.success) {
+        console.error("Manual appointment saved, but confirmation email failed", {
+          appointmentId: apt.id,
+          email: apt.email,
+          error: mailResult.error,
+        });
+      }
     }
 
     return { success: true, id: apt.id };
@@ -223,7 +236,7 @@ export async function updateAppointment(
     revalidatePath("/admin/appointments");
 
     if (input.sendConfirmation) {
-      sendAppointmentConfirmed({
+      const mailResult = await sendAppointmentConfirmed({
         name: input.name.trim(),
         email: input.email.trim().toLowerCase(),
         date: utcDate,
@@ -231,7 +244,14 @@ export async function updateAppointment(
         service: input.service,
         notes: input.notes?.trim() || null,
         locale: input.emailLocale ?? "fr",
-      }).catch(() => {/* already logged inside sendMail */});
+      });
+      if (!mailResult.success) {
+        console.error("Appointment updated, but confirmation email failed", {
+          appointmentId: input.id,
+          email: input.email.trim().toLowerCase(),
+          error: mailResult.error,
+        });
+      }
     }
 
     return { success: true };
