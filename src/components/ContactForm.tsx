@@ -103,6 +103,7 @@ export default function ContactForm({ dark = false, dict, locale, securityError 
     }
 
     return (
+        <div className="space-y-5">
         <form onSubmit={handleSubmit} className="space-y-5">
             {showError && (
                 <div className={`p-4 text-sm animate-fade-in rounded-xl border ${dark ? "bg-red-500/10 border-red-500/30 text-red-400" : "bg-red-500/10 border-red-500 text-red-500"}`}>
@@ -190,9 +191,6 @@ export default function ContactForm({ dark = false, dict, locale, securityError 
                 />
             </div>
 
-            {/* Cloudflare Turnstile */}
-            <div ref={turnstileRef} className="flex justify-center" />
-
             {/* Submit */}
             <button
                 type="submit"
@@ -221,5 +219,7 @@ export default function ContactForm({ dark = false, dict, locale, securityError 
                 </span>
             </button>
         </form>
+        <div ref={turnstileRef} className="relative flex justify-center" />
+        </div>
     );
 }

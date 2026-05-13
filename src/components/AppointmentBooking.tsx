@@ -623,10 +623,8 @@ export default function AppointmentBooking({
 
               {/* Honeypot — invisible to users, bots fill it */}
               <input type="text" name="website" className="hidden" tabIndex={-1} autoComplete="off" aria-hidden="true" />
-
-              {/* Cloudflare Turnstile */}
-              <div ref={turnstileRef} className="sm:col-span-2 flex justify-end" />
             </form>
+            <div ref={turnstileRef} className="relative mt-3 flex justify-end" />
           </div>
         )}
 

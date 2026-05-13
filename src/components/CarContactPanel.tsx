@@ -107,6 +107,7 @@ function InlineContactForm({
     }
 
     return (
+        <div className="space-y-4">
         <form onSubmit={handleSubmit} className="space-y-4">
             {/* Hidden car reference */}
             <input type="hidden" name="car_reference" value={carSlug} />
@@ -180,9 +181,6 @@ function InlineContactForm({
                 />
             </div>
 
-            {/* Cloudflare Turnstile */}
-            <div ref={turnstileRef} className="flex justify-center" />
-
             {/* Submit */}
             <button
                 type="submit"
@@ -201,6 +199,8 @@ function InlineContactForm({
                 </span>
             </button>
         </form>
+        <div ref={turnstileRef} className="relative flex justify-center" />
+        </div>
     );
 }
 
