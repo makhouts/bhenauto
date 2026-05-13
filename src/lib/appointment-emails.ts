@@ -4,7 +4,7 @@ import { nl, fr, enGB } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
 
 const TZ = "Europe/Brussels";
-const LOGO_URL = "https://www.bhenauto.com/logo.webp";
+const LOGO_URL = "https://www.bhenauto.com/logo.png";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
