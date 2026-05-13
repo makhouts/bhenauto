@@ -1,9 +1,10 @@
 import nodemailer from "nodemailer";
 
 const SMTP_HOST = "mail.spacemail.com";
-const SMTP_PORT = 465;
+const SMTP_PORT = 587;
 const SMTP_USER = process.env.SMTP_USER || "info@bhenauto.com";
 const SMTP_PASS = process.env.SMTP_PASS;
+const SMTP_TIMEOUT_MS = 8_000;
 
 /**
  * Nodemailer transporter.
@@ -13,8 +14,12 @@ const transporter = SMTP_PASS
   ? nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT,
-      secure: true, // SSL on port 465
+      secure: false, // STARTTLS on port 587
+      requireTLS: true,
       auth: { user: SMTP_USER, pass: SMTP_PASS },
+      connectionTimeout: SMTP_TIMEOUT_MS,
+      greetingTimeout: SMTP_TIMEOUT_MS,
+      socketTimeout: SMTP_TIMEOUT_MS,
     })
   : null;
 
@@ -33,6 +38,19 @@ function getMailErrorMessage(err: unknown): string {
   return String(err);
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 /**
  * Send an email. If SMTP is not configured, logs the email to console instead.
  * Never throws; callers should inspect the returned status in production logs.
@@ -48,12 +66,16 @@ export async function sendMail(options: MailOptions): Promise<MailResult> {
       return { success: true, skipped: true };
     }
 
-    const info = await transporter.sendMail({
-      from: `"BhenAuto" <${SMTP_USER}>`,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-    });
+    const info = await withTimeout(
+      transporter.sendMail({
+        from: `"BhenAuto" <${SMTP_USER}>`,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+      }),
+      SMTP_TIMEOUT_MS,
+      `SMTP send via ${SMTP_HOST}:${SMTP_PORT}`
+    );
 
     console.log(`Email sent to ${options.to}: ${options.subject}`, {
       messageId: info.messageId,
