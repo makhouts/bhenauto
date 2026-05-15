@@ -1,14 +1,43 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
+import { revalidateLocalizedPath } from "@/lib/revalidate";
 import { requireAdmin } from "@/lib/auth-guard";
-import { fromZonedTime } from "date-fns-tz";
-import { generateDaySlots, APPOINTMENT_CONFIG } from "@/lib/appointmentConfig";
+import { generateDaySlots } from "@/lib/appointmentConfig";
 import { sendAppointmentConfirmed } from "@/lib/appointment-emails";
+import {
+  getAppointmentConflict,
+  getAppointmentDayRange,
+  parseAppointmentDate,
+  validateAppointmentDate,
+  type AppointmentConflict,
+} from "@/lib/appointment-availability";
 
-const TZ = APPOINTMENT_CONFIG.timezone;
+function adminConflictMessage(conflict: AppointmentConflict): string {
+  switch (conflict) {
+    case "invalidDate":
+      return "Ongeldige datum.";
+    case "invalidSlot":
+      return "Ongeldig tijdslot.";
+    case "invalidDuration":
+      return "Ongeldige duur.";
+    case "pastDate":
+      return "Afspraken kunnen niet in het verleden worden gepland.";
+    case "notWorkingDay":
+      return "Deze dag is geen werkdag.";
+    case "blocked":
+      return "Deze dag of dit tijdslot is geblokkeerd.";
+    case "unavailable":
+    default:
+      return "Dit tijdslot overlapt met een andere afspraak.";
+  }
+}
 
+function isTransactionConflict(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+}
 
 export async function confirmAppointment(
   id: string,
@@ -16,12 +45,27 @@ export async function confirmAppointment(
 ): Promise<{ success: boolean } | { error: string }> {
   await requireAdmin();
   try {
-    const apt = await prisma.appointment.update({
-      where: { id },
-      data: { status: "confirmed", durationHours },
+    const apt = await prisma.$transaction(async (tx) => {
+      const existing = await tx.appointment.findUnique({ where: { id } });
+      if (!existing) throw new Error("Afspraak niet gevonden.");
+
+      const conflict = await getAppointmentConflict(tx, {
+        date: existing.date,
+        timeSlot: existing.timeSlot,
+        durationHours,
+        excludeAppointmentId: id,
+      });
+      if (conflict) throw new Error(adminConflictMessage(conflict));
+
+      return tx.appointment.update({
+        where: { id },
+        data: { status: "confirmed", durationHours },
+      });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
     revalidatePath("/admin/appointments");
-    revalidatePath("/werkplaats");
+    revalidateLocalizedPath("/werkplaats");
 
     const mailResult = await sendAppointmentConfirmed({
       name: apt.name,
@@ -41,8 +85,9 @@ export async function confirmAppointment(
     }
 
     return { success: true };
-  } catch {
-    return { error: "Kon de afspraak niet bevestigen." };
+  } catch (error) {
+    if (isTransactionConflict(error)) return { error: "Dit tijdslot werd net bezet. Vernieuw en probeer opnieuw." };
+    return { error: error instanceof Error ? error.message : "Kon de afspraak niet bevestigen." };
   }
 }
 
@@ -74,7 +119,7 @@ export async function cancelAppointment(id: string): Promise<{ success: boolean 
     });
 
     revalidatePath("/admin/appointments");
-    revalidatePath("/werkplaats");
+    revalidateLocalizedPath("/werkplaats");
     return { success: true };
   } catch {
     return { error: "Kon de afspraak niet verwijderen." };
@@ -86,13 +131,6 @@ export async function cancelAppointment(id: string): Promise<{ success: boolean 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-type SlotInput = { dateStr: string; timeSlot: string };
-
-function parseUtcDate({ dateStr }: { dateStr: string }): Date {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return fromZonedTime(new Date(year, month - 1, day), TZ);
-}
 
 function validateCommon(input: {
   dateStr: string; timeSlot: string; name: string;
@@ -127,27 +165,33 @@ export async function createAdminAppointment(
   const err = validateCommon(input);
   if (err) return { error: err };
 
-  const utcDate = parseUtcDate(input);
+  const utcDate = parseAppointmentDate(input.dateStr);
+  if (!utcDate) return { error: "Ongeldige datum." };
+
+  const dateConflict = validateAppointmentDate(utcDate);
+  if (dateConflict) return { error: adminConflictMessage(dateConflict) };
 
   try {
     const apt = await prisma.$transaction(async (tx) => {
-      const dayStart = utcDate;
-      const dayEnd = new Date(dayStart.getTime() + 86400000);
-      const count = await tx.appointment.count({
-        where: { date: { gte: dayStart, lt: dayEnd }, timeSlot: input.timeSlot, status: { in: ["pending", "confirmed"] } },
+      const conflict = await getAppointmentConflict(tx, {
+        date: utcDate,
+        timeSlot: input.timeSlot,
+        durationHours: input.durationHours ?? 1,
       });
-      if (count >= APPOINTMENT_CONFIG.maxBookingsPerSlot)
-        throw new Error("Dit tijdslot is al bezet. Kies een ander tijdslot.");
+      if (conflict) throw new Error(adminConflictMessage(conflict));
+
       return tx.appointment.create({
         data: {
           date: utcDate, timeSlot: input.timeSlot,
-          name: input.name.trim(), email: input.email.trim().toLowerCase(),
-          phone: input.phone.trim(), service: input.service,
-          notes: input.notes?.trim() || null, status: "confirmed",
+          name: input.name.trim().slice(0, 100), email: input.email.trim().toLowerCase().slice(0, 254),
+          phone: input.phone.trim().slice(0, 30), service: input.service,
+          notes: input.notes?.trim().slice(0, 2000) || null, status: "confirmed",
           durationHours: input.durationHours ?? 1,
           locale: input.emailLocale ?? "fr",
         },
       });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
     revalidatePath("/admin/appointments");
 
@@ -172,6 +216,7 @@ export async function createAdminAppointment(
 
     return { success: true, id: apt.id };
   } catch (e: unknown) {
+    if (isTransactionConflict(e)) return { error: "Dit tijdslot werd net bezet. Vernieuw en probeer opnieuw." };
     return { error: e instanceof Error ? e.message : "Er is een onverwachte fout opgetreden." };
   }
 }
@@ -202,36 +247,37 @@ export async function updateAppointment(
   if (!["pending", "confirmed", "cancelled"].includes(input.status))
     return { error: "Ongeldige status." };
 
-  const utcDate = parseUtcDate(input);
+  const utcDate = parseAppointmentDate(input.dateStr);
+  if (!utcDate) return { error: "Ongeldige datum." };
+
+  const dateConflict = validateAppointmentDate(utcDate);
+  if (dateConflict && input.status !== "cancelled") return { error: adminConflictMessage(dateConflict) };
 
   try {
     await prisma.$transaction(async (tx) => {
       // Skip slot check when cancelling
       if (input.status !== "cancelled") {
-        const dayStart = utcDate;
-        const dayEnd = new Date(dayStart.getTime() + 86400000);
-        const count = await tx.appointment.count({
-          where: {
-            id: { not: input.id }, // exclude this record
-            date: { gte: dayStart, lt: dayEnd },
-            timeSlot: input.timeSlot,
-            status: { in: ["pending", "confirmed"] },
-          },
+        const conflict = await getAppointmentConflict(tx, {
+          date: utcDate,
+          timeSlot: input.timeSlot,
+          durationHours: input.durationHours ?? 1,
+          excludeAppointmentId: input.id,
         });
-        if (count >= APPOINTMENT_CONFIG.maxBookingsPerSlot)
-          throw new Error("Dit tijdslot is al bezet door een andere afspraak.");
+        if (conflict) throw new Error(adminConflictMessage(conflict));
       }
 
       await tx.appointment.update({
         where: { id: input.id },
         data: {
           date: utcDate, timeSlot: input.timeSlot, status: input.status,
-          name: input.name.trim(), email: input.email.trim().toLowerCase(),
-          phone: input.phone.trim(), service: input.service,
-          notes: input.notes?.trim() || null,
+          name: input.name.trim().slice(0, 100), email: input.email.trim().toLowerCase().slice(0, 254),
+          phone: input.phone.trim().slice(0, 30), service: input.service,
+          notes: input.notes?.trim().slice(0, 2000) || null,
           ...(input.durationHours !== undefined ? { durationHours: input.durationHours } : {}),
         },
       });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
     revalidatePath("/admin/appointments");
 
@@ -256,6 +302,7 @@ export async function updateAppointment(
 
     return { success: true };
   } catch (e: unknown) {
+    if (isTransactionConflict(e)) return { error: "Dit tijdslot werd net bezet. Vernieuw en probeer opnieuw." };
     return { error: e instanceof Error ? e.message : "Er is een onverwachte fout opgetreden." };
   }
 }
@@ -273,11 +320,27 @@ export async function updateAppointmentDuration(
   if (durationHours < 1 || durationHours > 8) return { error: "Ongeldige duur." };
 
   try {
-    await prisma.appointment.update({ where: { id }, data: { durationHours } });
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.appointment.findUnique({ where: { id } });
+      if (!existing) throw new Error("Afspraak niet gevonden.");
+      if (existing.status !== "cancelled") {
+        const conflict = await getAppointmentConflict(tx, {
+          date: existing.date,
+          timeSlot: existing.timeSlot,
+          durationHours,
+          excludeAppointmentId: id,
+        });
+        if (conflict) throw new Error(adminConflictMessage(conflict));
+      }
+      await tx.appointment.update({ where: { id }, data: { durationHours } });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
     revalidatePath("/admin/appointments");
-    revalidatePath("/werkplaats");
+    revalidateLocalizedPath("/werkplaats");
     return { success: true };
   } catch (e: unknown) {
+    if (isTransactionConflict(e)) return { error: "Dit tijdslot werd net bezet. Vernieuw en probeer opnieuw." };
     return { error: e instanceof Error ? e.message : "Er is een onverwachte fout opgetreden." };
   }
 }
@@ -312,15 +375,26 @@ export async function blockSlot(input: {
   const { dateStr, timeSlot = null, reason } = input;
   if (!dateStr) return { error: "Datum is verplicht." };
 
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const utcDate = fromZonedTime(new Date(year, month - 1, day), TZ);
+  const utcDate = parseAppointmentDate(dateStr);
+  if (!utcDate) return { error: "Ongeldige datum." };
+  if (timeSlot && !generateDaySlots().includes(timeSlot)) return { error: "Ongeldig tijdslot." };
 
   try {
+    const { dayStart, dayEnd } = getAppointmentDayRange(utcDate);
+    const duplicate = await prisma.blockedDate.findFirst({
+      where: {
+        date: { gte: dayStart, lt: dayEnd },
+        timeSlot: timeSlot || null,
+      },
+      select: { id: true },
+    });
+    if (duplicate) return { error: "Dit tijdslot / deze dag is al geblokkeerd." };
+
     const entry = await prisma.blockedDate.create({
       data: { date: utcDate, timeSlot: timeSlot || null, reason: reason?.trim() || null },
     });
     revalidatePath("/admin/appointments");
-    revalidatePath("/werkplaats");
+    revalidateLocalizedPath("/werkplaats");
     return { success: true, id: entry.id };
   } catch (e: unknown) {
     if (e instanceof Error && e.message.toLowerCase().includes("unique")) {
@@ -336,7 +410,7 @@ export async function unblockSlot(id: string): Promise<{ success: true } | { err
   try {
     await prisma.blockedDate.delete({ where: { id } });
     revalidatePath("/admin/appointments");
-    revalidatePath("/werkplaats");
+    revalidateLocalizedPath("/werkplaats");
     return { success: true };
   } catch {
     return { error: "Kon de blokkering niet verwijderen." };

@@ -36,6 +36,7 @@ declare global {
 type PendingChallenge = {
   resolve: (token: string) => void;
   reject: (error: Error) => void;
+  timeoutId: number;
 };
 
 type UseTurnstileOptions = {
@@ -48,6 +49,7 @@ type UseTurnstileOptions = {
 const SCRIPT_ID = "cf-turnstile-script";
 const SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const LOAD_TIMEOUT_MS = 10_000;
+const CHALLENGE_TIMEOUT_MS = 15_000;
 let scriptPromise: Promise<void> | null = null;
 
 function waitForTurnstile(): Promise<void> {
@@ -111,6 +113,7 @@ export function useTurnstile({
 
   const rejectPending = useCallback((message: string) => {
     if (!pendingRef.current) return;
+    window.clearTimeout(pendingRef.current.timeoutId);
     pendingRef.current.reject(new Error(message));
     pendingRef.current = null;
   }, []);
@@ -145,6 +148,7 @@ export function useTurnstile({
           callback: (token: string) => {
             const pending = pendingRef.current;
             pendingRef.current = null;
+            if (pending) window.clearTimeout(pending.timeoutId);
             setStatus("ready");
             pending?.resolve(token);
           },
@@ -206,6 +210,7 @@ export function useTurnstile({
     }
 
     if (pendingRef.current) {
+      window.clearTimeout(pendingRef.current.timeoutId);
       pendingRef.current.reject(new Error("Turnstile verification restarted."));
       pendingRef.current = null;
     }
@@ -214,10 +219,18 @@ export function useTurnstile({
     setStatus("verifying");
 
     return new Promise<string>((resolve, reject) => {
-      pendingRef.current = { resolve, reject };
+      const timeoutId = window.setTimeout(() => {
+        if (!pendingRef.current) return;
+        pendingRef.current = null;
+        setStatus("ready");
+        reject(new Error("Turnstile verification timed out."));
+      }, CHALLENGE_TIMEOUT_MS);
+
+      pendingRef.current = { resolve, reject, timeoutId };
       try {
         turnstile.execute(widgetId);
       } catch (error) {
+        window.clearTimeout(timeoutId);
         pendingRef.current = null;
         setStatus("error");
         reject(error instanceof Error ? error : new Error("Turnstile execution failed."));

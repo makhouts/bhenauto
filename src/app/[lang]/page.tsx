@@ -69,13 +69,13 @@ async function FeaturedCarsSection({ dict }: { dict: Dictionary }) {
       where: { featured: true },
       orderBy: { createdAt: "desc" },
       take: 9,
-      include: { images: { take: 1 } },
+      include: { images: { orderBy: { createdAt: "asc" }, take: 1 } },
     }),
     prisma.car.findMany({
       where: { featured: false },
       orderBy: { createdAt: "desc" },
       take: 9,
-      include: { images: { take: 1 } },
+      include: { images: { orderBy: { createdAt: "asc" }, take: 1 } },
     }),
   ]);
 

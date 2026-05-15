@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { Mail } from "lucide-react";
 import ContactsClient from "@/components/admin/ContactsClient";
 import { requireAdmin } from "@/lib/auth-guard";
 

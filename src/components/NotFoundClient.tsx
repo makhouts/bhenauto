@@ -9,7 +9,7 @@ import type { NotFoundDict } from "@/lib/dictionaries";
 import logo from "@/assets/logo.webp";
 
 /* ── Floating particle dot ─────────────────────────────────── */
-function Particle({ delay, x, y, size }: { delay: number; x: number; y: number; size: number }) {
+function Particle({ delay, x, y, size, duration, repeatDelay }: { delay: number; x: number; y: number; size: number; duration: number; repeatDelay: number }) {
   return (
     <motion.div
       className="absolute rounded-full pointer-events-none"
@@ -17,10 +17,10 @@ function Particle({ delay, x, y, size }: { delay: number; x: number; y: number; 
       initial={{ opacity: 0, scale: 0 }}
       animate={{ opacity: [0, 0.15, 0], scale: [0, 1.2, 0], y: [0, -60, -120] }}
       transition={{
-        duration: 4 + Math.random() * 2,
+        duration,
         delay,
         repeat: Infinity,
-        repeatDelay: Math.random() * 3,
+        repeatDelay,
         ease: "easeOut",
       }}
     />
@@ -104,7 +104,13 @@ function RoadDashes() {
 }
 
 const PARTICLES = Array.from({ length: 14 }).map((_, i) => ({
-  key: i, delay: i * 0.4, x: 5 + (i * 7) % 90, y: 10 + (i * 13) % 70, size: 3 + (i % 3) * 2,
+  key: i,
+  delay: i * 0.4,
+  x: 5 + (i * 7) % 90,
+  y: 10 + (i * 13) % 70,
+  size: 3 + (i % 3) * 2,
+  duration: 4 + (i % 4) * 0.45,
+  repeatDelay: (i % 5) * 0.35,
 }));
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.1 } } };
@@ -144,7 +150,17 @@ export default function NotFoundClient({ dict, locale }: { dict: NotFoundDict; l
 
       {/* Particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {PARTICLES.map(p => <Particle key={p.key} delay={p.delay} x={p.x} y={p.y} size={p.size} />)}
+        {PARTICLES.map(p => (
+          <Particle
+            key={p.key}
+            delay={p.delay}
+            x={p.x}
+            y={p.y}
+            size={p.size}
+            duration={p.duration}
+            repeatDelay={p.repeatDelay}
+          />
+        ))}
       </div>
 
       {/* Content */}

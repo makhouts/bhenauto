@@ -3,6 +3,11 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getImageUrl } from "@/lib/image-url";
 import { isValidSession } from "@/lib/session";
 
+const MAX_IMAGES = 20;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const IMAGE_FETCH_TIMEOUT_MS = 8_000;
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "image/jpg"]);
+
 /** Allowed hostnames for image fetching (prevents SSRF). */
 function isAllowedImageUrl(urlOrKey: string): boolean {
     // R2 keys (no http prefix) are safe — resolved to the R2 CDN URL server-side
@@ -51,8 +56,8 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             return await fn();
-        } catch (err: any) {
-            const msg: string = err.message ?? "";
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "";
             const is429 = msg.includes("429") || msg.includes("Too Many Requests");
             const isQuotaExhausted = is429 && /quota|RESOURCE_EXHAUSTED/i.test(msg);
             if (is429 && !isQuotaExhausted && attempt < maxRetries) {
@@ -64,6 +69,35 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
         }
     }
     throw new Error("Max retries exceeded");
+}
+
+async function fetchImageBytes(url: string, index: number): Promise<{ buffer: ArrayBuffer; mimeType: string }> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
+
+    try {
+        const response = await globalThis.fetch(url, { signal: controller.signal });
+        if (!response.ok) throw new Error(`Failed to fetch image ${index + 1}`);
+
+        const contentLength = response.headers.get("content-length");
+        if (contentLength && Number(contentLength) > MAX_IMAGE_BYTES) {
+            throw new Error(`Image ${index + 1} exceeds the 10MB size limit`);
+        }
+
+        const mimeType = response.headers.get("content-type")?.split(";")[0]?.toLowerCase() || "image/jpeg";
+        if (!ALLOWED_IMAGE_TYPES.has(mimeType)) {
+            throw new Error(`Image ${index + 1} has an unsupported type`);
+        }
+
+        const buffer = await response.arrayBuffer();
+        if (buffer.byteLength > MAX_IMAGE_BYTES) {
+            throw new Error(`Image ${index + 1} exceeds the 10MB size limit`);
+        }
+
+        return { buffer, mimeType };
+    } finally {
+        clearTimeout(timeoutId);
+    }
 }
 
 export async function POST(request: NextRequest) {
@@ -88,8 +122,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "No images provided" }, { status: 400 });
         }
 
-        if (entryTypes.length > 50) {
-            return NextResponse.json({ error: "Too many images (max 50)" }, { status: 400 });
+        if (entryTypes.length > MAX_IMAGES) {
+            return NextResponse.json({ error: `Too many images (max ${MAX_IMAGES})` }, { status: 400 });
         }
 
         // Build an identifier list to return in the response (URL for existing, index-based for files)
@@ -130,12 +164,14 @@ export async function POST(request: NextRequest) {
 
                 if (type === "url") {
                     const fetchUrl = toFetchableUrl(entryUrls[i]);
-                    const imgResponse = await globalThis.fetch(fetchUrl);
-                    if (!imgResponse.ok) throw new Error(`Failed to fetch image ${i + 1}`);
-                    buffer = await imgResponse.arrayBuffer();
+                    const fetched = await fetchImageBytes(fetchUrl, i);
+                    buffer = fetched.buffer;
+                    mimeType = fetched.mimeType;
                 } else {
                     const file = entryFiles[i] as File;
                     if (!file || typeof file === "string") throw new Error(`Missing file for entry ${i}`);
+                    if (file.size > MAX_IMAGE_BYTES) throw new Error(`Image ${i + 1} exceeds the 10MB size limit`);
+                    if (!ALLOWED_IMAGE_TYPES.has(file.type)) throw new Error(`Image ${i + 1} has an unsupported type`);
                     buffer = await file.arrayBuffer();
                     mimeType = file.type || "image/jpeg";
                 }
@@ -156,8 +192,8 @@ export async function POST(request: NextRequest) {
                 return model.generateContent([BATCH_PROMPT, ...imageDataParts]);
             });
             text = result.response.text().trim();
-        } catch (aiErr: any) {
-            console.warn("[AI Images] Gemini call failed:", aiErr.message);
+        } catch (aiErr: unknown) {
+            console.warn("[AI Images] Gemini call failed:", aiErr instanceof Error ? aiErr.message : aiErr);
             return NextResponse.json({
                 ordered: imageIdentifiers.map((id: string, i: number) => ({
                     url: id, score: 50 - i, angle: "unknown", reason: "AI analyse niet bereikbaar (netwerk)"
@@ -197,7 +233,7 @@ export async function POST(request: NextRequest) {
         const ordered = scoredImages.sort((a, b) => b.score - a.score);
 
         return NextResponse.json({ ordered, aiEnabled: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[AI Images] Fatal:", error);
         return NextResponse.json({ error: "Failed to analyze images" }, { status: 500 });
     }

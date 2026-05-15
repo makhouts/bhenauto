@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Search } from "lucide-react";
-import CarRow from "@/components/admin/CarRow";
+import CarRow, { type AdminCarRow } from "@/components/admin/CarRow";
 
-export default function CarsTableClient({ cars }: { cars: any[] }) {
+export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
     const [query, setQuery] = useState("");
 
-    const statusPriority = (car: any) => {
+    const statusPriority = (car: AdminCarRow) => {
         if (car.sold) return 2;       // verkocht — last
         if (car.reserved) return 1;   // gereserveerd — middle
         return 0;                     // beschikbaar — first
@@ -57,7 +57,7 @@ export default function CarsTableClient({ cars }: { cars: any[] }) {
                             <tr>
                                 <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
                                     {query ? (
-                                        <p>Geen voertuigen gevonden voor <strong>"{query}"</strong>.</p>
+                                        <p>Geen voertuigen gevonden voor <strong>&quot;{query}&quot;</strong>.</p>
                                     ) : (
                                         <p>Uw voorraad is momenteel leeg.</p>
                                     )}

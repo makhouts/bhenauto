@@ -81,6 +81,8 @@ model Appointment {
   updatedAt     DateTime          @updatedAt
 
   @@index([date, status])
+  @@index([date, timeSlot, status])
+  @@index([email, createdAt])
   @@index([status])
 }
 
@@ -91,5 +93,5 @@ model BlockedDate {
   reason    String?
   createdAt DateTime @default(now())
 
-  @@unique([date, timeSlot]) // prevent duplicates (null treated as one unique value per date)
+  // Partial unique indexes for full-day and slot blocks are managed in SQL migrations.
 }

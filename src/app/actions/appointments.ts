@@ -1,7 +1,9 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { revalidatePath } from "next/cache";
+import { revalidateLocalizedPath } from "@/lib/revalidate";
 import { headers } from "next/headers";
 import { APPOINTMENT_CONFIG, generateDaySlots } from "@/lib/appointmentConfig";
 import { startOfDay, isBefore, format } from "date-fns";
@@ -10,6 +12,14 @@ import { sendBookingReceived } from "@/lib/appointment-emails";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { getDictionary } from "@/lib/dictionaries";
 import type { Locale } from "@/lib/i18n";
+import { getClientIp } from "@/lib/request-ip";
+import {
+  getAppointmentConflict,
+  getAppointmentDayRange,
+  parseAppointmentDate,
+  validateAppointmentDate,
+  type AppointmentConflict,
+} from "@/lib/appointment-availability";
 
 // Rate limiter: 2 booking attempts per hour per IP (self-hosted: in-memory is reliable)
 const bookingRateLimit = new Map<string, number[]>();
@@ -27,11 +37,27 @@ function isRateLimited(ip: string): boolean {
 
 const TZ = APPOINTMENT_CONFIG.timezone;
 
-/** Convert a local date (in Brussels time) to a UTC Date at midnight Brussels. */
-function toBrusselsUtcMidnight(localDate: Date): Date {
-  const zoned = toZonedTime(localDate, TZ);
-  const midnight = new Date(zoned.getFullYear(), zoned.getMonth(), zoned.getDate());
-  return fromZonedTime(midnight, TZ);
+function isTransactionConflict(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+}
+
+function publicConflictMessage(conflict: AppointmentConflict, e: (key: keyof Awaited<ReturnType<typeof getDictionary>>["errors"]) => string): string {
+  switch (conflict) {
+    case "pastDate":
+      return e("pastDate");
+    case "notWorkingDay":
+      return e("notWorkingDay");
+    case "invalidSlot":
+    case "invalidDuration":
+      return e("invalidSlot");
+    case "blocked":
+      return e("slotUnavailable");
+    case "unavailable":
+      return e("slotJustBooked");
+    case "invalidDate":
+    default:
+      return e("invalidSlot");
+  }
 }
 
 /** Return "YYYY-MM-DD" string in Brussels timezone for a UTC Date */
@@ -133,23 +159,10 @@ export async function getAvailableDates(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function getAvailableSlots(dateStr: string): Promise<string[]> {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const localDate = new Date(year, month - 1, day);
-  const utcDate = fromZonedTime(localDate, TZ);
+  const utcDate = parseAppointmentDate(dateStr);
+  if (!utcDate || validateAppointmentDate(utcDate)) return [];
 
-  const dayStart = utcDate;
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-
-  const zonedNow = toZonedTime(new Date(), TZ);
-  const todayLocal = startOfDay(zonedNow);
-  const tomorrowLocal = new Date(todayLocal.getTime() + 24 * 60 * 60 * 1000);
-  const localSelectedDay = toZonedTime(utcDate, TZ);
-
-  // Reject today and past — bookings only from tomorrow onwards
-  if (isBefore(startOfDay(localSelectedDay), tomorrowLocal)) return [];
-
-  const dayOfWeek = localSelectedDay.getDay();
-  if (!(APPOINTMENT_CONFIG.workingDays as number[]).includes(dayOfWeek)) return [];
+  const { dayStart, dayEnd } = getAppointmentDayRange(utcDate);
 
   const [blockedEntries, existingBookings] = await Promise.all([
     prisma.blockedDate.findMany({
@@ -222,7 +235,7 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
 
   // ── Layer 2: Rate limiting — 2/hour per IP ───────────────────────────────
   const headerStore = await headers();
-  const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = getClientIp(headerStore);
   if (isRateLimited(ip)) {
     return { error: e("rateLimited") };
   }
@@ -259,85 +272,37 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
     return { error: e("invalidSlot") };
   }
 
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const localDate = new Date(year, month - 1, day);
-  const utcDate = fromZonedTime(localDate, TZ);
+  const utcDate = parseAppointmentDate(dateStr);
+  if (!utcDate) return { error: e("invalidSlot") };
 
-  const zonedNow = toZonedTime(new Date(), TZ);
-  const todayLocal = startOfDay(zonedNow);
-  const tomorrowLocal = new Date(todayLocal.getTime() + 24 * 60 * 60 * 1000);
-  const localSelectedDay = toZonedTime(utcDate, TZ);
+  const dateConflict = validateAppointmentDate(utcDate);
+  if (dateConflict) return { error: publicConflictMessage(dateConflict, e) };
 
-  // Reject today and past — bookings only from tomorrow onwards
-  if (isBefore(startOfDay(localSelectedDay), tomorrowLocal)) {
-    return { error: e("pastDate") };
-  }
-
-  const dayOfWeek = localSelectedDay.getDay();
-  if (!(APPOINTMENT_CONFIG.workingDays as number[]).includes(dayOfWeek)) {
-    return { error: e("notWorkingDay") };
-  }
+  const safeName = name.trim().slice(0, 100);
+  const safeEmail = email.trim().toLowerCase().slice(0, 254);
+  const safePhone = phone.trim().slice(0, 30);
+  const safeNotes = notes?.trim().slice(0, 2000) || null;
 
   try {
     const appointment = await prisma.$transaction(async (tx) => {
-      const dayStart = utcDate;
-      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-
-      // Re-check for full-day or slot-level block
-      const blockedEntry = await tx.blockedDate.findFirst({
-        where: {
-          date: { gte: dayStart, lt: dayEnd },
-          OR: [{ timeSlot: null }, { timeSlot }],
-        },
-      });
-      if (blockedEntry) {
-        throw new Error(e("slotUnavailable"));
-      }
-
-      // Check if slot is directly booked
-      const slotCount = await tx.appointment.count({
-        where: {
-          date: { gte: dayStart, lt: dayEnd },
-          timeSlot,
-          status: { in: ["pending", "confirmed"] },
-        },
-      });
-
-      if (slotCount >= APPOINTMENT_CONFIG.maxBookingsPerSlot) {
-        throw new Error(e("slotJustBooked"));
-      }
-
-      // Check if slot is covered by a multi-hour appointment starting earlier
-      const allSlots = generateDaySlots();
-      const slotIdx = allSlots.indexOf(timeSlot);
-      const overlapping = await tx.appointment.findMany({
-        where: {
-          date: { gte: dayStart, lt: dayEnd },
-          status: { in: ["pending", "confirmed"] },
-          durationHours: { gt: 1 },
-        },
-        select: { timeSlot: true, durationHours: true },
-      });
-      for (const apt of overlapping) {
-        const aptStart = allSlots.indexOf(apt.timeSlot);
-        const aptEnd = aptStart + (apt.durationHours ?? 1);
-        if (slotIdx >= aptStart && slotIdx < aptEnd) {
-          throw new Error(e("slotCoveredByApt"));
-        }
-      }
+      const conflict = await getAppointmentConflict(tx, { date: utcDate, timeSlot, durationHours: 1 });
+      if (conflict) throw new Error(publicConflictMessage(conflict, e));
 
       return tx.appointment.create({
         data: {
           date: utcDate, timeSlot,
-          name: name.trim(), email: email.trim().toLowerCase(),
-          phone: phone.trim(), service,
-          notes: notes?.trim() || null, status: "pending",
-          locale: locale || "fr",
+          name: safeName, email: safeEmail,
+          phone: safePhone, service,
+          notes: safeNotes, status: "pending",
+          locale: safeLocale,
         },
       });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
 
     revalidatePath("/admin/appointments");
+    revalidateLocalizedPath("/werkplaats");
 
     const mailResult = await sendBookingReceived({
       name: appointment.name,
@@ -358,6 +323,7 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
 
     return { success: true, id: appointment.id };
   } catch (err: unknown) {
+    if (isTransactionConflict(err)) return { error: e("slotJustBooked") };
     if (err instanceof Error) return { error: err.message };
     return { error: e("unexpected") };
   }

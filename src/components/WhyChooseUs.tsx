@@ -49,19 +49,9 @@ const CARD_IMAGES = [premiumImg, mechanicImg, dealImg] as const;
 const CARD_IMG_CLASSES = ["", "", "object-contain scale-110 object-top translate-y-4"] as const;
 const CARD_COUNTERS = [null, null, 15] as const;
 
-/* ────────────────── floating particle ────────────────── */
-const PARTICLES = Array.from({ length: 28 }, (_, i) => ({
-  id: i,
-  x: Math.random() * 100,
-  y: Math.random() * 100,
-  size: 1 + Math.random() * 2.5,
-  speed: 0.05 + Math.random() * 0.25,
-  opacity: 0.06 + Math.random() * 0.18,
-}));
-
 /* ────────────────── card ────────────────── */
 function FeatureCard({
-  card, index, lang, counter, icon: Icon, image, imgClass, mouseX, mouseY,
+  card, index, lang, counter, icon: Icon, image, imgClass,
 }: {
   card: WhyChooseUsDict['cards'][number];
   index: number;
@@ -70,8 +60,6 @@ function FeatureCard({
   icon: typeof CARD_ICONS[number];
   image: typeof CARD_IMAGES[number];
   imgClass: string;
-  mouseX: number;
-  mouseY: number;
 }) {
   const [hovered, setHovered] = useState(false);
   const [localMouse, setLocalMouse] = useState({ x: 0.5, y: 0.5 });
@@ -368,8 +356,6 @@ export default function WhyChooseUs({ lang, dict }: { lang: string; dict: WhyCho
               icon={CARD_ICONS[i]}
               image={CARD_IMAGES[i]}
               imgClass={CARD_IMG_CLASSES[i]}
-              mouseX={mouseX}
-              mouseY={mouseY}
             />
           ))}
         </div>

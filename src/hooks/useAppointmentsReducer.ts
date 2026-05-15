@@ -392,7 +392,7 @@ export function useAppointmentsReducer(
             dispatch({ type: "CLOSE_CONFIRM" });
             toast.success(`Afspraak bevestigd${capturedDuration > 1 ? ` · ${capturedDuration}u` : ""}.`);
         });
-    }, [state.confirmModalId, state.confirmDuration, state.appointments]);
+    }, [state.confirmModalId, state.confirmDuration]);
 
     const handleCancel = useCallback((id: string) => startT(async () => {
         // Capture appointment info before deletion for block cleanup
@@ -499,15 +499,6 @@ export function useAppointmentsReducer(
             });
             if ("error" in r) { dispatch({ type: "SET_EDIT_ERROR", error: r.error }); return; }
             const [y, m, d] = state.editForm.dateStr.split("-").map(Number);
-            // Re-compute follow-on blocks for the new duration
-            const slots = generateDaySlots();
-            const idx = slots.indexOf(state.editForm.slot);
-            const newBlocks = state.editForm.durationHours > 1
-                ? slots.slice(idx + 1, idx + state.editForm.durationHours).map((s, i) => ({
-                    id: `tmp-${capturedEditId}-${i}`, date: new Date(y, m - 1, d), timeSlot: s,
-                    reason: `Gereserveerd · ${state.editForm.name}`,
-                }))
-                : [];
             dispatch({
                 type: "UPDATE_APPOINTMENT",
                 id: capturedEditId,

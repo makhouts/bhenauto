@@ -26,6 +26,12 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
         handlers: { handleTouchStart, handleTouchEnd, handleMouseMove },
     } = useGallery(resolvedImages.length);
 
+    const preloadIndexes = useMemo(
+        () => [activeIndex + 1, activeIndex - 1, activeIndex + 2]
+            .filter((index, position, array) => index >= 0 && index < resolvedImages.length && array.indexOf(index) === position),
+        [activeIndex, resolvedImages.length]
+    );
+
     const slideVariants = {
         enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
         center: { x: 0, opacity: 1 },
@@ -45,6 +51,21 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
     return (
         <>
             {/* ── GALLERY GRID ── */}
+            <div aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden">
+                {preloadIndexes.map((index) => (
+                    <Image
+                        key={`preload-${resolvedImages[index].id}`}
+                        src={resolvedImages[index].url}
+                        alt=""
+                        width={1200}
+                        height={800}
+                        sizes="(max-width: 768px) 100vw, 70vw"
+                        quality={80}
+                        loading="eager"
+                    />
+                ))}
+            </div>
+
             <div className="flex gap-2.5 h-[380px] md:h-[520px]">
 
                 {/* ── Main Hero Image ── */}
@@ -72,8 +93,8 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 alt={`${title} - Foto ${activeIndex + 1}`}
                                 fill
                                 className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                                priority
-                                fetchPriority="high"
+                                priority={activeIndex === 0}
+                                fetchPriority={activeIndex === 0 ? "high" : "auto"}
                                 sizes="(max-width: 768px) 100vw, 70vw"
                                 quality={80}
                             />
@@ -254,7 +275,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                             fill
                                             className="object-contain"
                                             sizes="100vw"
-                                            priority
+                                            priority={false}
                                         />
                                     </div>
                                 </motion.div>

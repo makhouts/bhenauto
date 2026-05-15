@@ -18,8 +18,30 @@ const EnvSchema = z.object({
     R2_BUCKET_NAME: z.string().min(1),
     NEXT_PUBLIC_R2_PUBLIC_URL: z.string().url(),
     NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
+    SMTP_USER: z.string().email().default("info@bhenauto.com"),
+    SMTP_PASS: z.string().min(1).optional(),
+    TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
     GEMINI_API_KEY: z.string().optional(),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+}).superRefine((env, ctx) => {
+    if (env.NODE_ENV !== "production") return;
+
+    const requiredInProduction: Array<keyof typeof env> = [
+        "SMTP_PASS",
+        "TURNSTILE_SECRET_KEY",
+        "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+    ];
+
+    for (const key of requiredInProduction) {
+        if (!env[key]) {
+            ctx.addIssue({
+                code: "custom",
+                path: [key],
+                message: `${key} is required in production`,
+            });
+        }
+    }
 });
 
 const parsed = EnvSchema.safeParse(process.env);

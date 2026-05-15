@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 export default function PageTransition({ children }: { children: React.ReactNode }) {
@@ -13,10 +13,10 @@ export default function PageTransition({ children }: { children: React.ReactNode
     const videoRef = useRef<HTMLVideoElement>(null);
     const fallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const dismiss = () => {
+    const dismiss = useCallback(() => {
         setAnimateOut(true);
         setTimeout(() => setShowOverlay(false), 400);
-    };
+    }, []);
 
     useEffect(() => {
         if (!isTargetPage) return;
@@ -24,13 +24,17 @@ export default function PageTransition({ children }: { children: React.ReactNode
         // Only play the transition once per session
         const hasSeenIntro = sessionStorage.getItem("hasSeenTransitions");
         if (hasSeenIntro) {
-            setAnimateOut(true);
-            setShowOverlay(false);
+            window.setTimeout(() => {
+                setAnimateOut(true);
+                setShowOverlay(false);
+            }, 0);
             return;
         }
 
-        setShowOverlay(true);
-        setAnimateOut(false);
+        window.setTimeout(() => {
+            setShowOverlay(true);
+            setAnimateOut(false);
+        }, 0);
         sessionStorage.setItem("hasSeenTransitions", "true");
 
         const video = videoRef.current;
@@ -47,8 +51,7 @@ export default function PageTransition({ children }: { children: React.ReactNode
         return () => {
             if (fallbackRef.current) clearTimeout(fallbackRef.current);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pathname, isTargetPage]);
+    }, [pathname, isTargetPage, dismiss]);
 
     if (!isTargetPage) {
         return <>{children}</>;

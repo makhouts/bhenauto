@@ -2,11 +2,26 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { revalidateLocalizedPath } from "@/lib/revalidate";
 import { requireAdmin } from "@/lib/auth-guard";
 import { z } from "zod";
 import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { r2Client, R2_BUCKET } from "@/lib/r2";
 import { isR2Key } from "@/lib/image-url";
+
+function isAllowedCarImage(value: string): boolean {
+    if (isR2Key(value)) return /^[a-zA-Z0-9/_-]+\.webp$/.test(value);
+    try {
+        const parsed = new URL(value);
+        if (parsed.protocol !== "https:") return false;
+        const allowedHosts = new Set(["images.bhenauto.com"]);
+        const configuredPublicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+        if (configuredPublicUrl) allowedHosts.add(new URL(configuredPublicUrl).hostname);
+        return allowedHosts.has(parsed.hostname);
+    } catch {
+        return false;
+    }
+}
 
 export async function toggleFeatured(id: string, featured: boolean) {
     await requireAdmin();
@@ -16,8 +31,8 @@ export async function toggleFeatured(id: string, featured: boolean) {
             data: { featured },
         });
         revalidatePath("/admin/cars");
-        revalidatePath("/");
-        revalidatePath("/inventory");
+        revalidateLocalizedPath("");
+        revalidateLocalizedPath("/inventory");
         return { success: true };
     } catch (error) {
         console.error("Failed to toggle featured status:", error);
@@ -36,8 +51,8 @@ export async function updateCarStatus(id: string, status: "beschikbaar" | "geres
             },
         });
         revalidatePath("/admin/cars");
-        revalidatePath("/inventory");
-        revalidatePath("/");
+        revalidateLocalizedPath("/inventory");
+        revalidateLocalizedPath("");
         return { success: true };
     } catch (error) {
         console.error("Failed to update car status:", error);
@@ -78,8 +93,8 @@ export async function deleteCar(id: string) {
             where: { id },
         });
         revalidatePath("/admin/cars");
-        revalidatePath("/");
-        revalidatePath("/inventory");
+        revalidateLocalizedPath("");
+        revalidateLocalizedPath("/inventory");
         return { success: true };
     } catch (error) {
         console.error("Failed to delete car:", error);
@@ -109,7 +124,7 @@ const CarInputSchema = z.object({
     carpass_url: z.string().url().optional().or(z.literal("")).nullable(),
     features: z.array(z.string().max(200)).optional().default([]),
     // Accepts both R2 keys (e.g. "bhenauto/clxxx/img.webp") and legacy full URLs
-    images: z.array(z.string().min(1)).min(0).max(50),
+    images: z.array(z.string().min(1).refine(isAllowedCarImage, "Image must be a BhenAuto R2 key or approved CDN URL")).min(0).max(50),
 });
 
 export async function saveCar(data: unknown) {
@@ -124,6 +139,15 @@ export async function saveCar(data: unknown) {
         };
 
         if (id) {
+            const existingImages = await prisma.image.findMany({
+                where: { carId: id },
+                select: { url: true },
+            });
+            const nextImageSet = new Set(images);
+            const removedR2Keys = existingImages
+                .map((img) => img.url)
+                .filter((url) => isR2Key(url) && !nextImageSet.has(url));
+
             await prisma.car.update({
                 where: { id },
                 data: {
@@ -134,6 +158,20 @@ export async function saveCar(data: unknown) {
                     },
                 },
             });
+
+            if (removedR2Keys.length > 0) {
+                await r2Client.send(
+                    new DeleteObjectsCommand({
+                        Bucket: R2_BUCKET,
+                        Delete: {
+                            Objects: removedR2Keys.map((key) => ({ Key: key })),
+                            Quiet: true,
+                        },
+                    })
+                ).catch((err: Error) => {
+                    console.warn("Failed to delete removed R2 images:", err.message);
+                });
+            }
         } else {
             await prisma.car.create({
                 data: {
@@ -146,8 +184,8 @@ export async function saveCar(data: unknown) {
         }
 
         revalidatePath("/admin/cars");
-        revalidatePath("/inventory");
-        revalidatePath("/");
+        revalidateLocalizedPath("/inventory");
+        revalidateLocalizedPath("");
 
         return { success: true };
     } catch (error) {

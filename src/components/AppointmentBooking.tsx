@@ -36,6 +36,7 @@ import {
   getAvailableSlots,
   bookAppointment,
 } from "@/app/actions/appointments";
+import { getLocalizedAppointmentService } from "@/lib/appointment-service";
 import { useTurnstile } from "@/hooks/useTurnstile";
 import type { AppointmentDict } from "@/lib/dictionaries";
 
@@ -108,6 +109,15 @@ export default function AppointmentBooking({
 
   // Service
   const [selectedService, setSelectedService] = useState("");
+  const localizedSelectedService = selectedService
+    ? getLocalizedAppointmentService(selectedService, locale === "fr" || locale === "en" ? locale : "nl")
+    : "";
+  const genericSubmitError =
+    locale === "fr"
+      ? "Une erreur inattendue s'est produite. Veuillez réessayer."
+      : locale === "en"
+        ? "Something went wrong. Please try again."
+        : "Er is een onverwachte fout opgetreden. Probeer opnieuw.";
 
   // Date picker
   const today = new Date();
@@ -197,20 +207,25 @@ export default function AppointmentBooking({
 
   const doBooking = (token: string) => {
     startSubmit(async () => {
-      const result = await bookAppointment({
-        dateStr: selectedDate!,
-        timeSlot: selectedSlot!,
-        ...formData,
-        service: selectedService || formData.service,
-        locale,
-        turnstileToken: token,
-      });
-      if ("error" in result) {
-        setSubmitError(result.error);
-      } else {
-        setStep("success");
+      try {
+        const result = await bookAppointment({
+          dateStr: selectedDate!,
+          timeSlot: selectedSlot!,
+          ...formData,
+          service: selectedService || formData.service,
+          locale,
+          turnstileToken: token,
+        });
+        if ("error" in result) {
+          setSubmitError(result.error);
+        } else {
+          setStep("success");
+        }
+      } catch {
+        setSubmitError(genericSubmitError);
+      } finally {
+        resetTurnstile();
       }
-      resetTurnstile();
     });
   };
 
@@ -498,7 +513,7 @@ export default function AppointmentBooking({
                 <div className="w-6 h-6 rounded-lg bg-[#d91c1c]/10 flex items-center justify-center text-[#d91c1c]">
                   <Wrench size={12} />
                 </div>
-                {selectedService}
+                {localizedSelectedService}
               </div>
               <div className="w-px h-4 bg-slate-200 hidden sm:block" />
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">

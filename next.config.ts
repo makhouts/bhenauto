@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
+const r2PublicHost = process.env.NEXT_PUBLIC_R2_PUBLIC_URL
+  ? new URL(process.env.NEXT_PUBLIC_R2_PUBLIC_URL).hostname
+  : null;
 
 // Static security headers applied by the app. If a CSP is added here or at
 // the edge, allow Turnstile scripts and frames from challenges.cloudflare.com.
@@ -16,7 +19,11 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
-const serverActionOrigins = ["bhenauto.com", "www.bhenauto.com"];
+const serverActionOrigins = [
+  "bhenauto.com",
+  "www.bhenauto.com",
+  ...(process.env.SERVER_ACTION_ALLOWED_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? []),
+];
 if (isDev) serverActionOrigins.push("localhost:3000");
 
 const nextConfig: NextConfig = {
@@ -54,11 +61,12 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.bhenauto.com",
       },
-      // R2 public bucket URL (kept for backward compat)
-      {
-        protocol: "https",
-        hostname: "*.r2.dev",
-      },
+      ...(r2PublicHost && r2PublicHost !== "images.bhenauto.com"
+        ? [{
+            protocol: "https" as const,
+            hostname: r2PublicHost,
+          }]
+        : []),
     ],
   },
 };

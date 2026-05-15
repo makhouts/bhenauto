@@ -1,15 +1,19 @@
 /**
  * Verifies a Cloudflare Turnstile token server-side.
  * Returns true if valid, false if missing/invalid/expired.
- * Always returns true in non-production environments if the secret key is not set.
+ * In production, missing configuration or verification network failures are denied.
  */
 export async function verifyTurnstile(token: string | null | undefined): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
+  const isProduction = process.env.NODE_ENV === "production";
 
-  // If no secret configured, skip verification (local dev without keys)
   if (!secret) {
-    console.warn("⚠️  TURNSTILE_SECRET_KEY not set — skipping verification");
-    return true;
+    if (!isProduction) {
+      console.warn("TURNSTILE_SECRET_KEY not set; skipping Turnstile verification outside production.");
+      return true;
+    }
+    console.error("TURNSTILE_SECRET_KEY is not set in production.");
+    return false;
   }
 
   if (!token) return false;
@@ -25,9 +29,8 @@ export async function verifyTurnstile(token: string | null | undefined): Promise
 
     const data = (await res.json()) as { success: boolean };
     return data.success === true;
-  } catch {
-    // Network error — fail open to avoid blocking legitimate users on Turnstile outage
-    console.error("❌ Turnstile verification failed (network error)");
-    return true;
+  } catch (error) {
+    console.error("Turnstile verification failed.", error);
+    return !isProduction;
   }
 }

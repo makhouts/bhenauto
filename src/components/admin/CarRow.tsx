@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import Link from "next/link";
@@ -11,6 +11,22 @@ import { toast } from "sonner";
 import { getImageUrl } from "@/lib/image-url";
 
 type Status = "beschikbaar" | "gereserveerd" | "verkocht";
+
+export type AdminCarRow = {
+    id: string;
+    slug: string;
+    brand: string;
+    model: string;
+    year: number;
+    mileage: number;
+    price: number;
+    fuel_type?: string;
+    color?: string;
+    featured: boolean;
+    sold: boolean;
+    reserved: boolean;
+    images?: { url: string }[];
+};
 
 // Derive the 3-state status from the car's boolean fields
 function getStatus(car: { sold: boolean; reserved: boolean }): Status {
@@ -40,7 +56,7 @@ const STATUS_CONFIG = {
     },
 } as const;
 
-export default function CarRow({ car }: { car: any }) {
+export default function CarRow({ car }: { car: AdminCarRow }) {
     const initialStatus = getStatus(car);
     const [isUpdating, setIsUpdating] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -48,11 +64,6 @@ export default function CarRow({ car }: { car: any }) {
     // Optimistic status — updates immediately on user interaction
     const [optimisticStatus, setOptimisticStatus] = useState<Status>(initialStatus);
     const dropdownRef = useRef<HTMLDivElement>(null);
-
-    // Sync if server re-renders with fresh props
-    useEffect(() => {
-        setOptimisticStatus(getStatus(car));
-    }, [car.sold, car.reserved]);
 
     // Close dropdown on outside click
     useOutsideClick(dropdownRef, () => setDropdownOpen(false), dropdownOpen);
@@ -179,7 +190,7 @@ export default function CarRow({ car }: { car: any }) {
                                         onClick={() => handleStatusChange(key)}
                                         className={`flex items-center gap-2 w-full px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors ${isActive ? "bg-slate-50 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
                                     >
-                                        <span className={`w-2 h-2 rounded-full shrink-0 ${config.dotClass}`} />
+                                        <Icon size={13} className="shrink-0" />
                                         {config.label}
                                         {isActive && <CheckCircle size={12} className="ml-auto text-slate-400" />}
                                     </button>

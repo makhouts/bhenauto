@@ -9,7 +9,18 @@ import { toast } from "sonner";
 
 type Tab = "nieuw" | "behandeld" | "alle";
 
-export default function ContactsClient({ contacts }: { contacts: any[] }) {
+type AdminContact = {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    message: string;
+    car_reference: string | null;
+    read: boolean;
+    createdAt: Date | string;
+};
+
+export default function ContactsClient({ contacts }: { contacts: AdminContact[] }) {
     const [activeTab, setActiveTab] = useState<Tab>("nieuw");
     const [isPending, startTransition] = useTransition();
 

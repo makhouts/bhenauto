@@ -30,6 +30,12 @@ export default function ContactForm({ dark = false, dict, locale, securityError 
 
     const busy = isSubmitting || isVerifying;
     const showError = error;
+    const genericError =
+        locale === "fr"
+            ? "Une erreur inattendue s'est produite. Veuillez réessayer."
+            : locale === "en"
+                ? "Something went wrong. Please try again."
+                : "Er is een onverwachte fout opgetreden. Probeer opnieuw.";
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -42,7 +48,13 @@ export default function ContactForm({ dark = false, dict, locale, securityError 
 
         try {
             setIsSubmitting(true);
-            const token = await executeTurnstile();
+            let token: string;
+            try {
+                token = await executeTurnstile();
+            } catch {
+                setError(securityError ?? "Security check failed. Please refresh the page and try again.");
+                return;
+            }
             if (token) formData.set("cf-turnstile-response", token);
 
             const result = await submitContact(formData);
@@ -53,7 +65,7 @@ export default function ContactForm({ dark = false, dict, locale, securityError 
                 form.reset();
             }
         } catch {
-            setError(securityError ?? "Security check failed. Please refresh the page and try again.");
+            setError(genericError);
         } finally {
             resetTurnstile();
             setIsSubmitting(false);

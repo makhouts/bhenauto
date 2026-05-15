@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import type { InventoryDict } from "@/lib/dictionaries";
 
@@ -17,13 +17,14 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
     const paramPrice = searchParams.get("maxPrice") || "250000";
     const [localMileage, setLocalMileage] = useState(paramMileage);
     const [localPrice, setLocalPrice] = useState(paramPrice);
-    const isDraggingMileage = useRef(false);
-    const isDraggingPrice = useRef(false);
 
-    // Keep local state in sync when URL params change externally (e.g. reset)
-    // We use the param values when not actively dragging
-    const displayMileage = isDraggingMileage.current ? localMileage : paramMileage;
-    const displayPrice = isDraggingPrice.current ? localPrice : paramPrice;
+    useEffect(() => {
+        setLocalMileage(paramMileage);
+    }, [paramMileage]);
+
+    useEffect(() => {
+        setLocalPrice(paramPrice);
+    }, [paramPrice]);
 
     const createQueryString = useCallback(
         (name: string, value: string) => {
@@ -67,12 +68,10 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
 
     // Commit slider value to URL (only on release)
     const commitMileage = (val: string) => {
-        isDraggingMileage.current = false;
         router.push(`${pathname}?${createQueryString("maxMileage", val)}`);
     };
 
     const commitPrice = (val: string) => {
-        isDraggingPrice.current = false;
         router.push(`${pathname}?${createQueryString("maxPrice", val)}`);
     };
 
@@ -140,24 +139,22 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                             min="0"
                             max="200000"
                             step="5000"
-                            value={displayMileage}
+                            value={localMileage}
                             aria-label={dict.mileageLabel}
                             aria-valuemin={0}
                             aria-valuemax={200000}
-                            aria-valuenow={parseInt(displayMileage)}
+                            aria-valuenow={parseInt(localMileage)}
                             onInput={(e) => {
-                                isDraggingMileage.current = true;
                                 setLocalMileage((e.target as HTMLInputElement).value);
                             }}
                             onChange={(e) => {
-                                isDraggingMileage.current = true;
                                 setLocalMileage(e.target.value);
                             }}
                             onMouseUp={(e) => commitMileage((e.target as HTMLInputElement).value)}
                             onTouchEnd={(e) => commitMileage((e.target as HTMLInputElement).value)}
                             className="slider-input w-full"
                             style={{
-                                background: `linear-gradient(to right, #d91c1c 0%, #d91c1c ${(parseInt(displayMileage) / 200000) * 100}%, var(--theme-border) ${(parseInt(displayMileage) / 200000) * 100}%, var(--theme-border) 100%)`
+                                background: `linear-gradient(to right, #d91c1c 0%, #d91c1c ${(parseInt(localMileage) / 200000) * 100}%, var(--theme-border) ${(parseInt(localMileage) / 200000) * 100}%, var(--theme-border) 100%)`
                             }}
                         />
                         <div className="flex justify-between mt-3 text-sm font-medium theme-text-muted">
@@ -166,7 +163,7 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                         </div>
                     </div>
                     <div className="text-center mt-1 text-xs font-bold theme-text-secondary">
-                        Max: {parseInt(displayMileage) >= 200000 ? dict.noLimit : `${parseInt(displayMileage).toLocaleString('nl-NL')} km`}
+                        Max: {parseInt(localMileage) >= 200000 ? dict.noLimit : `${parseInt(localMileage).toLocaleString('nl-NL')} km`}
                     </div>
                 </div>
 
@@ -180,24 +177,22 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                             min="10000"
                             max="250000"
                             step="5000"
-                            value={displayPrice}
+                            value={localPrice}
                             aria-label={dict.priceLabel}
                             aria-valuemin={10000}
                             aria-valuemax={250000}
-                            aria-valuenow={parseInt(displayPrice)}
+                            aria-valuenow={parseInt(localPrice)}
                             onInput={(e) => {
-                                isDraggingPrice.current = true;
                                 setLocalPrice((e.target as HTMLInputElement).value);
                             }}
                             onChange={(e) => {
-                                isDraggingPrice.current = true;
                                 setLocalPrice(e.target.value);
                             }}
                             onMouseUp={(e) => commitPrice((e.target as HTMLInputElement).value)}
                             onTouchEnd={(e) => commitPrice((e.target as HTMLInputElement).value)}
                             className="slider-input w-full"
                             style={{
-                                background: `linear-gradient(to right, #d91c1c 0%, #d91c1c ${((parseInt(displayPrice) - 10000) / 240000) * 100}%, var(--theme-border) ${((parseInt(displayPrice) - 10000) / 240000) * 100}%, var(--theme-border) 100%)`
+                                background: `linear-gradient(to right, #d91c1c 0%, #d91c1c ${((parseInt(localPrice) - 10000) / 240000) * 100}%, var(--theme-border) ${((parseInt(localPrice) - 10000) / 240000) * 100}%, var(--theme-border) 100%)`
                             }}
                         />
                         <div className="flex justify-between mt-3 text-sm font-medium theme-text-muted">
@@ -206,7 +201,7 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                         </div>
                     </div>
                     <div className="text-center mt-1 text-xs font-bold theme-text-secondary">
-                        Max: {parseInt(displayPrice) >= 250000 ? dict.noLimit : `€ ${parseInt(displayPrice).toLocaleString('nl-NL')}`}
+                        Max: {parseInt(localPrice) >= 250000 ? dict.noLimit : `€ ${parseInt(localPrice).toLocaleString('nl-NL')}`}
                     </div>
                 </div>
 

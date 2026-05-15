@@ -1,32 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { locales, defaultLocale, isValidLocale, parseAcceptLanguage } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n";
+import { isValidSession } from "@/lib/session";
 
 const COOKIE_NAME = "PREFERRED_LOCALE";
-const SESSION_CONTEXT = "bhenauto-admin-session-v1";
-
-/** Validates the admin_session cookie value in the Edge runtime. */
-async function isValidAdminSession(sessionValue: string | undefined): Promise<boolean> {
-  if (!sessionValue) return false;
-  const secret = process.env.ADMIN_SESSION_SECRET;
-  if (!secret) return false;
-  try {
-    const enc = new TextEncoder();
-    const key = await globalThis.crypto.subtle.importKey(
-      "raw",
-      enc.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign", "verify"]
-    );
-    const sessionBytes = new Uint8Array(
-      (sessionValue.match(/.{1,2}/g) ?? []).map((b) => parseInt(b, 16))
-    );
-    return globalThis.crypto.subtle.verify("HMAC", key, sessionBytes, enc.encode(SESSION_CONTEXT));
-  } catch {
-    return false;
-  }
-}
 
 /** Map ISO 3166-1 alpha-2 country code → locale.
  *  Header priority: cf-ipcountry (Cloudflare) → absent (skip GeoIP). */
@@ -90,7 +67,7 @@ export async function proxy(request: NextRequest) {
   if (pathname.startsWith("/admin")) {
     if (pathname !== "/admin/login") {
       const sessionCookie = request.cookies.get("admin_session")?.value;
-      const authenticated = await isValidAdminSession(sessionCookie);
+      const authenticated = await isValidSession(sessionCookie);
       if (!authenticated) {
         const notFoundUrl = request.nextUrl.clone();
         notFoundUrl.pathname = "/_not-found";

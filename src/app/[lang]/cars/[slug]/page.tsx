@@ -20,7 +20,7 @@ import { isValidLocale, type Locale } from '@/lib/i18n';
 const getCar = cache(async (slug: string) => {
     return prisma.car.findUnique({
         where: { slug },
-        include: { images: true },
+        include: { images: { orderBy: { createdAt: 'asc' } } },
     });
 });
 

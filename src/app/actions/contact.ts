@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { getDictionary } from "@/lib/dictionaries";
 import type { Locale } from "@/lib/i18n";
+import { getClientIp } from "@/lib/request-ip";
 
 // ─── Rate limiter: 3 submissions per hour per IP (self-hosted: in-memory is reliable) ──
 const rateLimitMap = new Map<string, number[]>();
@@ -43,7 +44,7 @@ export async function submitContact(formData: FormData) {
 
     // ── Layer 3: Rate limiting — 3/hour per IP ────────────────────────────────
     const headerStore = await headers();
-    const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const ip = getClientIp(headerStore);
     if (isRateLimited(ip)) {
       return { error: e("rateLimited") };
     }

@@ -1,28 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import type { WerkplaatsDict } from "@/lib/dictionaries";
 import mechanic from "@/assets/mechanic-wallpaper.webp";
-
-function useInView(threshold = 0.15) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setInView(true); observer.disconnect(); } },
-      { threshold }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [threshold]);
-
-  return { ref, inView };
-}
 
 export default function WerkplaatsHero({ dict }: { dict: WerkplaatsDict }) {
   const [mounted, setMounted] = useState(false);

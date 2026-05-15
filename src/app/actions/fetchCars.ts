@@ -42,7 +42,10 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
     hasMore: boolean;
     total: number;
 }> {
-    const { page = 1, pageSize = 9, brand, query, sort, type, maxPrice, maxMileage, fuel } = params;
+    const { brand, query, sort, type, maxPrice, maxMileage, fuel } = params;
+    const page = Math.max(1, Math.trunc(params.page ?? 1));
+    const pageSize = Math.min(24, Math.max(1, Math.trunc(params.pageSize ?? 9)));
+    const safeQuery = query?.trim().slice(0, 80);
 
     const conditions: Prisma.CarWhereInput[] = [];
 
@@ -85,12 +88,12 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
         }
     }
 
-    if (query) {
+    if (safeQuery) {
         conditions.push({
             OR: [
-                { title: { contains: query, mode: "insensitive" } },
-                { brand: { contains: query, mode: "insensitive" } },
-                { model: { contains: query, mode: "insensitive" } },
+                { title: { contains: safeQuery, mode: "insensitive" } },
+                { brand: { contains: safeQuery, mode: "insensitive" } },
+                { model: { contains: safeQuery, mode: "insensitive" } },
             ],
         });
     }
@@ -112,7 +115,7 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
             orderBy,
             skip,
             take: pageSize,
-            include: { images: { take: 2 } },
+            include: { images: { orderBy: { createdAt: "asc" }, take: 2 } },
         }),
         prisma.car.count({ where }),
     ]);

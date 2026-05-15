@@ -119,7 +119,7 @@ export default function AppointmentsClient({
             today, weekStart, weekEnd, weekDays,
             pendingApts, calData, blockedDays, blockedSlots,
             weekTotal, availCreate, availEdit,
-            isSlotBlocked, getBlockId,
+            getBlockId,
         },
         handlers: {
             openConfirm, handleConfirmSubmit, handleCancel,
@@ -136,7 +136,7 @@ export default function AppointmentsClient({
     const [overlayDay, setOverlayDay] = useState(() => new Date());
 
     const {
-        appointments, blocks, popoverId, slotPopover,
+        appointments, popoverId, slotPopover,
         createOpen, createForm, createErrors, createError, createMonth,
         editOpen, editForm, editErrors, editError, editMonth,
         blockOpen, blockForm, blockError, blockMonth,

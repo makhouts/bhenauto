@@ -4,6 +4,7 @@ import { r2Client, R2_BUCKET } from "@/lib/r2";
 import { optimizeImage } from "@/lib/image-optimize";
 import { isValidSession } from "@/lib/session";
 import { v4 as uuidv4 } from "uuid";
+import { getClientIp } from "@/lib/request-ip";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file (before optimization)
 const MAX_FILES = 20;
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Rate limiting
-        const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+        const ip = getClientIp(request.headers);
         if (isRateLimited(ip)) {
             return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 });
         }
@@ -78,6 +79,13 @@ export async function POST(request: NextRequest) {
         if (!carId) {
             return NextResponse.json(
                 { error: "carId is required." },
+                { status: 400 }
+            );
+        }
+
+        if (!/^[a-zA-Z0-9_-]{6,80}$/.test(carId)) {
+            return NextResponse.json(
+                { error: "Invalid carId." },
                 { status: 400 }
             );
         }

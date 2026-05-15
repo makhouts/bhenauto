@@ -2,9 +2,10 @@ import { sendMail, type MailResult } from "./mail";
 import { format } from "date-fns";
 import { nl, fr, enGB } from "date-fns/locale";
 import { toZonedTime } from "date-fns-tz";
+import { getLocalizedAppointmentService } from "./appointment-service";
 
 const TZ = "Europe/Brussels";
-const LOGO_URL = "https://www.bhenauto.com/logo.png";
+const LOGO_URL = "https://images.bhenauto.com/bhenauto-logo-mail.png";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -119,6 +120,15 @@ function formatDate(date: Date, locale: Locale): string {
   return format(zoned, "EEEE d MMMM yyyy", { locale: dateFnsLocales[locale] });
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HTML email layout — BhenAuto branded
 // ─────────────────────────────────────────────────────────────────────────────
@@ -179,7 +189,7 @@ function detailRow(label: string, value: string): string {
   return `
     <tr>
       <td style="padding:10px 16px;font-size:12px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #f3f4f6;width:110px;vertical-align:top;">${label}</td>
-      <td style="padding:10px 16px;font-size:14px;font-weight:600;color:#111827;border-bottom:1px solid #f3f4f6;">${value}</td>
+      <td style="padding:10px 16px;font-size:14px;font-weight:600;color:#111827;border-bottom:1px solid #f3f4f6;">${escapeHtml(value)}</td>
     </tr>`;
 }
 
@@ -188,7 +198,7 @@ function detailsTable(apt: AppointmentData, locale: Locale): string {
   const rows = [
     detailRow(t.labelDate, formatDate(apt.date, locale)),
     detailRow(t.labelTime, apt.timeSlot),
-    detailRow(t.labelService, apt.service),
+    detailRow(t.labelService, getLocalizedAppointmentService(apt.service, locale)),
   ];
   if (apt.notes) {
     rows.push(detailRow(t.labelNotes, apt.notes));
@@ -220,7 +230,7 @@ export async function sendBookingReceived(apt: AppointmentData): Promise<MailRes
   const t = i18n[locale];
 
   const body = `
-    <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:#111827;">${t.bookingIntro(apt.name)}</p>
+    <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:#111827;">${t.bookingIntro(escapeHtml(apt.name))}</p>
     <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6;">${t.bookingBody}</p>
     <div style="text-align:center;margin-bottom:20px;">${statusBadge(t.bookingTitle, "#f59e0b")}</div>
     ${detailsTable(apt, locale)}
@@ -247,7 +257,7 @@ export async function sendAppointmentConfirmed(apt: AppointmentData): Promise<Ma
   const t = i18n[locale];
 
   const body = `
-    <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:#111827;">${t.confirmedIntro(apt.name)}</p>
+    <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:#111827;">${t.confirmedIntro(escapeHtml(apt.name))}</p>
     <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6;">${t.confirmedBody}</p>
     <div style="text-align:center;margin-bottom:20px;">${statusBadge(t.confirmedTitle, "#16a34a")}</div>
     ${detailsTable(apt, locale)}

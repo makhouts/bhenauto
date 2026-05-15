@@ -3,7 +3,8 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash, timingSafeEqual } from "crypto";
-import { deriveSessionToken } from "@/lib/session";
+import { ADMIN_SESSION_MAX_AGE, createSessionToken } from "@/lib/session";
+import { getClientIp } from "@/lib/request-ip";
 
 // In-memory rate limiter for login attempts (per-process; for production
 // multi-instance deployments, move to Redis/Upstash).
@@ -40,7 +41,7 @@ export async function login(formData: FormData) {
     }
 
     const headerStore = await headers();
-    const ip = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const ip = getClientIp(headerStore);
     if (isLoginRateLimited(ip)) {
         return { error: "Te veel pogingen. Probeer het over 15 minuten opnieuw." };
     }
@@ -51,14 +52,14 @@ export async function login(formData: FormData) {
         return { error: "Onjuiste inloggegevens." };
     }
 
-    // Store the HMAC-derived token, not the raw secret
-    const sessionToken = await deriveSessionToken(sessionSecret);
+    // Store a signed, per-login token, not the raw secret.
+    const sessionToken = await createSessionToken(sessionSecret);
     const cookieStore = await cookies();
     cookieStore.set("admin_session", sessionToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV !== "development",
         sameSite: "strict",
-        maxAge: 60 * 60 * 2, // 2 hours
+        maxAge: ADMIN_SESSION_MAX_AGE,
         path: "/",
     });
 

@@ -5,6 +5,7 @@ const SMTP_PORT = 587;
 const SMTP_USER = process.env.SMTP_USER || "info@bhenauto.com";
 const SMTP_PASS = process.env.SMTP_PASS;
 const SMTP_TIMEOUT_MS = 8_000;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 /**
  * Nodemailer transporter.
@@ -58,6 +59,10 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): 
 export async function sendMail(options: MailOptions): Promise<MailResult> {
   try {
     if (!transporter) {
+      if (IS_PRODUCTION) {
+        console.error("SMTP_PASS is not configured in production; email was not sent.");
+        return { success: false, error: "SMTP is not configured." };
+      }
       console.log("═══ EMAIL (dev — no SMTP configured) ═══");
       console.log(`  To:      ${options.to}`);
       console.log(`  Subject: ${options.subject}`);

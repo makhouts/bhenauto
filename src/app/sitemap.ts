@@ -24,7 +24,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
             entries.push({
                 url: `${BASE_URL}/${locale}${route.path}`,
-                lastModified: new Date(),
                 changeFrequency: route.changeFrequency,
                 priority: route.priority,
                 alternates: { languages },

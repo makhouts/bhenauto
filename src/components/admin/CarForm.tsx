@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -54,7 +54,6 @@ function SortableImage({
     onRemove,
     isNew,
     aiScore,
-    aiAngle,
 }: {
     id: string;
     url: string;
@@ -62,7 +61,6 @@ function SortableImage({
     onRemove: () => void;
     isNew?: boolean;
     aiScore?: number;
-    aiAngle?: string;
 }) {
     const {
         attributes,
@@ -207,17 +205,10 @@ function SearchableDropdown({
 }) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
-    const [customMode, setCustomMode] = useState(false);
+    const [customMode, setCustomMode] = useState(() => Boolean(value && !options.includes(value)));
     const ref = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const customInputRef = useRef<HTMLInputElement>(null);
-
-    // Check if current value is custom (not in the options list)
-    useEffect(() => {
-        if (value && !options.includes(value)) {
-            setCustomMode(true);
-        }
-    }, []);
 
     const closeDropdown = useCallback(() => {
         setOpen(false);
@@ -342,8 +333,30 @@ function SearchableDropdown({
 }
 
 // ─── Main CarForm ───────────────────────────────────────────────────
+type InitialCarImage = { url: string };
+type CarFormInitialData = {
+    id?: string;
+    slug?: string;
+    title?: string;
+    brand?: string;
+    model?: string;
+    year?: number;
+    mileage?: number;
+    price?: number;
+    horsepower?: number;
+    fuel_type?: string;
+    transmission?: string;
+    color?: string;
+    description?: string;
+    featured?: boolean;
+    sold?: boolean;
+    carpass_url?: string | null;
+    features?: string[];
+    images?: InitialCarImage[];
+};
+
 interface CarFormProps {
-    initialData?: any;
+    initialData?: CarFormInitialData;
 }
 
 export default function CarForm({ initialData }: CarFormProps) {
@@ -387,7 +400,7 @@ export default function CarForm({ initialData }: CarFormProps) {
     type ImageItem = { id: string; url: string; type: "existing" | "new"; file?: File; aiScore?: number; aiAngle?: string };
 
     const buildInitial = (): ImageItem[] => {
-        const existing: ImageItem[] = (initialData?.images || []).map((img: any, i: number) => ({
+        const existing: ImageItem[] = (initialData?.images || []).map((img, i: number) => ({
             id: `existing-${i}`,
             url: img.url,
             type: "existing" as const,
@@ -439,45 +452,6 @@ export default function CarForm({ initialData }: CarFormProps) {
         }));
         setImages((prev) => [...prev, ...previewItems]);
         setAiStale(true); // New images added, AI results are stale
-    };
-
-    // Upload blob images to R2 and return their keys
-    const uploadBlobImages = async (currentImages: ImageItem[]): Promise<ImageItem[]> => {
-        const blobItems = currentImages.filter((i) => i.url.startsWith("blob:") && i.file);
-        if (blobItems.length === 0) return currentImages;
-
-        setIsUploading(true);
-        try {
-            const uploadFormData = new FormData();
-            uploadFormData.append("carId", carId);
-            blobItems.forEach((item) => uploadFormData.append("files", item.file!));
-
-            const uploadRes = await fetch("/api/upload", {
-                method: "POST",
-                body: uploadFormData,
-            });
-
-            if (!uploadRes.ok) {
-                const errData = await uploadRes.json().catch(() => ({}));
-                throw new Error(errData.error || "Upload failed");
-            }
-
-            const uploadData = await uploadRes.json();
-            const r2Keys: string[] = uploadData.keys;
-
-            let uploadIdx = 0;
-            const updated = currentImages.map((item) => {
-                if (item.url.startsWith("blob:") && item.file) {
-                    URL.revokeObjectURL(item.url);
-                    return { ...item, url: r2Keys[uploadIdx++], type: "existing" as const, file: undefined };
-                }
-                return item;
-            });
-            setImages(updated);
-            return updated;
-        } finally {
-            setIsUploading(false);
-        }
     };
 
     // Trigger AI analysis (only when user clicks the button)
@@ -561,9 +535,9 @@ export default function CarForm({ initialData }: CarFormProps) {
             } else {
                 toast.info("AI-analyse is niet beschikbaar. Controleer je API-sleutel.");
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("AI analysis error:", err);
-            toast.error(err.message || "AI-analyse is mislukt.");
+            toast.error(err instanceof Error ? err.message : "AI-analyse is mislukt.");
         } finally {
             setAiAnalyzing(false);
             setAiProgress("");
@@ -603,6 +577,7 @@ export default function CarForm({ initialData }: CarFormProps) {
 
             // Upload any remaining new files that weren't uploaded during AI analysis
             if (newFiles.length > 0) {
+                setIsUploading(true);
                 const uploadFormData = new FormData();
                 uploadFormData.append("carId", carId);
                 newFiles.forEach((file) => uploadFormData.append("files", file));
@@ -619,6 +594,7 @@ export default function CarForm({ initialData }: CarFormProps) {
 
                 const uploadData = await uploadRes.json();
                 uploadedKeys = uploadData.keys;
+                setIsUploading(false);
             }
 
             // Build ordered list matching the current image order
@@ -652,9 +628,10 @@ export default function CarForm({ initialData }: CarFormProps) {
                 router.push("/admin/cars");
                 router.refresh();
             }
-        } catch (err: any) {
-            toast.error(err.message || "Er is een onverwachte fout opgetreden.");
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : "Er is een onverwachte fout opgetreden.");
             setIsSubmitting(false);
+            setIsUploading(false);
         }
     };
 
@@ -1008,7 +985,6 @@ export default function CarForm({ initialData }: CarFormProps) {
                                         onRemove={() => removeImage(item.id)}
                                         isNew={item.type === "new"}
                                         aiScore={item.aiScore}
-                                        aiAngle={item.aiAngle}
                                     />
                                 ))}
 

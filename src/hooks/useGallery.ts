@@ -54,7 +54,7 @@ export function useGallery(imageCount: number) {
     const lightboxThumbRef = useRef<HTMLDivElement>(null);
     const touchStart = useRef<number | null>(null);
 
-    const { activeIndex, lightboxOpen, isZoomed } = state;
+    const { activeIndex, lightboxOpen } = state;
 
     const goTo = useCallback(
         (index: number) => dispatch({ type: "GO_TO", index }),

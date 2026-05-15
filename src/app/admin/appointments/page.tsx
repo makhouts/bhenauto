@@ -1,5 +1,4 @@
 import prisma from "@/lib/prisma";
-import { CalendarCheck } from "lucide-react";
 import AppointmentsClient from "@/components/admin/AppointmentsClient";
 import { getBlocks } from "@/app/actions/admin-appointments";
 import { requireAdmin } from "@/lib/auth-guard";

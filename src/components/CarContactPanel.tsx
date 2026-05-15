@@ -43,6 +43,12 @@ function InlineContactForm({
     } = useTurnstile({ action: "car-contact", cData: carSlug.slice(0, 255) });
 
     const busy = isSubmitting || isVerifying;
+    const genericError =
+        locale === "fr"
+            ? "Une erreur inattendue s'est produite. Veuillez réessayer."
+            : locale === "en"
+                ? "Something went wrong. Please try again."
+                : "Er is een onverwachte fout opgetreden. Probeer opnieuw.";
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -53,7 +59,13 @@ function InlineContactForm({
 
         try {
             setIsSubmitting(true);
-            const token = await executeTurnstile();
+            let token: string;
+            try {
+                token = await executeTurnstile();
+            } catch {
+                setError(securityError ?? "Security check failed. Please refresh the page and try again.");
+                return;
+            }
             if (token) formData.set("cf-turnstile-response", token);
             formData.set("locale", locale);
 
@@ -65,7 +77,7 @@ function InlineContactForm({
                 form.reset();
             }
         } catch {
-            setError(securityError ?? "Security check failed. Please refresh the page and try again.");
+            setError(genericError);
         } finally {
             resetTurnstile();
             setIsSubmitting(false);
