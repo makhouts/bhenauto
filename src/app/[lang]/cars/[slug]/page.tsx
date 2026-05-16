@@ -380,7 +380,12 @@ export default async function CarDetailPage(
             </div>
 
             {/* Sticky Mobile Contact Bar */}
-            <MobileContactBar carSlug={car.slug} carTitle={car.title} locale={lang} dict={dict.carDetail} />
+            <MobileContactBar
+                carSlug={car.slug}
+                locale={lang}
+                dict={dict.carDetail}
+                whatsappUrl={whatsappUrl}
+            />
 
             {/* Bottom padding for mobile sticky bar */}
             <div className="h-20 lg:hidden" />

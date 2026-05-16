@@ -6,17 +6,12 @@ import type { CarDetailDict } from "@/lib/dictionaries";
 
 interface MobileContactBarProps {
     carSlug: string;
-    carTitle: string;
     locale: string;
     dict: CarDetailDict;
+    whatsappUrl: string;
 }
 
-export default function MobileContactBar({ carSlug, carTitle, locale, dict }: MobileContactBarProps) {
-    const whatsappMessage = encodeURIComponent(
-        dict.whatsappMessage.replace("{title}", carTitle)
-    );
-    const whatsappUrl = `https://wa.me/32477544294?text=${whatsappMessage}`;
-
+export default function MobileContactBar({ carSlug, locale, dict, whatsappUrl }: MobileContactBarProps) {
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 py-3 safe-area-bottom" style={{ backgroundColor: 'var(--theme-overlay)', borderTop: '1px solid var(--theme-border)' }}>
             <div className="flex gap-3 max-w-lg mx-auto">

@@ -64,6 +64,18 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                         loading="eager"
                     />
                 ))}
+                {preloadIndexes.map((index) => (
+                    <Image
+                        key={`preload-lightbox-${resolvedImages[index].id}`}
+                        src={resolvedImages[index].url}
+                        alt=""
+                        width={1600}
+                        height={1200}
+                        sizes="100vw"
+                        quality={80}
+                        loading="eager"
+                    />
+                ))}
             </div>
 
             <div className="flex gap-2.5 h-[380px] md:h-[520px]">
