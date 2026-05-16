@@ -12,6 +12,7 @@ import { getImageUrl } from '@/lib/image-url';
 import { ShieldCheck } from 'lucide-react';
 import CarContactPanel from '@/components/CarContactPanel';
 import CarWhatsAppButton from '@/components/CarWhatsAppButton';
+import DeferredMap from '@/components/DeferredMap';
 import carpassImg from '@/assets/carpass.webp';
 import { getDictionary } from '@/lib/dictionaries';
 import { isValidLocale, type Locale } from '@/lib/i18n';
@@ -350,16 +351,7 @@ export default async function CarDetailPage(
                             <div className="theme-surface rounded-[28px] shadow-sm overflow-hidden p-3 mt-5" style={{ border: '1px solid var(--theme-border)' }}>
                                 <div className="h-[250px] w-full rounded-[20px] overflow-hidden relative group">
                                     <div className="absolute inset-0 bg-transparent pointer-events-none shadow-[inset_0_0_20px_rgba(0,0,0,0.05)] z-10 transition-colors duration-300"></div>
-                                    <iframe
-                                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2516.356948124384!2d4.225758377155591!3d50.89861107168115!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47c3c07cb13d10cd%3A0x14ae28aebd5ab2be!2sBhenauto!5e0!3m2!1sen!2sbe!4v1774786991203!5m2!1sen!2sbe"
-                                        width="100%"
-                                        height="100%"
-                                        style={{ border: 0 }}
-                                        allowFullScreen
-                                        loading="lazy"
-                                        referrerPolicy="no-referrer-when-downgrade"
-                                        className="grayscale-[20%] contrast-125 transition-all duration-500 group-hover:grayscale-0"
-                                    />
+                                    <DeferredMap />
                                 </div>
                             </div>
 

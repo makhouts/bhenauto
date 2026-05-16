@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Shield, FileText, ChevronRight, Mail, Phone, MapPin, Cookie } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
+import { PublicEmail, PUBLIC_EMAIL_HREF } from "@/components/PublicEmail";
 
 /* ─── tiny prose helpers ─── */
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -29,7 +30,7 @@ function UL({ items }: { items: string[] }) {
     </ul>
   );
 }
-function InfoGrid({ items }: { items: { icon: React.ReactNode; label: string; value: string }[] }) {
+function InfoGrid({ items }: { items: { icon: React.ReactNode; label: string; value: React.ReactNode }[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4">
       {items.map((item, i) => (
@@ -108,7 +109,7 @@ function PrivacyContent({ locale }: { locale: Locale }) {
       <InfoGrid items={[
         { icon: <MapPin size={15} />, label: t.addr, value: "Brusselsesteenweg 223, 1730 Asse" },
         { icon: <FileText size={15} />, label: t.vat, value: "BE 0542.809.426" },
-        { icon: <Mail size={15} />, label: t.email, value: "info@bhenauto.com" },
+        { icon: <Mail size={15} />, label: t.email, value: <PublicEmail /> },
         { icon: <Phone size={15} />, label: t.phone, value: "02 582 83 53" },
       ]} />
       <SectionTitle>{t.what}</SectionTitle>
@@ -119,7 +120,7 @@ function PrivacyContent({ locale }: { locale: Locale }) {
       <SectionTitle>{t.share}</SectionTitle>
       <P>{t.shareText}</P>
       <SectionTitle>{t.rights}</SectionTitle>
-      <P>{t.rightsText}{" "}<a href="mailto:info@bhenauto.com" className="text-[#d91c1c] font-semibold hover:underline">info@bhenauto.com</a>.</P>
+      <P>{t.rightsText}{" "}<a href={PUBLIC_EMAIL_HREF} className="text-[#d91c1c] font-semibold hover:underline"><PublicEmail /></a>.</P>
     </>
   );
 }
@@ -223,7 +224,7 @@ function CookieContent({ locale }: { locale: Locale }) {
       <SectionTitle>{t.retentionTitle}</SectionTitle>
       <P>{t.retentionText}</P>
       <SectionTitle>{t.contactTitle}</SectionTitle>
-      <P>{t.contactText}{" "}<a href="mailto:info@bhenauto.com" className="text-[#d91c1c] font-semibold hover:underline">info@bhenauto.com</a>.</P>
+      <P>{t.contactText}{" "}<a href={PUBLIC_EMAIL_HREF} className="text-[#d91c1c] font-semibold hover:underline"><PublicEmail /></a>.</P>
     </>
   );
 }

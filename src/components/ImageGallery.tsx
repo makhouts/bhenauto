@@ -12,6 +12,10 @@ interface ImageGalleryProps {
     title: string;
 }
 
+const GALLERY_IMAGE_QUALITY = 80;
+const LIGHTBOX_IMAGE_QUALITY = 80;
+const LIGHTBOX_IMAGE_SIZES = "100vw";
+
 export default function ImageGallery({ images, title }: ImageGalleryProps) {
     // Resolve all image URLs once (R2 keys → full CDN URLs)
     const resolvedImages = useMemo(() =>
@@ -27,7 +31,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
     } = useGallery(resolvedImages.length);
 
     const preloadIndexes = useMemo(
-        () => [activeIndex + 1, activeIndex - 1, activeIndex + 2]
+        () => [activeIndex + 1, activeIndex + 2, activeIndex - 1]
             .filter((index, position, array) => index >= 0 && index < resolvedImages.length && array.indexOf(index) === position),
         [activeIndex, resolvedImages.length]
     );
@@ -51,7 +55,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
     return (
         <>
             {/* ── GALLERY GRID ── */}
-            <div aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden">
+            <div aria-hidden="true" className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px overflow-hidden opacity-0">
                 {preloadIndexes.map((index) => (
                     <Image
                         key={`preload-${resolvedImages[index].id}`}
@@ -60,8 +64,9 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                         width={1200}
                         height={800}
                         sizes="(max-width: 768px) 100vw, 70vw"
-                        quality={80}
+                        quality={GALLERY_IMAGE_QUALITY}
                         loading="eager"
+                        fetchPriority="low"
                     />
                 ))}
                 {preloadIndexes.map((index) => (
@@ -71,9 +76,10 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                         alt=""
                         width={1600}
                         height={1200}
-                        sizes="100vw"
-                        quality={80}
+                        sizes={LIGHTBOX_IMAGE_SIZES}
+                        quality={LIGHTBOX_IMAGE_QUALITY}
                         loading="eager"
+                        fetchPriority={lightboxOpen ? "high" : "low"}
                     />
                 ))}
             </div>
@@ -108,7 +114,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 priority={activeIndex === 0}
                                 fetchPriority={activeIndex === 0 ? "high" : "auto"}
                                 sizes="(max-width: 768px) 100vw, 70vw"
-                                quality={80}
+                                quality={GALLERY_IMAGE_QUALITY}
                             />
                         </motion.div>
                     </AnimatePresence>
@@ -286,8 +292,10 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                             alt={`${title} - Foto ${activeIndex + 1}`}
                                             fill
                                             className="object-contain"
-                                            sizes="100vw"
-                                            priority={false}
+                                            sizes={LIGHTBOX_IMAGE_SIZES}
+                                            quality={LIGHTBOX_IMAGE_QUALITY}
+                                            loading="eager"
+                                            fetchPriority={lightboxOpen ? "high" : "auto"}
                                         />
                                     </div>
                                 </motion.div>
