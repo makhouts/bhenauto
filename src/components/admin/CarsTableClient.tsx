@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
 import CarRow, { type AdminCarRow } from "@/components/admin/CarRow";
+import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
+import { tpl } from "@/lib/admin-i18n";
 
 export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
+    const { dict } = useAdminI18n();
     const [query, setQuery] = useState("");
 
     const statusPriority = (car: AdminCarRow) => {
@@ -34,7 +37,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input
                     type="text"
-                    placeholder="Zoek op merk, model, jaar, kleur..."
+                    placeholder={dict.carsTable.searchPlaceholder}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     className="w-full sm:w-72 pl-10 pr-4 py-2.5 text-sm font-medium border border-slate-200 rounded-xl bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#d91c1c]/20 focus:border-[#d91c1c] transition-all placeholder:text-slate-400"
@@ -45,11 +48,11 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-widest text-slate-500">
-                            <th className="px-5 py-4 font-semibold">Voertuig</th>
-                            <th className="px-5 py-4 font-semibold">Prijs</th>
-                            <th className="px-5 py-4 font-semibold">Zichtbaarheid</th>
-                            <th className="px-5 py-4 font-semibold">Status</th>
-                            <th className="px-5 py-4 font-semibold text-right">Acties</th>
+                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.vehicle}</th>
+                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.price}</th>
+                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.visibility}</th>
+                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.status}</th>
+                            <th className="px-5 py-4 font-semibold text-right">{dict.carsTable.columns.actions}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -57,9 +60,9 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                             <tr>
                                 <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
                                     {query ? (
-                                        <p>Geen voertuigen gevonden voor <strong>&quot;{query}&quot;</strong>.</p>
+                                        <p>{tpl(dict.carsTable.noMatch, { query })}</p>
                                     ) : (
-                                        <p>Uw voorraad is momenteel leeg.</p>
+                                        <p>{dict.carsTable.empty}</p>
                                     )}
                                 </td>
                             </tr>
@@ -74,7 +77,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
 
             {query && filtered.length > 0 && (
                 <p className="text-xs text-slate-400 font-medium mt-3">
-                    {filtered.length} van {cars.length} voertuigen gevonden
+                    {tpl(dict.carsTable.found, { filtered: filtered.length, total: cars.length })}
                 </p>
             )}
         </>

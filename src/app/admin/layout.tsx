@@ -8,6 +8,10 @@ import { Car, MessageSquare, LayoutDashboard, LogOut, CalendarCheck } from "luci
 import { Toaster } from "sonner";
 import prisma from "@/lib/prisma";
 import logo from "@/assets/logo.webp";
+import { AdminI18nProvider } from "@/components/admin/AdminI18nProvider";
+import AdminLocaleSwitcher from "@/components/admin/AdminLocaleSwitcher";
+import { getAdminDictionary } from "@/lib/admin-i18n";
+import { getAdminLocale } from "@/lib/admin-i18n.server";
 
 // Ensure every /admin/* response carries X-Robots-Tag: noindex,nofollow.
 // robots.txt is advisory; this header is a hard signal to compliant crawlers.
@@ -19,13 +23,19 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     const cookieStore = await cookies();
     const session = cookieStore.get("admin_session");
     const isAuthenticated = await isValidSession(session?.value);
+    const locale = await getAdminLocale();
+    const dict = getAdminDictionary(locale);
 
     // The proxy guards all /admin/* routes except /admin/login.
     // When unauthenticated, we can only be on /admin/login — render it
     // without the sidebar shell. Do NOT redirect here: this layout wraps
     // /admin/login itself, so redirecting would create an infinite loop.
     if (!isAuthenticated) {
-        return <>{children}</>;
+        return (
+            <AdminI18nProvider locale={locale} dict={dict}>
+                {children}
+            </AdminI18nProvider>
+        );
     }
 
     const [carCount, nieuweAanvragen, pendingAppointments] = await Promise.all([
@@ -35,13 +45,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     ]);
 
     const navItems = [
-        { href: "/admin", label: "Dashboard", icon: LayoutDashboard, badge: null },
-        { href: "/admin/cars", label: "Voorraad", icon: Car, badge: carCount },
-        { href: "/admin/contacts", label: "Aanvragen", icon: MessageSquare, badge: nieuweAanvragen || null },
-        { href: "/admin/appointments", label: "Afspraken", icon: CalendarCheck, badge: pendingAppointments || null, badgeWarn: true },
+        { href: "/admin", label: dict.layout.nav.dashboard, icon: LayoutDashboard, badge: null },
+        { href: "/admin/cars", label: dict.layout.nav.cars, icon: Car, badge: carCount },
+        { href: "/admin/contacts", label: dict.layout.nav.contacts, icon: MessageSquare, badge: nieuweAanvragen || null },
+        { href: "/admin/appointments", label: dict.layout.nav.appointments, icon: CalendarCheck, badge: pendingAppointments || null, badgeWarn: true },
     ];
 
     return (
+        <AdminI18nProvider locale={locale} dict={dict}>
         <div className="min-h-screen flex flex-col md:flex-row" style={{ background: "#f4f5f7" }}>
 
             {/* ── Sidebar ── */}
@@ -106,7 +117,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                             style={{ color: "rgba(248,113,113,0.8)" }}
                         >
                             <LogOut size={17} className="shrink-0" />
-                            Uitloggen
+                            {dict.layout.logout}
                         </button>
                     </form>
                 </div>
@@ -115,6 +126,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             {/* ── Main ── */}
             <main className="flex-1 flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-auto p-6 md:p-10">
+                    <div className="mb-6 flex justify-end">
+                        <AdminLocaleSwitcher compact />
+                    </div>
                     {children}
                 </div>
             </main>
@@ -133,5 +147,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                 richColors
             />
         </div>
+        </AdminI18nProvider>
     );
 }

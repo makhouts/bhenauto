@@ -6,7 +6,7 @@ import LatestOccasionsCarousel from "@/components/LatestOccasionsCarousel";
 import ScrollReveal from "@/components/ScrollReveal";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import prisma from "@/lib/prisma";
-import heroBg from "@/assets/wallpaper.webp";
+import heroBg from "@/assets/wallpaper.avif";
 import { getDictionary, type Dictionary } from "@/lib/dictionaries";
 import { getImageUrl } from "@/lib/image-url";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";

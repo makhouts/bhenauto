@@ -6,28 +6,24 @@ import {
     startOfMonth, endOfMonth, eachDayOfInterval, getDay,
     startOfWeek, endOfWeek, addDays,
 } from "date-fns";
-import { nl } from "date-fns/locale";
 import {
     CheckCircle, XCircle, ChevronLeft, ChevronRight,
     Mail, Phone, MessageSquare, CalendarDays, Inbox,
     Plus, X, Loader2, CalendarPlus, Pencil, Ban, Unlock, GripVertical, LayoutGrid,
 } from "lucide-react";
 import { addWeeks, subWeeks } from "date-fns";
-import { generateDaySlots, APPOINTMENT_CONFIG } from "@/lib/appointmentConfig";
+import { generateDaySlots } from "@/lib/appointmentConfig";
 import {
     useAppointmentsReducer,
     type Appointment,
     type AptForm,
     type BlockedDateEntry,
 } from "@/hooks/useAppointmentsReducer";
+import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
+import { getAdminDateFnsLocale, getAdminServiceLabel, getAdminServiceOptions, tpl } from "@/lib/admin-i18n";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<string, string> = {
-    pending: "Wacht op bevestiging",
-    confirmed: "Bevestigd",
-    cancelled: "Geannuleerd",
-};
 const CALENDAR_BORDER: Record<string, string> = {
     pending: "border-l-amber-400", confirmed: "border-l-green-500", cancelled: "border-l-slate-300",
 };
@@ -107,6 +103,14 @@ function DragHandle({ apt, maxExtra, onResize }: {
 export default function AppointmentsClient({
     appointments: init, blocks: initBlocks,
 }: { appointments: Appointment[]; blocks: BlockedDateEntry[] }) {
+    const { locale, dict } = useAdminI18n();
+    const dateLocale = getAdminDateFnsLocale(locale);
+    const serviceOptions = getAdminServiceOptions(locale);
+    const statusLabels: Record<string, string> = {
+      pending: dict.appointments.statuses.pending,
+      confirmed: dict.appointments.statuses.confirmed,
+      cancelled: dict.appointments.statuses.cancelled,
+    };
     const {
         state,
         dispatch,
@@ -158,7 +162,7 @@ export default function AppointmentsClient({
           </div>
           <div>
             <p className={`text-2xl font-black leading-none ${pendingApts.length > 0 ? "text-amber-700" : "text-slate-300"}`}>{pendingApts.length}</p>
-            <p className={`text-xs font-bold mt-0.5 ${pendingApts.length > 0 ? "text-amber-600" : "text-slate-400"}`}>Te bevestigen</p>
+            <p className={`text-xs font-bold mt-0.5 ${pendingApts.length > 0 ? "text-amber-600" : "text-slate-400"}`}>{dict.appointments.stats.pending}</p>
           </div>
           {pendingApts.length > 0 && <span className="ml-auto w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />}
         </div>
@@ -168,7 +172,7 @@ export default function AppointmentsClient({
           </div>
           <div>
             <p className="text-2xl font-black leading-none text-slate-800">{confirmedCount}</p>
-            <p className="text-xs font-bold text-slate-400 mt-0.5">Bevestigd</p>
+            <p className="text-xs font-bold text-slate-400 mt-0.5">{dict.appointments.stats.confirmed}</p>
           </div>
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-4">
@@ -177,7 +181,7 @@ export default function AppointmentsClient({
           </div>
           <div>
             <p className="text-2xl font-black leading-none text-slate-800">{totalCount}</p>
-            <p className="text-xs font-bold text-slate-400 mt-0.5">Totaal afspraken</p>
+            <p className="text-xs font-bold text-slate-400 mt-0.5">{dict.appointments.stats.total}</p>
           </div>
         </div>
       </div>
@@ -189,18 +193,18 @@ export default function AppointmentsClient({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-4">
             <div>
-              <h2 className="font-black text-slate-900 text-base leading-tight">Weekoverzicht</h2>
+              <h2 className="font-black text-slate-900 text-base leading-tight">{dict.appointments.calendar.title}</h2>
               <p className="text-xs text-slate-400 font-medium">
-                {format(weekStart,"d MMM",{locale:nl})} {"\u2013"} {format(weekEnd,"d MMM yyyy",{locale:nl})}
-                {weekTotal > 0 && <span className="ml-2">· {weekTotal} {weekTotal===1?"afspraak":"afspraken"}</span>}
+                {format(weekStart,"d MMM",{locale:dateLocale})} {"\u2013"} {format(weekEnd,"d MMM yyyy",{locale:dateLocale})}
+                {weekTotal > 0 && <span className="ml-2">· {weekTotal} {dict.layout.nav.appointments.toLowerCase()}</span>}
               </p>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <button onClick={()=>setMonthOverlay(true)} className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:border-slate-400 transition-colors"><LayoutGrid size={13}/>Maandoverzicht</button>
-              <button onClick={()=>openBlock()} className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors"><Ban size={13}/>Dag blokkeren</button>
-              <button onClick={()=>openCreate()} className="flex items-center gap-1.5 px-3 py-2 bg-[#d91c1c] text-white rounded-xl text-xs font-bold hover:bg-[#b91515] transition-colors shadow-sm"><Plus size={14}/>Nieuwe afspraak</button>
+              <button onClick={()=>setMonthOverlay(true)} className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:border-slate-400 transition-colors"><LayoutGrid size={13}/>{dict.appointments.calendar.monthOverview}</button>
+              <button onClick={()=>openBlock()} className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-700 transition-colors"><Ban size={13}/>{dict.appointments.calendar.blockDay}</button>
+              <button onClick={()=>openCreate()} className="flex items-center gap-1.5 px-3 py-2 bg-[#d91c1c] text-white rounded-xl text-xs font-bold hover:bg-[#b91515] transition-colors shadow-sm"><Plus size={14}/>{dict.appointments.calendar.newAppointment}</button>
               <button onClick={()=>dispatch({type:"SET_WEEK_ANCHOR",anchor:subWeeks(state.weekAnchor,1)})} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-600 hover:border-slate-400 transition-colors"><ChevronLeft size={15}/></button>
-              <button onClick={()=>dispatch({type:"SET_WEEK_ANCHOR",anchor:new Date()})} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:border-slate-400 transition-colors">Vandaag</button>
+              <button onClick={()=>dispatch({type:"SET_WEEK_ANCHOR",anchor:new Date()})} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:border-slate-400 transition-colors">{dict.common.today}</button>
               <button onClick={()=>dispatch({type:"SET_WEEK_ANCHOR",anchor:addWeeks(state.weekAnchor,1)})} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-600 hover:border-slate-400 transition-colors"><ChevronRight size={15}/></button>
             </div>
           </div>
@@ -215,7 +219,7 @@ export default function AppointmentsClient({
                 return(
                   <div key={day.toISOString()} className={`py-3 px-2 text-center border-r border-slate-200 last:border-r-0 relative ${tod?"bg-[#d91c1c]/5":dayBlocked?"bg-slate-100":""}`}>
                     {dayBlocked&&<span className="absolute top-1 right-1 text-slate-400" title="Dag geblokkeerd"><Ban size={10}/></span>}
-                    <p className={`text-[10px] font-bold uppercase tracking-wider ${tod?"text-[#d91c1c]":"text-slate-400"}`}>{format(day,"EEE",{locale:nl})}</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider ${tod?"text-[#d91c1c]":"text-slate-400"}`}>{format(day,"EEE",{locale:dateLocale})}</p>
                     <div className={`mx-auto mt-0.5 w-8 h-8 flex items-center justify-center rounded-full ${tod?"bg-[#d91c1c]":""}`}>
                       <p className={`text-base font-black leading-none ${tod?"text-white":dayBlocked?"text-slate-400":"text-slate-800"}`}>{format(day,"d")}</p>
                     </div>
@@ -270,19 +274,19 @@ export default function AppointmentsClient({
                           )}
                           {!blocked&&!coveredBySpan&&apts.length===0&&(
                             <div className="absolute inset-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
-                              <button onClick={()=>openCreate(ds,slot)} title="Afspraak toevoegen"
+                              <button onClick={()=>openCreate(ds,slot)} title={dict.appointments.modals.createTitle}
                                 className="flex-1 flex items-center justify-center rounded-lg border-2 border-dashed border-slate-200 hover:border-[#d91c1c] hover:bg-[#d91c1c]/5 text-slate-300 hover:text-[#d91c1c] transition-all">
                                 <Plus size={14}/>
                               </button>
-                              <button onClick={()=>{dispatch({type:"SET_SLOT_POPOVER",popover:{dateStr:ds,slot}});}} title="Tijdslot blokkeren"
+                              <button onClick={()=>{dispatch({type:"SET_SLOT_POPOVER",popover:{dateStr:ds,slot}});}} title={dict.appointments.calendar.blockSlot}
                                 className="flex items-center justify-center w-8 rounded-lg border-2 border-dashed border-slate-200 hover:border-slate-500 hover:bg-slate-100 text-slate-300 hover:text-slate-600 transition-all">
                                 <Ban size={12}/>
                               </button>
                               {slotPopover?.dateStr===ds&&slotPopover?.slot===slot&&(
                                 <div className="absolute left-0 bottom-full mb-1 z-30 bg-white rounded-xl shadow-xl border border-slate-200 p-3 w-48">
                                   <div className="fixed inset-0 z-[-1]" onClick={()=>dispatch({type:"SET_SLOT_POPOVER",popover:null})}/>
-                                  <p className="text-[11px] font-black text-slate-700 mb-2">Tijdslot blokkeren<br/><span className="font-medium text-slate-400">{format(parseISO(ds),"d MMM",{locale:nl})} · {slot}</span></p>
-                                  <button onClick={()=>openBlock(ds,slot)} className="w-full py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors">Blokkeer dit slot</button>
+                                  <p className="text-[11px] font-black text-slate-700 mb-2">{dict.appointments.calendar.blockSlot}<br/><span className="font-medium text-slate-400">{format(parseISO(ds),"d MMM",{locale:dateLocale})} · {slot}</span></p>
+                                  <button onClick={()=>openBlock(ds,slot)} className="w-full py-1.5 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors">{dict.appointments.calendar.blockThisSlot}</button>
                                 </div>
                               )}
                             </div>
@@ -299,12 +303,12 @@ export default function AppointmentsClient({
                                   className={`absolute top-0.5 left-1 right-1 rounded-lg border-l-4 group/card shadow-sm ${CALENDAR_BORDER[apt.status]} ${apt.status==="pending"?"bg-amber-50":apt.status==="confirmed"?"bg-green-50":"bg-slate-50"}`}>
                                   <button onClick={()=>dispatch({type:"SET_POPOVER",id:popoverId===apt.id?null:apt.id})} className="absolute inset-0 text-left px-2 pt-1.5 pb-5">
                                     <p className="font-black text-slate-900 truncate leading-tight text-xs">{apt.name}</p>
-                                    <p className="text-slate-500 truncate text-[10px] mt-0.5 leading-tight">{apt.service}</p>
-                                    {dur>1&&<p className="text-[10px] font-bold text-slate-400 mt-1">{dur}u · {apt.timeSlot}</p>}
+                                    <p className="text-slate-500 truncate text-[10px] mt-0.5 leading-tight">{getAdminServiceLabel(apt.service, locale)}</p>
+                                    {dur>1&&<p className="text-[10px] font-bold text-slate-400 mt-1">{tpl(dict.appointments.modals.appointmentDuration, { hours: dur })} · {apt.timeSlot}</p>}
                                   </button>
                                   <DragHandle apt={apt} maxExtra={maxExtra} onResize={handleResizeDrag}/>
                                 </div>
-                                {popoverId===apt.id&&<CalendarPopover apt={apt} flipUp={flipUp} flipLeft={flipLeft} onClose={()=>dispatch({type:"SET_POPOVER",id:null})} onEdit={()=>openEdit(apt)} onConfirm={openConfirm} onCancel={handleCancel} isPending={isPending}/>}
+                                {popoverId===apt.id&&<CalendarPopover dict={dict} locale={locale} apt={apt} flipUp={flipUp} flipLeft={flipLeft} onClose={()=>dispatch({type:"SET_POPOVER",id:null})} onEdit={()=>openEdit(apt)} onConfirm={openConfirm} onCancel={handleCancel} isPending={isPending}/>}
                               </div>
                             );
                           })}
@@ -321,14 +325,14 @@ export default function AppointmentsClient({
             {(["pending","confirmed"] as const).map(s=>(
               <div key={s} className="flex items-center gap-1.5">
                 <span className={`w-2.5 h-2 rounded-sm border-l-4 ${CALENDAR_BORDER[s]} ${CALENDAR_BG[s]}`}/>
-                <span className="text-xs text-slate-400 font-medium">{STATUS_LABELS[s]}</span>
+                <span className="text-xs text-slate-400 font-medium">{statusLabels[s]}</span>
               </div>
             ))}
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2 rounded-sm bg-slate-200"/>
-              <span className="text-xs text-slate-400 font-medium">Geblokkeerd</span>
+              <span className="text-xs text-slate-400 font-medium">{dict.appointments.calendar.blockedLegend}</span>
             </div>
-            <span className="text-xs text-slate-400 font-medium ml-auto italic">Sleep onderkant kaart om duur aan te passen</span>
+            <span className="text-xs text-slate-400 font-medium ml-auto italic">{dict.appointments.calendar.dragHint}</span>
           </div>
         </div>
 
@@ -339,9 +343,9 @@ export default function AppointmentsClient({
               <Inbox size={16} className={pendingApts.length > 0 ? "text-white" : "text-slate-500"} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-[10px] font-black uppercase tracking-wider ${pendingApts.length > 0 ? "text-amber-100" : "text-slate-400"}`}>Wacht op actie</p>
+              <p className={`text-[10px] font-black uppercase tracking-wider ${pendingApts.length > 0 ? "text-amber-100" : "text-slate-400"}`}>{dict.appointments.sidebar.waiting}</p>
               <p className={`text-sm font-black leading-tight ${pendingApts.length > 0 ? "text-white" : "text-slate-400"}`}>
-                {pendingApts.length === 0 ? "Alles behandeld" : `${pendingApts.length} ${pendingApts.length === 1 ? "aanvraag" : "aanvragen"}`}
+                {pendingApts.length === 0 ? dict.appointments.sidebar.allHandled : `${pendingApts.length} ${pendingApts.length === 1 ? dict.appointments.sidebar.request : dict.appointments.sidebar.requests}`}
               </p>
             </div>
             {pendingApts.length > 0 && <span className="w-3 h-3 rounded-full bg-white/40 animate-pulse shrink-0" />}
@@ -352,8 +356,8 @@ export default function AppointmentsClient({
               <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
                 <CheckCircle size={22} className="text-green-400" />
               </div>
-              <p className="font-black text-slate-700 text-sm">Niets te doen</p>
-              <p className="text-xs text-slate-400 mt-1">Alle aanvragen zijn behandeld</p>
+              <p className="font-black text-slate-700 text-sm">{dict.appointments.sidebar.nothingToDo}</p>
+              <p className="text-xs text-slate-400 mt-1">{dict.appointments.sidebar.allRequestsHandled}</p>
             </div>
           ) : (
             <div className="space-y-2.5 max-h-[calc(100vh-260px)] overflow-y-auto pr-0.5">
@@ -361,13 +365,13 @@ export default function AppointmentsClient({
                 <div key={apt.id} className="bg-white border border-amber-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow hover:border-amber-200">
                   <div className="flex items-start gap-3 mb-3">
                     <div className="shrink-0 bg-amber-50 border border-amber-200 rounded-xl w-12 h-14 flex flex-col items-center justify-center">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-amber-500">{format(apt.date,"EEE",{locale:nl})}</p>
-                      <p className="text-lg font-black text-slate-900 leading-none">{format(apt.date,"d",{locale:nl})}</p>
-                      <p className="text-[9px] font-bold text-slate-400 mt-0.5">{format(apt.date,"MMM",{locale:nl})}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-amber-500">{format(apt.date,"EEE",{locale:dateLocale})}</p>
+                      <p className="text-lg font-black text-slate-900 leading-none">{format(apt.date,"d",{locale:dateLocale})}</p>
+                      <p className="text-[9px] font-bold text-slate-400 mt-0.5">{format(apt.date,"MMM",{locale:dateLocale})}</p>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-slate-900 text-sm leading-tight truncate">{apt.name}</p>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">{apt.service}</p>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">{getAdminServiceLabel(apt.service, locale)}</p>
                       <span className="inline-block text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full mt-1.5">{apt.timeSlot}</span>
                     </div>
                   </div>
@@ -377,9 +381,9 @@ export default function AppointmentsClient({
                     {apt.notes && <p className="flex items-start gap-2 text-xs text-slate-400"><MessageSquare size={11} className="shrink-0 mt-0.5"/><span className="line-clamp-2">{apt.notes}</span></p>}
                   </div>
                   <div className="grid grid-cols-3 gap-1.5">
-                    <button onClick={()=>openEdit(apt)} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-[11px] font-bold hover:bg-slate-200 transition-colors"><Pencil size={11}/>Bewerken</button>
+                    <button onClick={()=>openEdit(apt)} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-[11px] font-bold hover:bg-slate-200 transition-colors"><Pencil size={11}/>{dict.appointments.sidebar.edit}</button>
                     <button onClick={()=>openConfirm(apt.id)} disabled={isPending} className="flex items-center justify-center gap-1 py-2 bg-green-600 text-white rounded-xl text-[11px] font-bold hover:bg-green-700 disabled:opacity-50 transition-colors"><CheckCircle size={12}/>OK</button>
-                    <button onClick={()=>handleCancel(apt.id)} disabled={isPending} className="flex items-center justify-center gap-1 py-2 bg-white text-red-500 border border-red-200 rounded-xl text-[11px] font-bold hover:bg-red-50 disabled:opacity-50 transition-colors"><XCircle size={12}/>Weiger</button>
+                    <button onClick={()=>handleCancel(apt.id)} disabled={isPending} className="flex items-center justify-center gap-1 py-2 bg-white text-red-500 border border-red-200 rounded-xl text-[11px] font-bold hover:bg-red-50 disabled:opacity-50 transition-colors"><XCircle size={12}/>{dict.appointments.sidebar.reject}</button>
                   </div>
                 </div>
               ))}
@@ -399,18 +403,18 @@ export default function AppointmentsClient({
             <div className="flex items-center gap-4 min-w-0">
               <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0"><LayoutGrid size={17} className="text-slate-700"/></div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Overzicht</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{dict.appointments.overlay.title}</p>
                 <h2 className="text-lg font-black text-slate-900 capitalize leading-tight truncate">
-                  {overlayView==="month"&&format(overlayMonth,"MMMM yyyy",{locale:nl})}
-                  {overlayView==="week"&&`${format(startOfWeek(overlayWeekAnchor,{weekStartsOn:1}),"d MMM",{locale:nl})} – ${format(endOfWeek(overlayWeekAnchor,{weekStartsOn:1}),"d MMM yyyy",{locale:nl})}`}
-                  {overlayView==="day"&&format(overlayDay,"EEEE d MMMM yyyy",{locale:nl})}
+                  {overlayView==="month"&&format(overlayMonth,"MMMM yyyy",{locale:dateLocale})}
+                  {overlayView==="week"&&`${format(startOfWeek(overlayWeekAnchor,{weekStartsOn:1}),"d MMM",{locale:dateLocale})} – ${format(endOfWeek(overlayWeekAnchor,{weekStartsOn:1}),"d MMM yyyy",{locale:dateLocale})}`}
+                  {overlayView==="day"&&format(overlayDay,"EEEE d MMMM yyyy",{locale:dateLocale})}
                 </h2>
               </div>
               {/* Legend */}
               <div className="ml-4 hidden xl:flex items-center gap-4 pl-4 border-l border-slate-200">
-                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"/><span className="text-xs text-slate-500 font-medium">Te bevestigen</span></div>
-                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500"/><span className="text-xs text-slate-500 font-medium">Bevestigd</span></div>
-                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-slate-200"/><span className="text-xs text-slate-500 font-medium">Geblokkeerd</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"/><span className="text-xs text-slate-500 font-medium">{dict.appointments.calendar.pendingLegend}</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500"/><span className="text-xs text-slate-500 font-medium">{dict.appointments.calendar.confirmedLegend}</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-slate-200"/><span className="text-xs text-slate-500 font-medium">{dict.appointments.calendar.blockedLegend}</span></div>
               </div>
             </div>
             {/* Center: view switcher */}
@@ -418,7 +422,7 @@ export default function AppointmentsClient({
               {(["day","week","month"] as const).map(v=>(
                 <button key={v} onClick={()=>setOverlayView(v)}
                   className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all capitalize ${overlayView===v?"bg-white text-slate-900 shadow-sm":"text-slate-500 hover:text-slate-700"}`}>
-                  {v==="day"?"Dag":v==="week"?"Week":"Maand"}
+                  {v==="day"?dict.common.day:v==="week"?dict.common.week:dict.common.month}
                 </button>
               ))}
             </div>
@@ -426,17 +430,17 @@ export default function AppointmentsClient({
             <div className="flex items-center gap-2 shrink-0">
               {overlayView==="month"&&<>
                 <button onClick={()=>setOverlayMonth(m=>subMonths(m,1))} className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors"><ChevronLeft size={15}/></button>
-                <button onClick={()=>setOverlayMonth(new Date())} className="px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors">Vandaag</button>
+                <button onClick={()=>setOverlayMonth(new Date())} className="px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors">{dict.common.today}</button>
                 <button onClick={()=>setOverlayMonth(m=>addMonths(m,1))} className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors"><ChevronRight size={15}/></button>
               </>}
               {overlayView==="week"&&<>
                 <button onClick={()=>setOverlayWeekAnchor(d=>addDays(d,-7))} className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors"><ChevronLeft size={15}/></button>
-                <button onClick={()=>setOverlayWeekAnchor(new Date())} className="px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors">Vandaag</button>
+                <button onClick={()=>setOverlayWeekAnchor(new Date())} className="px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors">{dict.common.today}</button>
                 <button onClick={()=>setOverlayWeekAnchor(d=>addDays(d,7))} className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors"><ChevronRight size={15}/></button>
               </>}
               {overlayView==="day"&&<>
                 <button onClick={()=>setOverlayDay(d=>addDays(d,-1))} className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors"><ChevronLeft size={15}/></button>
-                <button onClick={()=>setOverlayDay(new Date())} className="px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors">Vandaag</button>
+                <button onClick={()=>setOverlayDay(new Date())} className="px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors">{dict.common.today}</button>
                 <button onClick={()=>setOverlayDay(d=>addDays(d,1))} className="w-8 h-8 flex items-center justify-center bg-slate-100 rounded-xl text-slate-600 hover:bg-slate-200 transition-colors"><ChevronRight size={15}/></button>
               </>}
               <button onClick={()=>setMonthOverlay(false)} className="ml-2 w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 transition-colors bg-slate-50 border border-slate-200"><X size={17}/></button>
@@ -447,7 +451,7 @@ export default function AppointmentsClient({
           {overlayView==="month"&&(
             <>
               <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-200 shrink-0">
-                {["Maandag","Dinsdag","Woensdag","Donderdag","Vrijdag","Zaterdag","Zondag"].map(d=>(
+                {[dict.appointments.overlay.monday,dict.appointments.overlay.tuesday,dict.appointments.overlay.wednesday,dict.appointments.overlay.thursday,dict.appointments.overlay.friday,dict.appointments.overlay.saturday,dict.appointments.overlay.sunday].map(d=>(
                   <div key={d} className="py-2.5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider border-r border-slate-200 last:border-r-0">{d}</div>
                 ))}
               </div>
@@ -477,17 +481,17 @@ export default function AppointmentsClient({
                                   ${tod?"bg-[#d91c1c]/[0.04] hover:bg-[#d91c1c]/[0.08]":isDayBlocked?"bg-slate-100 hover:bg-slate-200":isPast?"bg-slate-50 hover:bg-slate-100":"bg-white hover:bg-slate-50"}`}>
                                 <div className="flex items-center justify-between mb-1.5 shrink-0">
                                   <span className={`inline-flex w-7 h-7 items-center justify-center rounded-full text-sm font-black leading-none ${tod?"bg-[#d91c1c] text-white":isPast?"text-slate-300":isDayBlocked?"text-slate-400":"text-slate-800"}`}>{format(d,"d")}</span>
-                                  {!isDayBlocked&&!isPast&&dayApts.length===0&&<span className="text-[9px] font-bold text-green-500 opacity-0 group-hover:opacity-100 transition-opacity">Vrij</span>}
-                                  {isDayBlocked&&<span className="text-[9px] font-bold text-slate-400">Geblokkeerd</span>}
+                                  {!isDayBlocked&&!isPast&&dayApts.length===0&&<span className="text-[9px] font-bold text-green-500 opacity-0 group-hover:opacity-100 transition-opacity">{dict.appointments.overlay.free}</span>}
+                                  {isDayBlocked&&<span className="text-[9px] font-bold text-slate-400">{dict.appointments.overlay.blocked}</span>}
                                 </div>
                                 <div className="space-y-1 flex-1 min-h-0 overflow-hidden">
                                   {dayApts.slice(0,3).map(apt=>(
                                     <div key={apt.id} className={`rounded-md px-1.5 py-1 border-l-2 ${apt.status==="pending"?"bg-amber-50 border-amber-400":"bg-green-50 border-green-500"}`}>
                                       <p className="text-[10px] font-black text-slate-800 leading-tight truncate">{apt.name}</p>
-                                      <p className="text-[9px] text-slate-500 font-medium leading-tight truncate">{apt.timeSlot} · {apt.service}</p>
+                                      <p className="text-[9px] text-slate-500 font-medium leading-tight truncate">{apt.timeSlot} · {getAdminServiceLabel(apt.service, locale)}</p>
                                     </div>
                                   ))}
-                                  {dayApts.length>3&&<p className="text-[9px] font-bold text-slate-400 pl-1">+{dayApts.length-3} meer</p>}
+                                  {dayApts.length>3&&<p className="text-[9px] font-bold text-slate-400 pl-1">+{dayApts.length-3} {dict.appointments.overlay.more}</p>}
                                 </div>
                               </div>
                             );
@@ -515,11 +519,11 @@ export default function AppointmentsClient({
                     return(
                       <div key={d.toISOString()} onClick={()=>{setOverlayDay(d);setOverlayView("day");}}
                         className={`py-3 px-2 text-center border-r border-slate-200 last:border-r-0 cursor-pointer hover:bg-white transition-colors ${tod?"bg-[#d91c1c]/5":""}`}>
-                        <p className={`text-[10px] font-bold uppercase tracking-wider ${tod?"text-[#d91c1c]":"text-slate-400"}`}>{format(d,"EEE",{locale:nl})}</p>
+                        <p className={`text-[10px] font-bold uppercase tracking-wider ${tod?"text-[#d91c1c]":"text-slate-400"}`}>{format(d,"EEE",{locale:dateLocale})}</p>
                         <div className={`mx-auto mt-0.5 w-8 h-8 flex items-center justify-center rounded-full ${tod?"bg-[#d91c1c]":""}`}>
                           <p className={`text-base font-black leading-none ${tod?"text-white":"text-slate-800"}`}>{format(d,"d")}</p>
                         </div>
-                        <p className="text-[9px] text-slate-400 font-medium mt-0.5 capitalize">{format(d,"MMM",{locale:nl})}</p>
+                        <p className="text-[9px] text-slate-400 font-medium mt-0.5 capitalize">{format(d,"MMM",{locale:dateLocale})}</p>
                       </div>
                     );
                   })}
@@ -567,7 +571,7 @@ export default function AppointmentsClient({
                                   return(
                                     <div key={apt.id} style={{height:cardH,zIndex:20}} className={`${dur>1?"absolute left-1 right-1 top-0.5":""} rounded-lg px-2 py-1.5 border-l-2 mb-1 ${apt.status==="pending"?"bg-amber-50 border-amber-400":"bg-green-50 border-green-500"}`}>
                                       <p className="text-[11px] font-black text-slate-800 leading-tight truncate">{apt.name}</p>
-                                      <p className="text-[9px] text-slate-500 font-medium mt-0.5 truncate">{apt.service}</p>
+                                      <p className="text-[9px] text-slate-500 font-medium mt-0.5 truncate">{getAdminServiceLabel(apt.service, locale)}</p>
                                       {dur>1&&<p className="text-[9px] font-bold text-slate-400 mt-0.5">{dur}u</p>}
                                     </div>
                                   );
@@ -594,7 +598,7 @@ export default function AppointmentsClient({
                 {isDayBlocked&&(
                   <div className="mb-4 bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-3">
                     <Ban size={16} className="text-slate-500 shrink-0"/>
-                    <p className="text-sm font-bold text-slate-600">Deze dag is volledig geblokkeerd.</p>
+                    <p className="text-sm font-bold text-slate-600">{dict.appointments.calendar.blockedLegend}</p>
                   </div>
                 )}
                 {dayApts.length===0&&!isDayBlocked&&(
@@ -602,8 +606,8 @@ export default function AppointmentsClient({
                     <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mb-4">
                       <CheckCircle size={24} className="text-green-400"/>
                     </div>
-                    <p className="font-black text-slate-700">Volledige dag beschikbaar</p>
-                    <p className="text-sm text-slate-400 mt-1">Geen afspraken gepland voor {format(overlayDay,"d MMMM",{locale:nl})}</p>
+                    <p className="font-black text-slate-700">{dict.appointments.modals.fullDay}</p>
+                    <p className="text-sm text-slate-400 mt-1">{dict.dashboard.upcoming.empty} {format(overlayDay,"d MMMM",{locale:dateLocale})}</p>
                   </div>
                 )}
                 <div className="space-y-0">
@@ -628,15 +632,15 @@ export default function AppointmentsClient({
                         return(
                           <div key={slot} className="flex gap-4 items-start rounded-xl px-4 py-3 bg-green-50/40">
                             <span className="text-sm font-black w-14 shrink-0 pt-0.5 text-slate-300">{slot}</span>
-                            <span className="text-xs font-bold text-green-500/60 pt-1">Bezet · {covered.apt.name}</span>
+                            <span className="text-xs font-bold text-green-500/60 pt-1">{dict.appointments.modals.occupied} · {covered.apt.name}</span>
                           </div>
                         );
                       }
                       return(
                         <div key={slot} className={`flex gap-4 items-start rounded-xl px-4 py-3 ${isSlotBlocked?"bg-slate-100":slotApts.length>0?"":"hover:bg-slate-50 group"}`}>
                           <span className={`text-sm font-black w-14 shrink-0 pt-0.5 ${slotApts.length>0?"text-slate-700":isSlotBlocked?"text-slate-400":"text-slate-300 group-hover:text-slate-400"}`}>{slot}</span>
-                          {isSlotBlocked&&<span className="text-xs font-bold text-slate-400 pt-1">Geblokkeerd</span>}
-                          {!isSlotBlocked&&slotApts.length===0&&<span className="text-xs font-medium text-slate-300 pt-1 group-hover:text-green-500 transition-colors">Vrij</span>}
+                          {isSlotBlocked&&<span className="text-xs font-bold text-slate-400 pt-1">{dict.appointments.calendar.blockedLegend}</span>}
+                          {!isSlotBlocked&&slotApts.length===0&&<span className="text-xs font-medium text-slate-300 pt-1 group-hover:text-green-500 transition-colors">{dict.appointments.overlay.free}</span>}
                           <div className="flex gap-3 flex-wrap flex-1">
                             {slotApts.map(apt=>{
                               const dur=apt.durationHours??1;
@@ -645,7 +649,7 @@ export default function AppointmentsClient({
                                   <div className="flex items-start justify-between gap-2">
                                     <div>
                                       <p className="font-black text-slate-900 text-sm">{apt.name}</p>
-                                      <p className="text-xs text-slate-500 font-medium mt-0.5">{apt.service}</p>
+                                      <p className="text-xs text-slate-500 font-medium mt-0.5">{getAdminServiceLabel(apt.service, locale)}</p>
                                     </div>
                                     {dur>1&&<span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full shrink-0">{dur}u · {apt.timeSlot}–{ALL_SLOTS[ALL_SLOTS.indexOf(apt.timeSlot)+dur]??`${parseInt(apt.timeSlot)+dur}:00`}</span>}
                                   </div>
@@ -685,16 +689,16 @@ export default function AppointmentsClient({
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center"><CheckCircle size={18} className="text-green-600"/></div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-green-600">Bevestigen</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-green-600">{dict.common.confirm}</p>
                   <h3 className="text-base font-black text-slate-900 leading-tight">{apt?.name}</h3>
-                  <p className="text-xs text-slate-500 font-medium">{apt&&format(apt.date,"d MMM",{locale:nl})} · {apt?.timeSlot}</p>
+                  <p className="text-xs text-slate-500 font-medium">{apt&&format(apt.date,"d MMM",{locale:dateLocale})} · {apt?.timeSlot}</p>
                 </div>
               </div>
               <button onClick={()=>dispatch({type:"CLOSE_CONFIRM"})} className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 transition-colors"><X size={20}/></button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Hoe lang duurt deze afspraak?</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">{dict.appointments.modals.duration}</label>
                 <div className="grid grid-cols-4 gap-2">
                   {Array.from({length:maxDuration},(_,i)=>i+1).map(h=>(
                     <button key={h} type="button" onClick={()=>dispatch({type:"SET_CONFIRM_DURATION",duration:h})}
@@ -705,15 +709,15 @@ export default function AppointmentsClient({
                 </div>
                 {confirmDuration>1&&(
                   <p className="text-xs text-amber-600 font-medium mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                    Van {apt?.timeSlot} tot {slotEndTime(apt?.timeSlot??"08:00", confirmDuration)} wordt geblokkeerd.
+                    {tpl(dict.appointments.modals.fromTo, { start: apt?.timeSlot ?? "08:00", end: slotEndTime(apt?.timeSlot??"08:00", confirmDuration) })}
                   </p>
                 )}
               </div>
               <div className="flex gap-3">
-                <button onClick={()=>dispatch({type:"CLOSE_CONFIRM"})} className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 transition-colors">Annuleren</button>
+                <button onClick={()=>dispatch({type:"CLOSE_CONFIRM"})} className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 transition-colors">{dict.common.cancel}</button>
                 <button onClick={handleConfirmSubmit} disabled={confirmSub}
                   className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-600 text-white font-bold rounded-xl text-sm hover:bg-green-700 disabled:opacity-60 transition-all">
-                  {confirmSub?<><Loader2 size={15} className="animate-spin"/>Bezig&hellip;</>:<><CheckCircle size={15}/>Bevestigen</>}
+                  {confirmSub?<><Loader2 size={15} className="animate-spin"/>{dict.appointments.modals.processing}</>:<><CheckCircle size={15}/>{dict.common.confirm}</>}
                 </button>
               </div>
             </div>
@@ -723,10 +727,10 @@ export default function AppointmentsClient({
       })()}
 
       {/* ── CREATE modal ─────────────────────────────────────────────────────── */}
-      {createOpen&&<AptModal title="Nieuwe afspraak" icon={<CalendarPlus size={18} className="text-[#d91c1c]"/>} form={createForm} setForm={(f)=>dispatch({type:"SET_CREATE_FORM",form:f})} errors={createErrors} serverError={createError} submitting={createSub} pickerMonth={createMonth} setPickerMonth={(d)=>dispatch({type:"SET_CREATE_MONTH",month:d})} availSlots={availCreate} today={today} onSubmit={handleCreateSubmit} onClose={()=>dispatch({type:"CLOSE_CREATE"})} submitLabel="Afspraak aanmaken" showStatus={false} infoNote={<>Handmatig aangemaakte afspraken worden direct als <span className="font-bold text-green-600">Bevestigd</span> opgeslagen.</>}/>}
+      {createOpen&&<AptModal dict={dict} locale={locale} dateLocale={dateLocale} serviceOptions={serviceOptions} title={dict.appointments.modals.createTitle} icon={<CalendarPlus size={18} className="text-[#d91c1c]"/>} form={createForm} setForm={(f)=>dispatch({type:"SET_CREATE_FORM",form:f})} errors={createErrors} serverError={createError} submitting={createSub} pickerMonth={createMonth} setPickerMonth={(d)=>dispatch({type:"SET_CREATE_MONTH",month:d})} availSlots={availCreate} today={today} onSubmit={handleCreateSubmit} onClose={()=>dispatch({type:"CLOSE_CREATE"})} submitLabel={dict.appointments.modals.submitCreate} showStatus={false} infoNote={<>{locale==="fr"?"Les rendez-vous créés manuellement sont enregistrés directement comme ":"Handmatig aangemaakte afspraken worden direct als "}<span className="font-bold text-green-600">{dict.appointments.statuses.confirmed}</span>{locale==="fr"?"." :" opgeslagen."}</>}/>}
 
       {/* ── EDIT modal ───────────────────────────────────────────────────────── */}
-      {editOpen&&<AptModal title="Afspraak bewerken" icon={<Pencil size={18} className="text-[#d91c1c]"/>} form={editForm} setForm={(f)=>dispatch({type:"SET_EDIT_FORM",form:f})} errors={editErrors} serverError={editError} submitting={editSub} pickerMonth={editMonth} setPickerMonth={(d)=>dispatch({type:"SET_EDIT_MONTH",month:d})} availSlots={availEdit} today={today} onSubmit={handleEditSubmit} onClose={()=>dispatch({type:"CLOSE_EDIT"})} submitLabel="Wijzigingen opslaan" showStatus={true}/>}
+      {editOpen&&<AptModal dict={dict} locale={locale} dateLocale={dateLocale} serviceOptions={serviceOptions} title={dict.appointments.modals.editTitle} icon={<Pencil size={18} className="text-[#d91c1c]"/>} form={editForm} setForm={(f)=>dispatch({type:"SET_EDIT_FORM",form:f})} errors={editErrors} serverError={editError} submitting={editSub} pickerMonth={editMonth} setPickerMonth={(d)=>dispatch({type:"SET_EDIT_MONTH",month:d})} availSlots={availEdit} today={today} onSubmit={handleEditSubmit} onClose={()=>dispatch({type:"CLOSE_EDIT"})} submitLabel={dict.common.save} showStatus={true}/>}
 
       {/* ── BLOCK modal ─────────────────────────────────────────────────────── */}
       {blockOpen&&(
@@ -736,21 +740,21 @@ export default function AppointmentsClient({
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center"><Ban size={18} className="text-slate-700"/></div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Admin</p>
-                  <h3 className="text-lg font-black text-slate-900 leading-tight">Dag of slot blokkeren</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{dict.appointments.modals.admin}</p>
+                  <h3 className="text-lg font-black text-slate-900 leading-tight">{dict.appointments.modals.blockTitle}</h3>
                 </div>
               </div>
               <button onClick={()=>dispatch({type:"CLOSE_BLOCK"})} className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 transition-colors"><X size={20}/></button>
             </div>
             <form onSubmit={handleBlockSubmit} className="px-6 py-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Datum *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.date}</label>
                 <div className="flex items-center justify-between mb-2">
                   <button type="button" onClick={()=>dispatch({type:"SET_BLOCK_MONTH",month:subMonths(blockMonth,1)})} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"><ChevronLeft size={14}/></button>
-                  <p className="text-xs font-bold text-slate-700 capitalize">{format(blockMonth,"MMMM yyyy",{locale:nl})}</p>
+                  <p className="text-xs font-bold text-slate-700 capitalize">{format(blockMonth,"MMMM yyyy",{locale:dateLocale})}</p>
                   <button type="button" onClick={()=>dispatch({type:"SET_BLOCK_MONTH",month:addMonths(blockMonth,1)})} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"><ChevronRight size={14}/></button>
                 </div>
-                <div className="grid grid-cols-7 mb-1">{["Ma","Di","Wo","Do","Vr","Za","Zo"].map(l=><div key={l} className="text-center text-[9px] font-bold text-slate-400">{l}</div>)}</div>
+                <div className="grid grid-cols-7 mb-1">{dict.appointments.overlay.dayShort.map(l=><div key={l} className="text-center text-[9px] font-bold text-slate-400">{l}</div>)}</div>
                 <div className="grid grid-cols-7 gap-0.5">
                   {Array.from({length:mondayIndex(startOfMonth(blockMonth))}).map((_,i)=><div key={i}/>)}
                   {eachDayOfInterval({start:startOfMonth(blockMonth),end:endOfMonth(blockMonth)}).map(d=>{
@@ -765,27 +769,27 @@ export default function AppointmentsClient({
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Blokkeer</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.blockType}</label>
                 <div className="flex gap-2">
-                  <button type="button" onClick={()=>dispatch({type:"SET_BLOCK_FORM",form:{...blockForm,slot:null}})} className={`flex-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${blockForm.slot===null?"bg-slate-900 text-white border-slate-900":"border-slate-200 text-slate-500 hover:border-slate-400"}`}>Volledige dag</button>
+                  <button type="button" onClick={()=>dispatch({type:"SET_BLOCK_FORM",form:{...blockForm,slot:null}})} className={`flex-1 py-2.5 rounded-xl border text-xs font-bold transition-all ${blockForm.slot===null?"bg-slate-900 text-white border-slate-900":"border-slate-200 text-slate-500 hover:border-slate-400"}`}>{dict.appointments.modals.fullDay}</button>
                   <div className="flex-1">
                     <select value={blockForm.slot??""} onChange={e=>dispatch({type:"SET_BLOCK_FORM",form:{...blockForm,slot:e.target.value||null}})}
                       className={`w-full px-3 py-2.5 rounded-xl border text-xs font-bold text-slate-700 outline-none transition-colors bg-white ${blockForm.slot?"border-slate-900":"border-slate-200"}`}>
-                      <option value="">Specifiek tijdslot&hellip;</option>
+                      <option value="">{dict.appointments.modals.specificSlot}</option>
                       {ALL_SLOTS.map(s=><option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Reden (optioneel)</label>
-                <input type="text" placeholder="bv. Verlof, Onderhoud&hellip;" value={blockForm.reason} onChange={e=>dispatch({type:"SET_BLOCK_FORM",form:{...blockForm,reason:e.target.value}})} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-slate-900 text-sm font-medium text-slate-900 placeholder-slate-400 outline-none transition-colors"/>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">{dict.appointments.modals.reason}</label>
+                <input type="text" placeholder={dict.appointments.modals.reasonPlaceholder} value={blockForm.reason} onChange={e=>dispatch({type:"SET_BLOCK_FORM",form:{...blockForm,reason:e.target.value}})} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:border-slate-900 text-sm font-medium text-slate-900 placeholder-slate-400 outline-none transition-colors"/>
               </div>
               {blockError&&<div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 font-medium"><X size={15} className="shrink-0 mt-0.5"/>{blockError}</div>}
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={()=>dispatch({type:"CLOSE_BLOCK"})} className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 transition-colors">Annuleren</button>
+                <button type="button" onClick={()=>dispatch({type:"CLOSE_BLOCK"})} className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 transition-colors">{dict.common.cancel}</button>
                 <button type="submit" disabled={blockSub} className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white font-bold rounded-xl text-sm hover:bg-slate-700 disabled:opacity-60 transition-all">
-                  {blockSub?<><Loader2 size={15} className="animate-spin"/>Bezig&hellip;</>:<><Ban size={14}/>Blokkeren</>}
+                  {blockSub?<><Loader2 size={15} className="animate-spin"/>{dict.appointments.modals.processing}</>:<><Ban size={14}/>{dict.appointments.modals.submitBlock}</>}
                 </button>
               </div>
             </form>
@@ -799,7 +803,8 @@ export default function AppointmentsClient({
 
 // ─── Shared AptModal ──────────────────────────────────────────────────────────
 
-function AptModal({title,icon,form,setForm,errors,serverError,submitting,pickerMonth,setPickerMonth,availSlots,today,onSubmit,onClose,submitLabel,showStatus,infoNote}:{
+function AptModal({dict,locale,dateLocale,serviceOptions,title,icon,form,setForm,errors,serverError,submitting,pickerMonth,setPickerMonth,availSlots,today,onSubmit,onClose,submitLabel,showStatus,infoNote}:{
+    dict: ReturnType<typeof useAdminI18n>["dict"]; locale: ReturnType<typeof useAdminI18n>["locale"]; dateLocale: ReturnType<typeof getAdminDateFnsLocale>; serviceOptions: Array<{ value: string; label: string }>;
     title:string;icon:React.ReactNode;form:AptForm;setForm:(f:AptForm)=>void;
     errors:Partial<AptForm>;serverError:string|null;submitting:boolean;
     pickerMonth:Date;setPickerMonth:(d:Date)=>void;availSlots:string[];today:Date;
@@ -816,7 +821,7 @@ function AptModal({title,icon,form,setForm,errors,serverError,submitting,pickerM
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#d91c1c]/10 flex items-center justify-center">{icon}</div>
-            <div><p className="text-[10px] font-bold uppercase tracking-widest text-[#d91c1c]">Admin</p><h3 className="text-lg font-black text-slate-900 leading-tight">{title}</h3></div>
+            <div><p className="text-[10px] font-bold uppercase tracking-widest text-[#d91c1c]">{dict.appointments.modals.admin}</p><h3 className="text-lg font-black text-slate-900 leading-tight">{title}</h3></div>
           </div>
           <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 transition-colors"><X size={20}/></button>
         </div>
@@ -826,13 +831,13 @@ function AptModal({title,icon,form,setForm,errors,serverError,submitting,pickerM
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Date picker */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Datum *</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.date}</label>
                   <div className="flex items-center justify-between mb-2">
                     <button type="button" onClick={()=>setPickerMonth(subMonths(pickerMonth,1))} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"><ChevronLeft size={14}/></button>
-                    <p className="text-xs font-bold text-slate-700 capitalize">{format(pickerMonth,"MMMM yyyy",{locale:nl})}</p>
+                    <p className="text-xs font-bold text-slate-700 capitalize">{format(pickerMonth,"MMMM yyyy",{locale:dateLocale})}</p>
                     <button type="button" onClick={()=>setPickerMonth(addMonths(pickerMonth,1))} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"><ChevronRight size={14}/></button>
                   </div>
-                  <div className="grid grid-cols-7 mb-1">{["Ma","Di","Wo","Do","Vr","Za","Zo"].map(l=><div key={l} className="text-center text-[9px] font-bold text-slate-400">{l}</div>)}</div>
+                  <div className="grid grid-cols-7 mb-1">{dict.appointments.overlay.dayShort.map(l=><div key={l} className="text-center text-[9px] font-bold text-slate-400">{l}</div>)}</div>
                   <div className="grid grid-cols-7 gap-0.5">
                     {Array.from({length:lead}).map((_,i)=><div key={i}/>)}
                     {days.map(d=>{const ds=format(d,"yyyy-MM-dd");const sel=form.dateStr===ds;const past=d<today;return(
@@ -846,13 +851,13 @@ function AptModal({title,icon,form,setForm,errors,serverError,submitting,pickerM
                 </div>
                 {/* Slot picker */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Tijdslot *</label>
-                  {!form.dateStr?<p className="text-xs text-slate-400 font-medium mt-6">Selecteer eerst een datum</p>:(
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.slot}</label>
+                  {!form.dateStr?<p className="text-xs text-slate-400 font-medium mt-6">{dict.appointments.modals.selectDateFirst}</p>:(
                     <div className="grid grid-cols-2 gap-1.5">
                       {ALL_SLOTS.map(s=>{const avail=availSlots.includes(s)||form.slot===s;const sel=form.slot===s;return(
                         <button type="button" key={s} disabled={!avail} onClick={()=>setForm({...form,slot:s})}
                           className={`py-2 rounded-lg border text-xs font-bold transition-all ${sel?"bg-[#d91c1c] border-[#d91c1c] text-white":avail?"border-slate-200 text-slate-700 hover:border-[#d91c1c] hover:text-[#d91c1c]":"border-slate-100 text-slate-300 cursor-not-allowed line-through"}`}>
-                          {s}{!avail&&<span className="ml-1 text-[9px]">bezet</span>}
+                          {s}{!avail&&<span className="ml-1 text-[9px]">{dict.appointments.modals.occupied}</span>}
                         </button>
                       );})}
                     </div>
@@ -864,7 +869,7 @@ function AptModal({title,icon,form,setForm,errors,serverError,submitting,pickerM
               {/* Duration picker — shown once a slot is selected */}
               {form.slot&&(
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Duur afspraak</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.duration}</label>
                   <div className="flex gap-2 flex-wrap">
                     {Array.from({length:maxDuration},(_,i)=>i+1).map(h=>(
                       <button key={h} type="button"
@@ -876,7 +881,7 @@ function AptModal({title,icon,form,setForm,errors,serverError,submitting,pickerM
                   </div>
                   {(form.durationHours??1)>1&&(
                     <p className="text-xs text-amber-600 font-medium mt-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                      Van {form.slot} tot {slotEndTime(form.slot, form.durationHours??1)} wordt geblokkeerd.
+                      {tpl(dict.appointments.modals.fromTo, { start: form.slot, end: slotEndTime(form.slot, form.durationHours??1) })}
                     </p>
                   )}
                 </div>
@@ -885,40 +890,40 @@ function AptModal({title,icon,form,setForm,errors,serverError,submitting,pickerM
               <hr className="border-slate-100"/>
               {showStatus&&(
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Status *</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.status}</label>
                   <div className="flex gap-2">
                     {(["pending","confirmed","cancelled"] as const).map(s=>(
                       <button type="button" key={s} onClick={()=>setForm({...form,status:s})}
                         className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all ${form.status===s?(s==="confirmed"?"bg-green-600 border-green-600 text-white":s==="pending"?"bg-amber-500 border-amber-500 text-white":"bg-slate-600 border-slate-600 text-white"):"border-slate-200 text-slate-500 hover:border-slate-400"}`}>
-                        {s==="pending"?"Wachtend":s==="confirmed"?"Bevestigd":"Geannuleerd"}
+                        {s==="pending"?dict.appointments.modals.pending:s==="confirmed"?dict.appointments.modals.confirmed:dict.appointments.modals.cancelled}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Naam *" id="f-name" error={errors.name}><input id="f-name" type="text" placeholder="Voornaam Achternaam" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className={ic(!!errors.name)}/></Field>
-                <Field label="Telefoon *" id="f-phone" error={errors.phone}><input id="f-phone" type="tel" placeholder="+32 4xx xx xx xx" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} className={ic(!!errors.phone)}/></Field>
-                <Field label="E-mailadres *" id="f-email" error={errors.email} cls="sm:col-span-2"><input id="f-email" type="email" placeholder="klant@email.be" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} className={ic(!!errors.email)}/></Field>
-                <Field label="Dienst *" id="f-svc" error={errors.service} cls="sm:col-span-2"><select id="f-svc" value={form.service} onChange={e=>setForm({...form,service:e.target.value})} className={ic(!!errors.service)+" bg-white"}><option value="">Selecteer een dienst...</option>{APPOINTMENT_CONFIG.services.map(s=><option key={s} value={s}>{s}</option>)}</select></Field>
-                <Field label="Opmerkingen" id="f-notes" cls="sm:col-span-2"><textarea id="f-notes" rows={2} placeholder="Optionele notitie…" value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className={ic(false)+" resize-none"}/></Field>
+                <Field label={dict.appointments.modals.name} id="f-name" error={errors.name}><input id="f-name" type="text" placeholder={locale==="fr"?"Prénom Nom":"Voornaam Achternaam"} value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className={ic(!!errors.name)}/></Field>
+                <Field label={dict.appointments.modals.phone} id="f-phone" error={errors.phone}><input id="f-phone" type="tel" placeholder="+32 4xx xx xx xx" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} className={ic(!!errors.phone)}/></Field>
+                <Field label={dict.appointments.modals.email} id="f-email" error={errors.email} cls="sm:col-span-2"><input id="f-email" type="email" placeholder="client@email.be" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} className={ic(!!errors.email)}/></Field>
+                <Field label={dict.appointments.modals.service} id="f-svc" error={errors.service} cls="sm:col-span-2"><select id="f-svc" value={form.service} onChange={e=>setForm({...form,service:e.target.value})} className={ic(!!errors.service)+" bg-white"}><option value="">{dict.appointments.modals.servicePlaceholder}</option>{serviceOptions.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}</select></Field>
+                <Field label={dict.appointments.modals.notes} id="f-notes" cls="sm:col-span-2"><textarea id="f-notes" rows={2} placeholder={dict.appointments.modals.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className={ic(false)+" resize-none"}/></Field>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-3">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input type="checkbox" checked={form.sendConfirmation} onChange={e=>setForm({...form,sendConfirmation:e.target.checked})} className="mt-0.5 w-4 h-4 accent-[#d91c1c] cursor-pointer"/>
                     <div className="flex-1">
-                      <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Bevestigingsmail sturen</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Stuur een bevestigingsmail naar de klant met de afspraakdetails.</p>
+                      <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">{dict.appointments.modals.sendConfirmation}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{dict.appointments.modals.sendConfirmationHint}</p>
                     </div>
                   </label>
                   {form.sendConfirmation&&(
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Taal e-mail</label>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">{dict.appointments.modals.emailLanguage}</label>
                       <div className="flex gap-1.5">
                         {(["fr","nl","en"] as const).map(loc=>(
                           <button key={loc} type="button" onClick={()=>setForm({...form,emailLocale:loc})}
                             className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all ${form.emailLocale===loc?"bg-[#d91c1c] border-[#d91c1c] text-white":"bg-white border-slate-200 text-slate-600 hover:border-[#d91c1c] hover:text-[#d91c1c]"}`}>
-                            {loc==="fr"?"Français":loc==="nl"?"Nederlands":"English"}
+                            {loc==="fr"?"FR":loc==="nl"?"NL":"EN"}
                           </button>
                         ))}
                       </div>
@@ -928,9 +933,9 @@ function AptModal({title,icon,form,setForm,errors,serverError,submitting,pickerM
               {serverError&&<div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 font-medium"><X size={15} className="shrink-0 mt-0.5"/>{serverError}</div>}
               {infoNote&&<p className="text-xs text-slate-400 font-medium bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">{infoNote}</p>}
               <div className="flex gap-3">
-                <button type="button" onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 transition-colors">Annuleren</button>
+                <button type="button" onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 transition-colors">{dict.common.cancel}</button>
                 <button type="submit" disabled={submitting} className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#d91c1c] text-white font-bold rounded-xl text-sm hover:bg-[#b91515] disabled:opacity-60 transition-all">
-                  {submitting?<><Loader2 size={15} className="animate-spin"/>Bezig…</>:<><CheckCircle size={15}/>{submitLabel}</>}
+                  {submitting?<><Loader2 size={15} className="animate-spin"/>{dict.appointments.modals.processing}</>:<><CheckCircle size={15}/>{submitLabel}</>}
                 </button>
               </div>
             </div>
@@ -948,7 +953,8 @@ function Field({label,id,error,children,cls=""}:{label:string;id:string;error?:s
 
 // ─── Calendar cell popover ────────────────────────────────────────────────────
 
-function CalendarPopover({apt,onClose,onEdit,onConfirm,onCancel,isPending,flipUp,flipLeft}:{
+function CalendarPopover({dict,locale,apt,onClose,onEdit,onConfirm,onCancel,isPending,flipUp,flipLeft}:{
+    dict: ReturnType<typeof useAdminI18n>["dict"]; locale: ReturnType<typeof useAdminI18n>["locale"];
     apt:Appointment;onClose:()=>void;onEdit:()=>void;
     onConfirm:(id:string)=>void;onCancel:(id:string)=>void;isPending:boolean;flipUp?:boolean;flipLeft?:boolean;
 }){return(
@@ -958,9 +964,9 @@ function CalendarPopover({apt,onClose,onEdit,onConfirm,onCancel,isPending,flipUp
         <div className="flex items-start justify-between mb-3">
           <div>
             <p className="font-black text-slate-900 text-sm">{apt.name}</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">{apt.service}</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">{getAdminServiceLabel(apt.service, locale)}</p>
             <div className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${apt.status==="pending"?"bg-amber-50 text-amber-700 border-amber-200":"bg-green-50 text-green-700 border-green-200"}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[apt.status]}`}/>{STATUS_LABELS[apt.status]}
+              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[apt.status]}`}/>{apt.status==="pending"?dict.appointments.statuses.pending:dict.appointments.statuses.confirmed}
             </div>
           </div>
           <button onClick={onClose} className="text-slate-300 hover:text-slate-600 text-xl leading-none ml-2 shrink-0">×</button>
@@ -969,13 +975,13 @@ function CalendarPopover({apt,onClose,onEdit,onConfirm,onCancel,isPending,flipUp
           <a href={`mailto:${apt.email}`} className="flex items-center gap-2 text-xs text-[#d91c1c] font-medium hover:underline"><Mail size={12} className="text-slate-400 shrink-0"/>{apt.email}</a>
           <a href={`tel:${apt.phone}`} className="flex items-center gap-2 text-xs text-slate-600 font-medium hover:underline"><Phone size={12} className="text-slate-400 shrink-0"/>{apt.phone}</a>
           {apt.notes&&<div className="flex items-start gap-2 text-xs text-slate-500"><MessageSquare size={12} className="text-slate-300 shrink-0 mt-0.5"/>{apt.notes}</div>}
-          {(apt.durationHours??1)>1&&<p className="text-xs font-bold text-slate-500">⏱ {apt.durationHours}u afspraak</p>}
+          {(apt.durationHours??1)>1&&<p className="text-xs font-bold text-slate-500">⏱ {tpl(dict.appointments.modals.appointmentDuration, { hours: apt.durationHours })}</p>}
         </div>
         <div className="flex flex-col gap-2">
-          <button onClick={onEdit} className="w-full flex items-center justify-center gap-1.5 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors"><Pencil size={12}/>Afspraak bewerken</button>
+          <button onClick={onEdit} className="w-full flex items-center justify-center gap-1.5 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors"><Pencil size={12}/>{dict.appointments.modals.editAppointment}</button>
           <div className="flex gap-2">
-            {apt.status==="pending"&&<button onClick={()=>{onConfirm(apt.id);onClose();}} disabled={isPending} className="flex-1 flex items-center justify-center gap-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 disabled:opacity-50 transition-colors"><CheckCircle size={12}/>Bevestigen</button>}
-            <button onClick={()=>{onCancel(apt.id);onClose();}} disabled={isPending} className="flex-1 flex items-center justify-center gap-1 py-2 bg-white text-red-600 border border-red-200 rounded-lg text-xs font-bold hover:bg-red-50 disabled:opacity-50 transition-colors"><XCircle size={12}/>Annuleren</button>
+            {apt.status==="pending"&&<button onClick={()=>{onConfirm(apt.id);onClose();}} disabled={isPending} className="flex-1 flex items-center justify-center gap-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 disabled:opacity-50 transition-colors"><CheckCircle size={12}/>{dict.common.confirm}</button>}
+            <button onClick={()=>{onCancel(apt.id);onClose();}} disabled={isPending} className="flex-1 flex items-center justify-center gap-1 py-2 bg-white text-red-600 border border-red-200 rounded-lg text-xs font-bold hover:bg-red-50 disabled:opacity-50 transition-colors"><XCircle size={12}/>{dict.appointments.modals.cancelAppointment}</button>
           </div>
         </div>
       </div>

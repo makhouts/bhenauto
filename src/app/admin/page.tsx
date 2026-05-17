@@ -6,8 +6,14 @@ import {
     Circle,
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isToday } from "date-fns";
-import { nl } from "date-fns/locale";
 import { requireAdmin } from "@/lib/auth-guard";
+import {
+    getAdminDateFnsLocale,
+    getAdminDictionary,
+    getAdminServiceLabel,
+    tpl,
+} from "@/lib/admin-i18n";
+import { getAdminLocale } from "@/lib/admin-i18n.server";
 
 export const metadata = { title: "Admin Dashboard | bhenauto" };
 
@@ -22,6 +28,9 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default async function AdminDashboardPage() {
     await requireAdmin();
+    const locale = await getAdminLocale();
+    const dict = getAdminDictionary(locale);
+    const dateLocale = getAdminDateFnsLocale(locale);
     const now = new Date();
     const weekStart = mondayStart(now);
     const weekEnd = mondayEnd(now);
@@ -65,28 +74,28 @@ export default async function AdminDashboardPage() {
 
     const kpis = [
         {
-            label: "Beschikbaar", value: availableCars,
-            sub: "voertuigen te koop", icon: Car,
+            label: dict.dashboard.kpis.available.label, value: availableCars,
+            sub: dict.dashboard.kpis.available.sub, icon: Car,
             accent: "#3b82f6", bg: "#eff6ff", iconBg: "#dbeafe", trend: false,
         },
         {
-            label: "Verkocht", value: soldCars,
-            sub: "afgeronde verkopen", icon: CheckCircle,
+            label: dict.dashboard.kpis.sold.label, value: soldCars,
+            sub: dict.dashboard.kpis.sold.sub, icon: CheckCircle,
             accent: "#10b981", bg: "#f0fdf4", iconBg: "#d1fae5", trend: false,
         },
         {
-            label: "Gereserveerd", value: reservedCars,
-            sub: "wacht op overdracht", icon: Lock,
+            label: dict.dashboard.kpis.reserved.label, value: reservedCars,
+            sub: dict.dashboard.kpis.reserved.sub, icon: Lock,
             accent: "#f59e0b", bg: "#fffbeb", iconBg: "#fef3c7", trend: false,
         },
         {
-            label: "Aanvragen", value: unreadContacts,
-            sub: `${totalContacts} totaal · ${unreadContacts} ongelezen`, icon: MessageSquare,
+            label: dict.dashboard.kpis.contacts.label, value: unreadContacts,
+            sub: `${totalContacts} ${dict.dashboard.kpis.contacts.total} · ${unreadContacts} ${dict.dashboard.kpis.contacts.unread}`, icon: MessageSquare,
             accent: "#8b5cf6", bg: "#f5f3ff", iconBg: "#ede9fe", trend: unreadContacts > 0,
         },
         {
-            label: "Afspraken", value: pendingAppointments + confirmedAppointments,
-            sub: `${pendingAppointments} openstaand · ${confirmedAppointments} bevestigd`, icon: CalendarCheck,
+            label: dict.dashboard.kpis.appointments.label, value: pendingAppointments + confirmedAppointments,
+            sub: `${pendingAppointments} ${dict.dashboard.kpis.appointments.pending} · ${confirmedAppointments} ${dict.dashboard.kpis.appointments.confirmed}`, icon: CalendarCheck,
             accent: "#d91c1c", bg: "#fff1f2", iconBg: "#ffe4e6", trend: pendingAppointments > 0,
         },
     ];
@@ -97,9 +106,9 @@ export default async function AdminDashboardPage() {
             {/* ── Header ── */}
             <div className="pb-2">
                 <p className="text-[13px] font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#94a3b8" }}>
-                    {format(now, "EEEE d MMMM yyyy", { locale: nl })}
+                    {format(now, "EEEE d MMMM yyyy", { locale: dateLocale })}
                 </p>
-                <h1 className="text-[2rem] font-headings font-black text-slate-900 tracking-tight">Dashboard</h1>
+                <h1 className="text-[2rem] font-headings font-black text-slate-900 tracking-tight">{dict.dashboard.title}</h1>
             </div>
 
             {/* ── KPI Cards ── */}
@@ -141,15 +150,15 @@ export default async function AdminDashboardPage() {
                                 <CalendarCheck size={20} style={{ color: "#d91c1c" }} />
                             </div>
                             <div>
-                                <p className="font-black text-slate-900 text-base leading-tight">Week kalender</p>
+                                <p className="font-black text-slate-900 text-base leading-tight">{dict.dashboard.calendar.title}</p>
                                 <p className="text-[12px] text-slate-400 font-medium mt-0.5">
-                                    {format(weekStart, "d MMM", { locale: nl })} – {format(weekEnd, "d MMM", { locale: nl })}
-                                    {weekAppointments.length > 0 && ` · ${weekAppointments.length} afspraken`}
+                                    {format(weekStart, "d MMM", { locale: dateLocale })} – {format(weekEnd, "d MMM", { locale: dateLocale })}
+                                    {weekAppointments.length > 0 && ` · ${weekAppointments.length} ${dict.layout.nav.appointments.toLowerCase()}`}
                                 </p>
                             </div>
                         </div>
                         <Link href="/admin/appointments" className="flex items-center gap-1 text-[13px] font-bold hover:underline" style={{ color: "#d91c1c" }}>
-                            Beheren <ChevronRight size={15} />
+                            {dict.common.manage} <ChevronRight size={15} />
                         </Link>
                     </div>
 
@@ -170,7 +179,7 @@ export default async function AdminDashboardPage() {
                                             className="text-[11px] font-bold uppercase tracking-wider mb-2"
                                             style={{ color: tod ? "#d91c1c" : "#94a3b8" }}
                                         >
-                                            {format(day, "EEE", { locale: nl })}
+                                            {format(day, "EEE", { locale: dateLocale })}
                                         </p>
                                         <div
                                             className="mx-auto w-9 h-9 flex items-center justify-center rounded-full"
@@ -188,7 +197,7 @@ export default async function AdminDashboardPage() {
                                     <div className="flex-1 p-3 space-y-2 overflow-hidden">
                                         {apts.length === 0 ? (
                                             <div className="h-full flex items-center justify-center">
-                                                <p className="text-[11px] text-slate-300 font-medium">vrij</p>
+                                                <p className="text-[11px] text-slate-300 font-medium">{dict.dashboard.calendar.free}</p>
                                             </div>
                                         ) : (
                                             apts.slice(0, 4).map((apt) => (
@@ -207,7 +216,7 @@ export default async function AdminDashboardPage() {
                                             ))
                                         )}
                                         {apts.length > 4 && (
-                                            <p className="text-[11px] text-slate-400 font-bold px-1">+{apts.length - 4} meer</p>
+                                                    <p className="text-[11px] text-slate-400 font-bold px-1">+{apts.length - 4} {dict.dashboard.calendar.more}</p>
                                         )}
                                     </div>
                                 </div>
@@ -219,11 +228,11 @@ export default async function AdminDashboardPage() {
                     <div className="flex items-center gap-5 px-7 py-4" style={{ borderTop: "1px solid #f1f5f9", background: "#fafbfc" }}>
                         <div className="flex items-center gap-2">
                             <span className="w-3 h-2 rounded-sm" style={{ background: "#f59e0b" }} />
-                            <span className="text-[12px] text-slate-400 font-medium">Openstaand</span>
+                            <span className="text-[12px] text-slate-400 font-medium">{dict.dashboard.calendar.pending}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="w-3 h-2 rounded-sm" style={{ background: "#10b981" }} />
-                            <span className="text-[12px] text-slate-400 font-medium">Bevestigd</span>
+                            <span className="text-[12px] text-slate-400 font-medium">{dict.dashboard.calendar.confirmed}</span>
                         </div>
                     </div>
                 </div>
@@ -238,22 +247,22 @@ export default async function AdminDashboardPage() {
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#f1f5f9" }}>
                                 <Clock size={18} className="text-slate-500" />
                             </div>
-                            <p className="font-black text-slate-900 text-base">Aankomend</p>
+                            <p className="font-black text-slate-900 text-base">{dict.dashboard.upcoming.title}</p>
                         </div>
                         <Link href="/admin/appointments" className="text-[12px] font-bold text-slate-400 hover:text-[#d91c1c] flex items-center gap-1">
-                            Alles <ArrowRight size={13} />
+                            {dict.common.all} <ArrowRight size={13} />
                         </Link>
                     </div>
                     <div className="divide-y divide-slate-100">
                         {upcomingAppointments.length === 0 ? (
                             <div className="px-6 py-12 text-center">
                                 <CheckCircle size={28} className="mx-auto mb-3 text-emerald-300" />
-                                <p className="text-[13px] text-slate-400 font-medium">Geen aankomende afspraken</p>
+                                <p className="text-[13px] text-slate-400 font-medium">{dict.dashboard.upcoming.empty}</p>
                             </div>
                         ) : upcomingAppointments.map((apt) => (
                             <div key={apt.id} className="px-6 py-4 flex items-start gap-4 hover:bg-slate-50 transition-colors">
                                 <div className="shrink-0 text-center bg-slate-100 rounded-xl px-3 py-2 min-w-[52px]">
-                                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{format(apt.date, "MMM", { locale: nl })}</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{format(apt.date, "MMM", { locale: dateLocale })}</p>
                                     <p className="text-xl font-black text-slate-900 leading-tight">{format(apt.date, "d")}</p>
                                 </div>
                                 <div className="flex-1 min-w-0 pt-0.5">
@@ -261,7 +270,7 @@ export default async function AdminDashboardPage() {
                                         <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[apt.status]}`} />
                                         <p className="font-black text-slate-900 text-[13px] truncate">{apt.name}</p>
                                     </div>
-                                    <p className="text-[12px] text-slate-400 font-medium">{apt.timeSlot} · {apt.service}</p>
+                                    <p className="text-[12px] text-slate-400 font-medium">{apt.timeSlot} · {getAdminServiceLabel(apt.service, locale)}</p>
                                 </div>
                             </div>
                         ))}
@@ -282,17 +291,17 @@ export default async function AdminDashboardPage() {
                             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#eff6ff" }}>
                                 <TrendingUp size={18} style={{ color: "#3b82f6" }} />
                             </div>
-                            <p className="font-black text-slate-900 text-base">Voorraad overzicht</p>
+                            <p className="font-black text-slate-900 text-base">{dict.dashboard.inventory.title}</p>
                         </div>
                         <Link href="/admin/cars" className="text-[12px] font-bold text-slate-400 hover:text-[#d91c1c] flex items-center gap-1">
-                            Beheren <ArrowRight size={13} />
+                            {dict.common.manage} <ArrowRight size={13} />
                         </Link>
                     </div>
                     <div className="px-7 py-6 space-y-5">
                         {[
-                            { label: "Beschikbaar", count: availableCars, total: availableCars + soldCars + reservedCars, color: "#3b82f6" },
-                            { label: "Gereserveerd", count: reservedCars, total: availableCars + soldCars + reservedCars, color: "#f59e0b" },
-                            { label: "Verkocht", count: soldCars, total: availableCars + soldCars + reservedCars, color: "#10b981" },
+                            { label: dict.dashboard.inventory.available, count: availableCars, total: availableCars + soldCars + reservedCars, color: "#3b82f6" },
+                            { label: dict.dashboard.inventory.reserved, count: reservedCars, total: availableCars + soldCars + reservedCars, color: "#f59e0b" },
+                            { label: dict.dashboard.inventory.sold, count: soldCars, total: availableCars + soldCars + reservedCars, color: "#10b981" },
                         ].map(({ label, count, total, color }) => {
                             const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                             return (
@@ -316,7 +325,7 @@ export default async function AdminDashboardPage() {
                             );
                         })}
                         <p className="text-[12px] text-slate-400 font-medium pt-1">
-                            Totaal: {availableCars + soldCars + reservedCars} voertuigen in systeem
+                            {tpl(dict.dashboard.inventory.total, { count: availableCars + soldCars + reservedCars })}
                         </p>
                     </div>
                 </div>
@@ -332,21 +341,21 @@ export default async function AdminDashboardPage() {
                                 <Inbox size={18} style={{ color: "#8b5cf6" }} />
                             </div>
                             <div>
-                                <p className="font-black text-slate-900 text-base leading-tight">Aanvragen</p>
+                                <p className="font-black text-slate-900 text-base leading-tight">{dict.dashboard.contacts.title}</p>
                                 {unreadContacts > 0 && (
-                                    <p className="text-[12px] font-bold" style={{ color: "#f59e0b" }}>{unreadContacts} ongelezen</p>
+                                    <p className="text-[12px] font-bold" style={{ color: "#f59e0b" }}>{tpl(dict.dashboard.contacts.unread, { count: unreadContacts })}</p>
                                 )}
                             </div>
                         </div>
                         <Link href="/admin/contacts" className="text-[12px] font-bold text-slate-400 hover:text-[#d91c1c] flex items-center gap-1">
-                            Alles <ArrowRight size={13} />
+                            {dict.common.all} <ArrowRight size={13} />
                         </Link>
                     </div>
                     <div className="divide-y divide-slate-100">
                         {recentContacts.length === 0 ? (
                             <div className="px-7 py-12 text-center">
                                 <CheckCircle size={28} className="mx-auto mb-3 text-emerald-300" />
-                                <p className="text-[13px] text-slate-400 font-medium">Alle aanvragen gelezen</p>
+                                <p className="text-[13px] text-slate-400 font-medium">{dict.dashboard.contacts.empty}</p>
                             </div>
                         ) : recentContacts.map((c) => (
                             <Link key={c.id} href="/admin/contacts" className="flex items-start gap-4 px-7 py-4 hover:bg-slate-50 transition-colors">
@@ -360,12 +369,12 @@ export default async function AdminDashboardPage() {
                                         <p className="font-black text-slate-900 text-[13px]">{c.name}</p>
                                         <Circle size={5} className="text-amber-400 fill-amber-400 shrink-0" />
                                         <p className="text-[11px] text-slate-400 font-medium ml-auto shrink-0">
-                                            {format(c.createdAt, "d MMM", { locale: nl })}
+                                            {format(c.createdAt, "d MMM", { locale: dateLocale })}
                                         </p>
                                     </div>
                                     <p className="text-[12px] text-slate-500 font-medium mt-0.5 truncate leading-snug">{c.message}</p>
                                     {c.car_reference && (
-                                        <p className="text-[11px] font-bold mt-0.5 truncate" style={{ color: "#d91c1c" }}>Re: {c.car_reference}</p>
+                                        <p className="text-[11px] font-bold mt-0.5 truncate" style={{ color: "#d91c1c" }}>{dict.dashboard.contacts.regarding} {c.car_reference}</p>
                                     )}
                                 </div>
                             </Link>

@@ -29,6 +29,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { BRAND_NAMES, getModelsForBrand } from "@/lib/carBrands";
 import { getImageUrl } from "@/lib/image-url";
 import { v4 as uuidv4 } from "uuid";
+import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
+import { tpl } from "@/lib/admin-i18n";
 
 const COMMON_FEATURES = [
     'Panoramisch Dak',
@@ -62,6 +64,7 @@ function SortableImage({
     isNew?: boolean;
     aiScore?: number;
 }) {
+    const { dict } = useAdminI18n();
     const {
         attributes,
         listeners,
@@ -91,7 +94,7 @@ function SortableImage({
             {/* Cover badge */}
             {index === 0 && (
                 <div className="absolute bottom-2 left-2 bg-[#d91c1c] text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded z-10">
-                    Cover
+                    {dict.carForm.cover}
                 </div>
             )}
 
@@ -203,6 +206,7 @@ function SearchableDropdown({
     required?: boolean;
     disabled?: boolean;
 }) {
+    const { dict } = useAdminI18n();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [customMode, setCustomMode] = useState(() => Boolean(value && !options.includes(value)));
@@ -233,7 +237,7 @@ function SearchableDropdown({
                     type="text"
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    placeholder={`${label} handmatig invoeren...`}
+                    placeholder={tpl(dict.carForm.placeholderManualEntry, { label })}
                     required={required}
                     className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
                 />
@@ -245,7 +249,7 @@ function SearchableDropdown({
                     }}
                     className="text-xs text-[#d91c1c] font-bold mt-1.5 hover:underline"
                 >
-                    ← Terug naar lijst
+                    ← {dict.carForm.backToList}
                 </button>
             </div>
         );
@@ -283,13 +287,13 @@ function SearchableDropdown({
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Zoeken..."
+                            placeholder={dict.carForm.placeholderSearch}
                             className="w-full text-sm outline-none text-slate-800 placeholder:text-slate-400 bg-transparent"
                         />
                     </div>
                     <div className="overflow-y-auto">
                         {filtered.length === 0 ? (
-                            <div className="px-4 py-3 text-sm text-slate-400">Geen resultaten</div>
+                            <div className="px-4 py-3 text-sm text-slate-400">{dict.carForm.placeholderNoResults}</div>
                         ) : (
                             filtered.map((option) => (
                                 <button
@@ -323,7 +327,7 @@ function SearchableDropdown({
                             }}
                             className="w-full text-left px-4 py-2.5 text-sm font-bold text-slate-400 hover:text-[#d91c1c] hover:bg-slate-50 transition-colors border-t border-slate-100"
                         >
-                            ✏️ Anders (handmatig invoeren)
+                            ✏️ {dict.carForm.placeholderOther}
                         </button>
                     </div>
                 </div>
@@ -360,6 +364,7 @@ interface CarFormProps {
 }
 
 export default function CarForm({ initialData }: CarFormProps) {
+    const { dict, locale } = useAdminI18n();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
@@ -457,13 +462,13 @@ export default function CarForm({ initialData }: CarFormProps) {
     // Trigger AI analysis (only when user clicks the button)
     const triggerAiAnalysis = async () => {
         if (images.length === 0) {
-            toast.error("Voeg eerst foto's toe voordat je AI-analyse start.");
+            toast.error(dict.carForm.aiNeedPhotos);
             return;
         }
 
         setAiAnalyzing(true);
         setAiOrdered(false);
-        setAiProgress("Foto's voorbereiden...");
+        setAiProgress(dict.carForm.aiPreparing);
 
         try {
             // Build FormData with both existing URLs and new file blobs
@@ -484,7 +489,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                 }
             }
 
-            setAiProgress("AI analyseert elke foto...");
+            setAiProgress(dict.carForm.aiAnalyzing);
 
             const aiRes = await fetch("/api/analyze-images", {
                 method: "POST",
@@ -493,10 +498,10 @@ export default function CarForm({ initialData }: CarFormProps) {
 
             if (!aiRes.ok) {
                 const errData = await aiRes.json().catch(() => ({}));
-                throw new Error(errData.error || "AI analyse mislukt");
+                throw new Error(errData.error || dict.carForm.aiError);
             }
 
-            setAiProgress("Volgorde optimaliseren...");
+            setAiProgress(dict.carForm.aiOptimizing);
 
             const aiData = await aiRes.json();
             if (aiData.ordered && aiData.aiEnabled) {
@@ -531,13 +536,13 @@ export default function CarForm({ initialData }: CarFormProps) {
                 });
                 setAiOrdered(true);
                 setAiStale(false); // AI just ran, results are fresh
-                toast.success("AI heeft de foto's gerangschikt!");
+                toast.success(dict.carForm.aiSuccess);
             } else {
-                toast.info("AI-analyse is niet beschikbaar. Controleer je API-sleutel.");
+                toast.info(dict.carForm.aiUnavailable);
             }
         } catch (err: unknown) {
             console.error("AI analysis error:", err);
-            toast.error(err instanceof Error ? err.message : "AI-analyse is mislukt.");
+            toast.error(err instanceof Error ? err.message : dict.carForm.aiError);
         } finally {
             setAiAnalyzing(false);
             setAiProgress("");
@@ -589,7 +594,7 @@ export default function CarForm({ initialData }: CarFormProps) {
 
                 if (!uploadRes.ok) {
                     const errData = await uploadRes.json().catch(() => ({}));
-                    throw new Error(errData.error || "Uploaden van afbeeldingen mislukt");
+                    throw new Error(errData.error || dict.carForm.uploadError);
                 }
 
                 const uploadData = await uploadRes.json();
@@ -624,12 +629,12 @@ export default function CarForm({ initialData }: CarFormProps) {
                 toast.error(result.error);
                 setIsSubmitting(false);
             } else {
-                toast.success(initialData?.id ? "Voertuig succesvol bijgewerkt!" : "Voertuig succesvol toegevoegd!");
+                toast.success(initialData?.id ? dict.carForm.saveEdit : dict.carForm.saveNew);
                 router.push("/admin/cars");
                 router.refresh();
             }
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : "Er is een onverwachte fout opgetreden.");
+            toast.error(err instanceof Error ? err.message : dict.carForm.unexpectedError);
             setIsSubmitting(false);
             setIsUploading(false);
         }
@@ -645,13 +650,12 @@ export default function CarForm({ initialData }: CarFormProps) {
 
             {/* Vehicle Identity */}
             <div className="space-y-6">
-                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Voertuig Identiteit</h3>
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">{dict.carForm.sectionIdentity}</h3>
 
-                {/* Row 1: Merk + Model */}
+                {/* Row 1: brand + model */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Brand Dropdown */}
                     <SearchableDropdown
-                        label="Merk"
+                        label={dict.carForm.brand}
                         name="brand"
                         options={BRAND_NAMES}
                         value={brand}
@@ -660,13 +664,12 @@ export default function CarForm({ initialData }: CarFormProps) {
                             setModel(""); // Reset model when brand changes
                             updateTitleFromBrandModel(val, "");
                         }}
-                        placeholder="Selecteer merk..."
+                        placeholder={dict.carForm.placeholderBrand}
                         required
                     />
 
-                    {/* Model Dropdown — filtered by selected brand */}
                     <SearchableDropdown
-                        label="Model"
+                        label={dict.carForm.model}
                         name="model"
                         options={availableModels}
                         value={model}
@@ -674,16 +677,16 @@ export default function CarForm({ initialData }: CarFormProps) {
                             setModel(val);
                             updateTitleFromBrandModel(brand, val);
                         }}
-                        placeholder={brand ? "Selecteer model..." : "Kies eerst een merk"}
+                        placeholder={brand ? dict.carForm.placeholderModel : dict.carForm.placeholderBrandFirst}
                         required
                         disabled={!brand}
                     />
                 </div>
 
-                {/* Row 2: Bouwjaar + Interne Titel */}
+                {/* Row 2: year + internal title */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Bouwjaar</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{dict.carForm.year}</label>
                         <select
                             name="year"
                             defaultValue={initialData?.year || new Date().getFullYear()}
@@ -697,7 +700,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                     </div>
 
                     <div className="md:col-span-2">
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Interne Titel</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{dict.carForm.title}</label>
                         <input
                             type="text"
                             name="title"
@@ -708,38 +711,35 @@ export default function CarForm({ initialData }: CarFormProps) {
                             }}
                             required
                             className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
-                            placeholder="Wordt automatisch ingevuld vanuit merk + model"
+                            placeholder={dict.carForm.autoTitlePlaceholder}
                         />
                         {!titleManuallyEdited && brand && (
-                            <p className="text-xs text-slate-400 mt-1">Automatisch ingevuld. Pas aan indien gewenst.</p>
+                            <p className="text-xs text-slate-400 mt-1">{dict.carForm.autoTitleHint}</p>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Specifications */}
             <div className="space-y-6 pt-4">
-                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Specificaties</h3>
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">{dict.carForm.sectionSpecs}</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {/* Prijs — formatted display, hidden raw value */}
                     <FormattedNumberField
-                        label="Prijs"
+                        label={dict.carForm.price}
                         name="price"
                         defaultValue={initialData?.price}
                         required
                         prefix="€"
                     />
-                    {/* Kilometerstand — formatted display, hidden raw value */}
                     <FormattedNumberField
-                        label="Kilometerstand"
+                        label={dict.carForm.mileage}
                         name="mileage"
                         defaultValue={initialData?.mileage}
                         required
                         suffix="km"
                     />
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Vermogen</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{dict.carForm.horsepower}</label>
                         <div className="relative">
                             <input
                                 type="number"
@@ -749,87 +749,85 @@ export default function CarForm({ initialData }: CarFormProps) {
                                 min="0"
                                 className="w-full bg-slate-50 border border-slate-300 text-slate-900 pl-4 pr-10 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none select-none">pk</span>
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none select-none">{dict.carForm.horsepowerUnit}</span>
                         </div>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Kleur</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{dict.carForm.color}</label>
                         <select
                             name="color"
                             defaultValue={initialData?.color || ""}
                             required
                             className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
                         >
-                            <option value="" disabled>Selecteer kleur...</option>
-                            <option value="Zwart">Zwart</option>
-                            <option value="Wit">Wit</option>
-                            <option value="Grijs">Grijs</option>
-                            <option value="Zilver">Zilver</option>
-                            <option value="Blauw">Blauw</option>
-                            <option value="Rood">Rood</option>
-                            <option value="Groen">Groen</option>
-                            <option value="Oranje">Oranje</option>
-                            <option value="Geel">Geel</option>
-                            <option value="Bruin">Bruin</option>
+                            <option value="" disabled>{dict.carForm.placeholderColor}</option>
+                            <option value="Zwart">{locale === "fr" ? "Noir" : "Zwart"}</option>
+                            <option value="Wit">{locale === "fr" ? "Blanc" : "Wit"}</option>
+                            <option value="Grijs">{locale === "fr" ? "Gris" : "Grijs"}</option>
+                            <option value="Zilver">{locale === "fr" ? "Argent" : "Zilver"}</option>
+                            <option value="Blauw">{locale === "fr" ? "Bleu" : "Blauw"}</option>
+                            <option value="Rood">{locale === "fr" ? "Rouge" : "Rood"}</option>
+                            <option value="Groen">{locale === "fr" ? "Vert" : "Groen"}</option>
+                            <option value="Oranje">{locale === "fr" ? "Orange" : "Oranje"}</option>
+                            <option value="Geel">{locale === "fr" ? "Jaune" : "Geel"}</option>
+                            <option value="Bruin">{locale === "fr" ? "Brun" : "Bruin"}</option>
                             <option value="Beige">Beige</option>
                             <option value="Bordeaux">Bordeaux</option>
-                            <option value="Paars">Paars</option>
-                            <option value="Goud">Goud</option>
-                            <option value="Brons">Brons</option>
+                            <option value="Paars">{locale === "fr" ? "Violet" : "Paars"}</option>
+                            <option value="Goud">{locale === "fr" ? "Or" : "Goud"}</option>
+                            <option value="Brons">{locale === "fr" ? "Bronze" : "Brons"}</option>
                             <option value="Champagne">Champagne</option>
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Brandstoftype</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{dict.carForm.fuel}</label>
                         <select
                             name="fuel_type"
                             defaultValue={initialData?.fuel_type || "Benzine"}
                             className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
                         >
-                            <option value="Benzine">Benzine</option>
+                            <option value="Benzine">{locale === "fr" ? "Essence" : "Benzine"}</option>
                             <option value="Diesel">Diesel</option>
-                            <option value="Elektrisch">Elektrisch</option>
+                            <option value="Elektrisch">{locale === "fr" ? "Électrique" : "Elektrisch"}</option>
                             <option value="Hybride">Hybride</option>
-                            <option value="Plug-in Hybride">Plug-in Hybride</option>
+                            <option value="Plug-in Hybride">{locale === "fr" ? "Hybride rechargeable" : "Plug-in Hybride"}</option>
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Transmissie</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{dict.carForm.transmission}</label>
                         <select
                             name="transmission"
                             defaultValue={initialData?.transmission || "Automatisch"}
                             className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
                         >
-                            <option value="Automatisch">Automatisch</option>
-                            <option value="Handgeschakeld">Handgeschakeld</option>
-                            <option value="Dubbele Koppeling">Dubbele Koppeling</option>
+                            <option value="Automatisch">{locale === "fr" ? "Automatique" : "Automatisch"}</option>
+                            <option value="Handgeschakeld">{locale === "fr" ? "Manuelle" : "Handgeschakeld"}</option>
+                            <option value="Dubbele Koppeling">{locale === "fr" ? "Double embrayage" : "Dubbele Koppeling"}</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            {/* Description */}
             <div className="space-y-6 pt-4">
-                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Overzicht</h3>
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">{dict.carForm.sectionDescription}</h3>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Voertuigbeschrijving</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{dict.carForm.description}</label>
                     <textarea
                         name="description"
                         defaultValue={initialData?.description}
                         required
                         rows={6}
                         className="w-full bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] resize-y font-medium"
-                        placeholder="Highlight the key features, history, and bespoke options..."
+                        placeholder={dict.carForm.placeholderDescription}
                     />
                 </div>
             </div>
 
-            {/* Carpass URL */}
             <div className="space-y-4 pt-4 border-t border-slate-100">
-                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Documenten</h3>
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">{dict.carForm.sectionDocuments}</h3>
                 <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
-                        Carpass URL <span className="text-slate-300 normal-case font-normal">(optioneel)</span>
+                        {dict.carForm.carPass} <span className="text-slate-300 normal-case font-normal">({dict.carForm.optional})</span>
                     </label>
                     <input
                         type="url"
@@ -839,16 +837,15 @@ export default function CarForm({ initialData }: CarFormProps) {
                         placeholder="https://www.carpass.be/..."
                     />
                     <p className="text-xs text-slate-400 mt-1.5">
-                        Vul de Carpass URL in — er verschijnt dan een Carpass-knop op de voertuigpagina.
+                        {dict.carForm.carPassHint}
                     </p>
                 </div>
             </div>
 
-            {/* Options & Features (Tags) */}
             <div className="space-y-6 pt-4 border-t border-slate-100">
-                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">Kenmerken & Opties</h3>
+                <h3 className="text-xl font-headings text-slate-900 font-bold border-b border-slate-200 pb-2">{dict.carForm.sectionFeatures}</h3>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Voeg opties of accessoires toe</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{dict.carForm.addFeatureLabel}</label>
                     <div className="flex items-center gap-2 mb-3">
                         <input
                             type="text"
@@ -861,14 +858,14 @@ export default function CarForm({ initialData }: CarFormProps) {
                                 }
                             }}
                             className="flex-1 bg-slate-50 border border-slate-300 text-slate-900 px-4 py-3 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-1 focus:ring-[#d91c1c] font-medium"
-                            placeholder="Typ optie (bijv. Panoramisch Dak) en druk op Enter..."
+                            placeholder={dict.carForm.placeholderFeatureInput}
                         />
                         <button
                             type="button"
                             onClick={addFeature}
                             className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-3 rounded-lg font-bold text-sm transition-colors"
                         >
-                            Toevoegen
+                            {dict.carForm.addFeatureButton}
                         </button>
                     </div>
                     
@@ -904,28 +901,26 @@ export default function CarForm({ initialData }: CarFormProps) {
                         </div>
                     ) : (
                         <div className="p-4 bg-slate-50 rounded-xl text-slate-400 text-sm italic text-center border border-slate-200 border-dashed">
-                            Nog geen opties toegevoegd.
+                            {dict.carForm.noFeatures}
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Image Gallery Manager with Drag & Drop */}
             <div className="space-y-6 pt-4 border-t border-slate-100">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-                    <h3 className="text-xl font-headings text-slate-900 font-bold">Media Galerij</h3>
+                    <h3 className="text-xl font-headings text-slate-900 font-bold">{dict.carForm.sectionGallery}</h3>
                     <div className="flex items-center gap-3">
                         {aiOrdered && !aiAnalyzing && (
                             <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
                                 <Sparkles size={11} />
-                                AI Gerangschikt
+                                {dict.carForm.aiOrderedBadge}
                             </span>
                         )}
-                        <p className="text-xs text-slate-400 font-medium">Sleep om de volgorde te wijzigen. Eerste foto = cover.</p>
+                        <p className="text-xs text-slate-400 font-medium">{dict.carForm.dragHint}</p>
                     </div>
                 </div>
 
-                {/* AI Toggle + Optimize Button */}
                 <div className="flex items-center justify-between bg-gradient-to-r from-slate-50 to-indigo-50/50 border border-slate-200 rounded-xl px-5 py-3.5">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg transition-colors ${
@@ -934,8 +929,8 @@ export default function CarForm({ initialData }: CarFormProps) {
                             <Sparkles size={16} />
                         </div>
                         <div>
-                            <p className="text-sm font-bold text-slate-800">AI Foto Optimalisatie</p>
-                            <p className="text-xs text-slate-400">Laat AI automatisch de beste coverfoto kiezen en de volgorde bepalen</p>
+                            <p className="text-sm font-bold text-slate-800">{dict.carForm.aiOptimizationTitle}</p>
+                            <p className="text-xs text-slate-400">{dict.carForm.aiOptimizationDescription}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -946,10 +941,9 @@ export default function CarForm({ initialData }: CarFormProps) {
                                 className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow-sm shadow-indigo-200 hover:shadow-md hover:shadow-indigo-200"
                             >
                                 <Zap size={13} />
-                                {aiOrdered && aiStale ? "Opnieuw" : "Optimaliseer"}
+                                {aiOrdered && aiStale ? dict.carForm.aiOptimizeAgain : dict.carForm.aiOptimize}
                             </button>
                         )}
-                        {/* Toggle Switch */}
                         <button
                             type="button"
                             onClick={() => {
@@ -988,7 +982,6 @@ export default function CarForm({ initialData }: CarFormProps) {
                                     />
                                 ))}
 
-                                {/* Upload Button */}
                                 <label className={`aspect-[4/3] flex flex-col items-center justify-center border-2 border-dashed rounded-xl transition-colors relative ${
                                     aiAnalyzing || isUploading
                                         ? "border-amber-300 bg-amber-50 text-amber-400 cursor-wait"
@@ -1003,25 +996,21 @@ export default function CarForm({ initialData }: CarFormProps) {
                                         disabled={isSubmitting || aiAnalyzing || isUploading}
                                     />
                                     <ImagePlus size={24} className="mb-2" />
-                                    <span className="text-xs uppercase tracking-widest font-bold">Foto&apos;s Toevoegen</span>
+                                    <span className="text-xs uppercase tracking-widest font-bold">{dict.carForm.photos}</span>
                                 </label>
                             </div>
                         </SortableContext>
                     </DndContext>
 
-                    {/* AI Analysis Overlay — on top of images */}
                     {aiAnalyzing && (
                         <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl overflow-hidden">
-                            {/* Frosted glass backdrop */}
                             <div className="absolute inset-0 bg-white/70 backdrop-blur-md" />
 
-                            {/* Shimmer effect */}
                             <div className="absolute inset-0 overflow-hidden">
                                 <div className="absolute -inset-[100%] animate-shimmer bg-gradient-to-r from-transparent via-indigo-200/30 to-transparent" style={{ transform: 'rotate(-12deg)' }} />
                             </div>
 
                             <div className="relative flex flex-col items-center gap-4 py-6 px-8">
-                                {/* Pulsing sparkles icon */}
                                 <div className="relative">
                                     <div className="absolute inset-0 animate-ping rounded-full bg-indigo-400/20" />
                                     <div className="relative p-4 bg-white rounded-2xl shadow-lg shadow-indigo-200/50 border border-indigo-100">
@@ -1030,16 +1019,14 @@ export default function CarForm({ initialData }: CarFormProps) {
                                 </div>
 
                                 <div className="text-center space-y-1.5">
-                                    <h4 className="text-base font-bold text-slate-800">AI Analyse Bezig</h4>
-                                    <p className="text-sm text-slate-500">{aiProgress || 'Bezig met verwerken...'}</p>
+                                    <h4 className="text-base font-bold text-slate-800">{dict.carForm.aiOrder}</h4>
+                                    <p className="text-sm text-slate-500">{aiProgress || dict.common.loading}</p>
                                 </div>
 
-                                {/* Animated progress bar */}
                                 <div className="w-56 h-1.5 bg-indigo-100 rounded-full overflow-hidden">
                                     <div className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full animate-ai-progress" style={{ width: '60%' }} />
                                 </div>
 
-                                {/* Step indicators */}
                                 <div className="flex items-center gap-5 mt-1">
                                     <div className={`flex items-center gap-1.5 text-xs font-medium ${
                                         aiProgress.includes('upload') ? 'text-indigo-600' : aiProgress.includes('analys') || aiProgress.includes('optim') ? 'text-green-500' : 'text-slate-300'
@@ -1047,7 +1034,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                                         <div className={`w-2 h-2 rounded-full ${
                                             aiProgress.includes('upload') ? 'bg-indigo-500 animate-pulse' : aiProgress.includes('analys') || aiProgress.includes('optim') ? 'bg-green-500' : 'bg-slate-300'
                                         }`} />
-                                        Upload
+                                        {dict.carForm.aiStepUpload}
                                     </div>
                                     <div className={`flex items-center gap-1.5 text-xs font-medium ${
                                         aiProgress.includes('analys') ? 'text-indigo-600' : aiProgress.includes('optim') ? 'text-green-500' : 'text-slate-300'
@@ -1055,7 +1042,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                                         <div className={`w-2 h-2 rounded-full ${
                                             aiProgress.includes('analys') ? 'bg-indigo-500 animate-pulse' : aiProgress.includes('optim') ? 'bg-green-500' : 'bg-slate-300'
                                         }`} />
-                                        Analyse
+                                        {dict.carForm.aiStepAnalyze}
                                     </div>
                                     <div className={`flex items-center gap-1.5 text-xs font-medium ${
                                         aiProgress.includes('optim') ? 'text-indigo-600' : 'text-slate-300'
@@ -1063,15 +1050,13 @@ export default function CarForm({ initialData }: CarFormProps) {
                                         <div className={`w-2 h-2 rounded-full ${
                                             aiProgress.includes('optim') ? 'bg-indigo-500 animate-pulse' : 'bg-slate-300'
                                         }`} />
-                                        Rangschikken
+                                        {dict.carForm.aiStepSort}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
                 </div>
-
-
             </div>
 
             <div className="pt-8 border-t border-slate-200 flex justify-end gap-4">
@@ -1081,7 +1066,7 @@ export default function CarForm({ initialData }: CarFormProps) {
                     disabled={isSubmitting}
                     className="px-6 py-3 border border-slate-300 rounded-lg text-slate-600 uppercase tracking-widest text-xs font-bold hover:bg-slate-50 hover:text-slate-900 transition-colors"
                 >
-                    Annuleren
+                    {dict.common.cancel}
                 </button>
                 <button
                     type="submit"
@@ -1091,12 +1076,12 @@ export default function CarForm({ initialData }: CarFormProps) {
                     {isSubmitting ? (
                         <>
                             <Loader2 size={16} className="animate-spin mr-2" />
-                            Opslaan...
+                            {dict.common.loading}
                         </>
                     ) : (
                         <>
                             <Save size={16} className="mr-2" />
-                            Voertuig Opslaan
+                            {initialData?.id ? dict.carForm.saveButtonEdit : dict.carForm.saveButtonNew}
                         </>
                     )}
                 </button>

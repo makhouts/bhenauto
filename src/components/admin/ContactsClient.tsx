@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Mail, Phone, Calendar, CheckCheck, RotateCcw, Trash2, Car } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Mail, Phone, Calendar, CheckCheck, RotateCcw, Trash2, Car, Loader2, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { nl } from "date-fns/locale";
 import { markContactRead, deleteContact } from "@/app/actions/contacts";
 import { toast } from "sonner";
+import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
+import { getAdminDateFnsLocale, tpl } from "@/lib/admin-i18n";
 
 type Tab = "nieuw" | "behandeld" | "alle";
 
@@ -20,9 +21,17 @@ type AdminContact = {
     createdAt: Date | string;
 };
 
+type DeleteTarget = {
+    id: string;
+    name: string;
+} | null;
+
 export default function ContactsClient({ contacts }: { contacts: AdminContact[] }) {
+    const { locale, dict } = useAdminI18n();
+    const dateLocale = getAdminDateFnsLocale(locale);
     const [activeTab, setActiveTab] = useState<Tab>("nieuw");
     const [isPending, startTransition] = useTransition();
+    const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
     const nieuw = contacts.filter((c) => !c.read);
     const behandeld = contacts.filter((c) => c.read);
@@ -33,9 +42,9 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
         contacts;
 
     const tabs: { id: Tab; label: string; count: number; dot?: boolean }[] = [
-        { id: "nieuw", label: "Nieuwe aanvragen", count: nieuw.length, dot: nieuw.length > 0 },
-        { id: "behandeld", label: "Behandelde aanvragen", count: behandeld.length },
-        { id: "alle", label: "Alle aanvragen", count: contacts.length },
+        { id: "nieuw", label: dict.contacts.tabs.new, count: nieuw.length, dot: nieuw.length > 0 },
+        { id: "behandeld", label: dict.contacts.tabs.handled, count: behandeld.length },
+        { id: "alle", label: dict.contacts.tabs.all, count: contacts.length },
     ];
 
     const handleMarkRead = (id: string, read: boolean) => {
@@ -44,19 +53,37 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
             if (result.error) {
                 toast.error(result.error);
             } else {
-                toast.success(read ? "Aanvraag gemarkeerd als behandeld." : "Aanvraag teruggezet naar nieuw.");
+                toast.success(read ? dict.contacts.handledToast : dict.contacts.resetToast);
             }
         });
     };
 
-    const handleDelete = (id: string, name: string) => {
-        if (!confirm(`Aanvraag van ${name} verwijderen?`)) return;
+    useEffect(() => {
+        if (!deleteTarget) return;
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape" && !isPending) {
+                setDeleteTarget(null);
+            }
+        };
+
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, [deleteTarget, isPending]);
+
+    const openDeleteModal = (id: string, name: string) => {
+        setDeleteTarget({ id, name });
+    };
+
+    const handleDelete = () => {
+        if (!deleteTarget) return;
         startTransition(async () => {
-            const result = await deleteContact(id);
+            const result = await deleteContact(deleteTarget.id);
             if (result.error) {
                 toast.error(result.error);
             } else {
-                toast.success("Aanvraag verwijderd.");
+                toast.success(dict.contacts.deleteToast);
+                setDeleteTarget(null);
             }
         });
     };
@@ -97,12 +124,12 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
                 <div className="text-center py-24 bg-white border border-slate-200 rounded-2xl shadow-sm">
                     <Mail size={48} className="mx-auto text-slate-300 mb-4" />
                     <h3 className="text-xl font-headings text-slate-900 mb-2 font-bold">
-                        {activeTab === "nieuw" ? "Geen nieuwe aanvragen" :
-                         activeTab === "behandeld" ? "Geen behandelde aanvragen" :
-                         "Geen aanvragen gevonden"}
+                        {activeTab === "nieuw" ? dict.contacts.empty.new :
+                         activeTab === "behandeld" ? dict.contacts.empty.handled :
+                         dict.contacts.empty.all}
                     </h3>
                     <p className="text-slate-500 font-medium">
-                        {activeTab === "nieuw" ? "Alle aanvragen zijn afgehandeld." : ""}
+                        {activeTab === "nieuw" ? dict.contacts.empty.newSub : ""}
                     </p>
                 </div>
             ) : (
@@ -137,14 +164,14 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
                                 <div className="flex items-center gap-2 shrink-0">
                                     <span className="flex items-center text-xs text-slate-400 font-medium mr-2">
                                         <Calendar size={12} className="mr-1.5" />
-                                        {formatDistanceToNow(new Date(contact.createdAt), { addSuffix: true, locale: nl })}
+                                        {formatDistanceToNow(new Date(contact.createdAt), { addSuffix: true, locale: dateLocale })}
                                     </span>
 
                                     {/* Actions */}
                                     <button
                                         onClick={() => handleMarkRead(contact.id, !contact.read)}
                                         disabled={isPending}
-                                        title={contact.read ? "Zet terug naar nieuw" : "Markeer als behandeld"}
+                                        title={contact.read ? dict.contacts.markNew : dict.contacts.markHandled}
                                         className={`p-2 rounded-lg transition-colors ${
                                             contact.read
                                                 ? "text-slate-400 hover:text-amber-500 hover:bg-amber-50"
@@ -154,9 +181,9 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
                                         {contact.read ? <RotateCcw size={16} /> : <CheckCheck size={16} />}
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(contact.id, contact.name)}
+                                        onClick={() => openDeleteModal(contact.id, contact.name)}
                                         disabled={isPending}
-                                        title="Verwijderen"
+                                        title={dict.contacts.delete}
                                         className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                     >
                                         <Trash2 size={16} />
@@ -190,6 +217,82 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {deleteTarget && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ backgroundColor: "rgba(2,2,20,0.58)", backdropFilter: "blur(6px)" }}
+                    onClick={(event) => {
+                        if (event.target === event.currentTarget && !isPending) {
+                            setDeleteTarget(null);
+                        }
+                    }}
+                >
+                    <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#020214] shadow-2xl shadow-black/30">
+                        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#d91c1c]/12 text-[#d91c1c]">
+                                    <Trash2 size={18} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#d91c1c]">
+                                        {dict.contacts.delete}
+                                    </p>
+                                    <h3 className="text-lg font-black text-white">
+                                        {tpl(dict.contacts.deleteConfirm, { name: deleteTarget.name })}
+                                    </h3>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setDeleteTarget(null)}
+                                disabled={isPending}
+                                className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-60"
+                                aria-label={dict.common.close}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="px-6 py-5">
+                            <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm font-medium text-slate-300">
+                                {locale === "fr"
+                                    ? "Cette demande sera supprimée définitivement de l'administration."
+                                    : "Deze aanvraag wordt definitief verwijderd uit de administratie."}
+                            </div>
+
+                            <div className="mt-5 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setDeleteTarget(null)}
+                                    disabled={isPending}
+                                    className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-bold text-slate-200 transition-colors hover:bg-white/10 disabled:opacity-60"
+                                >
+                                    {dict.common.cancel}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    disabled={isPending}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#d91c1c] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#b91515] disabled:opacity-60"
+                                >
+                                    {isPending ? (
+                                        <>
+                                            <Loader2 size={15} className="animate-spin" />
+                                            {dict.common.loading}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Trash2 size={15} />
+                                            {dict.contacts.delete}
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

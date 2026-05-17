@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { createHash, timingSafeEqual } from "crypto";
 import { ADMIN_SESSION_MAX_AGE, createSessionToken } from "@/lib/session";
 import { getClientIp } from "@/lib/request-ip";
+import { getAdminDictionary } from "@/lib/admin-i18n";
+import { getAdminLocale } from "@/lib/admin-i18n.server";
 
 // In-memory rate limiter for login attempts (per-process; for production
 // multi-instance deployments, move to Redis/Upstash).
@@ -31,25 +33,26 @@ function constantTimePasswordMatch(candidate: string, expected: string): boolean
 
 export async function login(formData: FormData) {
     const password = (formData.get("password") as string | null) ?? "";
+    const dict = getAdminDictionary(await getAdminLocale());
 
     const adminPassword = process.env.ADMIN_PASSWORD;
     const sessionSecret = process.env.ADMIN_SESSION_SECRET;
 
     if (!adminPassword || !sessionSecret) {
         console.error("[Auth] ADMIN_PASSWORD or ADMIN_SESSION_SECRET env var is not set.");
-        return { error: "Server configuration error. Contact the administrator." };
+        return { error: dict.auth.serverConfig };
     }
 
     const headerStore = await headers();
     const ip = getClientIp(headerStore);
     if (isLoginRateLimited(ip)) {
-        return { error: "Te veel pogingen. Probeer het over 15 minuten opnieuw." };
+        return { error: dict.auth.tooManyAttempts };
     }
 
     const passwordMatch = constantTimePasswordMatch(password, adminPassword);
 
     if (!passwordMatch) {
-        return { error: "Onjuiste inloggegevens." };
+        return { error: dict.auth.invalidCredentials };
     }
 
     // Store a signed, per-login token, not the raw secret.

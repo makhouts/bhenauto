@@ -89,7 +89,7 @@ export default function Header({ dict }: HeaderProps) {
         { name: dict.contact, href: `/${locale}/contact` },
     ];
 
-    // Language options for dropdown
+    // Language options
     const languageOptions = locales.map(code => ({
         code,
         name: localeNames[code],
@@ -281,26 +281,43 @@ export default function Header({ dict }: HeaderProps) {
                         <div className="w-16 h-px bg-white/10 my-4" />
 
                         {/* Mobile Language Selection */}
-                        <div className="flex gap-3 mb-4 w-full max-w-xs justify-center">
-                            {languageOptions.map(lang => (
-                                <button
-                                    key={lang.code}
-                                    onClick={() => { switchLocale(lang.code as Locale); setIsOpen(false); }}
-                                    className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 rounded-lg font-bold text-sm tracking-widest transition-colors ${
-                                        locale === lang.code ? 'bg-[#d91c1c] text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white'
-                                    }`}
-                                >
-                                    <span className="text-lg leading-none">{lang.flag}</span>
-                                    {lang.code.toUpperCase()}
-                                </button>
+                        <div
+                            className="mb-4 flex w-full max-w-xs items-center rounded-full border border-white/10 bg-white/[0.06] p-1 shadow-[0_16px_40px_rgba(0,0,0,0.25)]"
+                            role="radiogroup"
+                            aria-label="Taal selecteren"
+                        >
+                            {languageOptions.map((lang, idx) => (
+                                <div key={lang.code} className="flex flex-1 items-center">
+                                    <button
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={locale === lang.code}
+                                        aria-label={lang.name}
+                                        onClick={() => { switchLocale(lang.code as Locale); setIsOpen(false); }}
+                                        className={`relative h-10 flex-1 overflow-hidden rounded-full text-xs font-black uppercase tracking-[0.18em] transition-all duration-300 ${
+                                            locale === lang.code
+                                                ? 'text-white'
+                                                : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                                        }`}
+                                    >
+                                        {locale === lang.code && (
+                                            <span className="absolute inset-x-4 bottom-1 h-0.5 rounded-full bg-[#d91c1c] shadow-[0_0_10px_rgba(217,28,28,0.85)]" aria-hidden="true" />
+                                        )}
+                                        <span className="relative">{lang.code.toUpperCase()}</span>
+                                    </button>
+                                    {idx < languageOptions.length - 1 && (
+                                        <span className="px-0.5 text-xs font-black text-[#d91c1c]" aria-hidden="true">|</span>
+                                    )}
+                                </div>
                             ))}
                         </div>
 
                         <Link
                             href={`/${locale}/inventory`}
                             onClick={() => setIsOpen(false)}
-                            className="w-full max-w-xs bg-[#d91c1c] text-white px-8 py-4 rounded-xl font-bold text-base text-center uppercase tracking-widest hover:bg-[#b91515] transition-all shadow-lg shadow-[#d91c1c]/30 active:scale-95"
+                            className="relative w-full max-w-xs overflow-hidden rounded-xl border border-white/15 bg-white/[0.07] px-8 py-4 text-center text-base font-black uppercase tracking-widest text-white shadow-[0_18px_45px_rgba(0,0,0,0.32)] transition-all hover:bg-white hover:text-[#020214] active:scale-95"
                         >
+                            <span className="absolute inset-y-3 left-3 w-1 rounded-full bg-[#d91c1c]" aria-hidden="true" />
                             {dict.cta}
                         </Link>
                     </nav>

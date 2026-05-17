@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 
 export default function AdminError({
     error,
@@ -9,6 +10,7 @@ export default function AdminError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    const { dict } = useAdminI18n();
     useEffect(() => {
         console.error("Admin error:", error);
     }, [error]);
@@ -21,15 +23,15 @@ export default function AdminError({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                     </svg>
                 </div>
-                <h2 className="text-lg font-black text-slate-900 mb-1">Er ging iets mis</h2>
+                <h2 className="text-lg font-black text-slate-900 mb-1">{dict.errors.title}</h2>
                 <p className="text-sm text-slate-500 font-medium mb-6">
-                    {error.message || "Er is een onverwachte fout opgetreden."}
+                    {error.message || dict.errors.generic}
                 </p>
                 <button
                     onClick={reset}
                     className="px-5 py-2.5 bg-[#d91c1c] text-white font-bold text-xs uppercase tracking-widest rounded-lg hover:bg-[#b91515] transition-colors"
                 >
-                    Probeer Opnieuw
+                    {dict.common.retry}
                 </button>
             </div>
         </div>

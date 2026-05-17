@@ -8,6 +8,7 @@
  */
 
 const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "";
+const THUMBNAIL_SUFFIX = "__thumb";
 
 export function getImageUrl(urlOrKey: string): string {
     if (!urlOrKey) return "";
@@ -26,4 +27,14 @@ export function getImageUrl(urlOrKey: string): string {
  */
 export function isR2Key(urlOrKey: string): boolean {
     return !!urlOrKey && !urlOrKey.startsWith("http://") && !urlOrKey.startsWith("https://");
+}
+
+export function getThumbnailKey(urlOrKey: string): string | null {
+    if (!isR2Key(urlOrKey) || !urlOrKey.endsWith(".webp")) return null;
+    return urlOrKey.replace(/\.webp$/, `${THUMBNAIL_SUFFIX}.webp`);
+}
+
+export function getThumbnailImageUrl(urlOrKey: string): string {
+    const thumbnailKey = getThumbnailKey(urlOrKey);
+    return getImageUrl(thumbnailKey ?? urlOrKey);
 }

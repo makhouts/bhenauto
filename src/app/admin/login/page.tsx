@@ -9,9 +9,12 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import logo from "@/assets/logo.webp";
 import wallpaper from "@/assets/login-wallpaper.webp";
+import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
+import AdminLocaleSwitcher from "@/components/admin/AdminLocaleSwitcher";
 
 export default function LoginPage() {
     const router = useRouter();
+    const { dict } = useAdminI18n();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
     const [authChecked, setAuthChecked] = useState(false);
@@ -78,7 +81,7 @@ export default function LoginPage() {
                             />
                         </div>
                         <p className="text-white/60 font-medium max-w-md mx-auto text-sm leading-relaxed">
-                            Beveiligd beheersportaal voor geautoriseerd personeel.
+                            {dict.login.eyebrow}
                         </p>
                     </motion.div>
                 </div>
@@ -108,16 +111,20 @@ export default function LoginPage() {
                         </div>
                     </motion.div>
 
+                    <div className="mb-6 flex justify-center">
+                        <AdminLocaleSwitcher compact />
+                    </div>
+
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: 0.3 }}
                     >
                         <h1 className="text-3xl font-headings font-black text-slate-900 text-center mb-2">
-                            Toegangsportaal
+                            {dict.login.title}
                         </h1>
                         <p className="text-slate-500 text-center mb-10 text-sm">
-                            Log in met uw beheerdersgegevens.
+                            {dict.login.subtitle}
                         </p>
                     </motion.div>
 
@@ -142,7 +149,7 @@ export default function LoginPage() {
 
                         <div>
                             <label htmlFor="password" className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                                Toegangscode
+                                {dict.login.passwordLabel}
                             </label>
                             <input
                                 type="password"
@@ -165,11 +172,11 @@ export default function LoginPage() {
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="animate-spin mr-2" size={18} />
-                                    Verifiëren...
+                                    {dict.login.submitting}
                                 </>
                             ) : (
                                 <>
-                                    Beveiligd Inloggen
+                                    {dict.login.submit}
                                     <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                                 </>
                             )}
@@ -186,7 +193,7 @@ export default function LoginPage() {
                             href="/"
                             className="text-xs text-slate-400 hover:text-[#d91c1c] transition-colors uppercase tracking-widest font-bold py-2 inline-block"
                         >
-                            Terug naar de website
+                            {dict.login.backToWebsite}
                         </Link>
                     </motion.div>
                 </motion.div>

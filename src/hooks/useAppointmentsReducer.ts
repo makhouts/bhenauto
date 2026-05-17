@@ -11,6 +11,8 @@ import {
 } from "@/app/actions/admin-appointments";
 import type { BlockedDateEntry } from "@/app/actions/admin-appointments";
 import { generateDaySlots, APPOINTMENT_CONFIG } from "@/lib/appointmentConfig";
+import { tpl } from "@/lib/admin-i18n";
+import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 
 // Re-export for consumers
 export type { BlockedDateEntry };
@@ -254,6 +256,7 @@ export function useAppointmentsReducer(
     init: Appointment[],
     initBlocks: BlockedDateEntry[]
 ) {
+    const { dict } = useAdminI18n();
     const [state, dispatch] = useReducer(reducer, {
         appointments: init,
         blocks: initBlocks,
@@ -365,16 +368,16 @@ export function useAppointmentsReducer(
 
     const validate = useCallback((f: AptForm, setErrors: (errors: Partial<AptForm>) => void): boolean => {
         const e: Partial<AptForm> = {};
-        if (!f.name.trim()) e.name = "Naam is verplicht";
-        if (!f.email.trim()) e.email = "E-mail is verplicht";
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = "Ongeldig e-mailadres";
-        if (!f.phone.trim()) e.phone = "Telefoon is verplicht";
-        if (!f.service) e.service = "Selecteer een dienst";
-        if (!f.dateStr) e.dateStr = "Selecteer een datum";
-        if (!f.slot) e.slot = "Selecteer een tijdslot";
+        if (!f.name.trim()) e.name = dict.appointments.validation.nameRequired;
+        if (!f.email.trim()) e.email = dict.appointments.validation.emailRequired;
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = dict.appointments.validation.invalidEmail;
+        if (!f.phone.trim()) e.phone = dict.appointments.validation.phoneRequired;
+        if (!f.service) e.service = dict.appointments.validation.serviceRequired;
+        if (!f.dateStr) e.dateStr = dict.appointments.validation.dateRequired;
+        if (!f.slot) e.slot = dict.appointments.validation.slotRequired;
         setErrors(e);
         return Object.keys(e).length === 0;
-    }, []);
+    }, [dict]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -390,9 +393,9 @@ export function useAppointmentsReducer(
             if ("error" in r) { toast.error(r.error); return; }
             dispatch({ type: "UPDATE_APPOINTMENT", id: capturedId, updates: { status: "confirmed", durationHours: capturedDuration } });
             dispatch({ type: "CLOSE_CONFIRM" });
-            toast.success(`Afspraak bevestigd${capturedDuration > 1 ? ` · ${capturedDuration}u` : ""}.`);
+            toast.success(tpl(dict.appointments.toasts.confirmed, { duration: capturedDuration > 1 ? ` · ${capturedDuration}u` : "" }));
         });
-    }, [state.confirmModalId, state.confirmDuration]);
+    }, [dict, state.confirmModalId, state.confirmDuration]);
 
     const handleCancel = useCallback((id: string) => startT(async () => {
         // Capture appointment info before deletion for block cleanup
@@ -411,9 +414,9 @@ export function useAppointmentsReducer(
                     .filter(b => format(b.date, "yyyy-MM-dd") === ds && b.timeSlot && followSlots.has(b.timeSlot) && b.reason?.startsWith("Gereserveerd"))
                     .forEach(b => dispatch({ type: "REMOVE_BLOCK", id: b.id }));
             }
-            toast.success("Afspraak verwijderd.");
+            toast.success(dict.appointments.toasts.deleted);
         }
-    }), [state.appointments, state.blocks]);
+    }), [dict, state.appointments, state.blocks]);
 
     const openCreate = useCallback((dateStr = "", slot = "") => {
         dispatch({ type: "OPEN_CREATE", dateStr, slot });
@@ -478,9 +481,9 @@ export function useAppointmentsReducer(
                 },
             });
             dispatch({ type: "CLOSE_CREATE" });
-            toast.success(`Afspraak aangemaakt${dur > 1 ? ` · ${dur}u` : ""}.`);
+            toast.success(tpl(dict.appointments.toasts.created, { duration: dur > 1 ? ` · ${dur}u` : "" }));
         });
-    }, [state.createForm, validate]);
+    }, [dict, state.createForm, validate]);
 
     const handleEditSubmit = useCallback((ev: React.FormEvent) => {
         ev.preventDefault();
@@ -511,13 +514,13 @@ export function useAppointmentsReducer(
                 },
             });
             dispatch({ type: "CLOSE_EDIT" });
-            toast.success("Afspraak bijgewerkt.");
+            toast.success(dict.appointments.toasts.updated);
         });
-    }, [state.editId, state.editForm, validate]);
+    }, [dict, state.editId, state.editForm, validate]);
 
     const handleBlockSubmit = useCallback((ev: React.FormEvent) => {
         ev.preventDefault();
-        if (!state.blockForm.dateStr) { dispatch({ type: "SET_BLOCK_ERROR", error: "Selecteer een datum." }); return; }
+        if (!state.blockForm.dateStr) { dispatch({ type: "SET_BLOCK_ERROR", error: dict.appointmentActions.selectDate }); return; }
         dispatch({ type: "SET_BLOCK_ERROR", error: null });
 
         startBlock(async () => {
@@ -536,18 +539,18 @@ export function useAppointmentsReducer(
                 }],
             });
             dispatch({ type: "CLOSE_BLOCK" });
-            toast.success(state.blockForm.slot ? "Tijdslot geblokkeerd." : "Dag geblokkeerd.");
+            toast.success(state.blockForm.slot ? dict.appointments.toasts.slotBlocked : dict.appointments.toasts.dayBlocked);
         });
-    }, [state.blockForm]);
+    }, [dict, state.blockForm]);
 
     const handleUnblock = useCallback((id: string) => startT(async () => {
         const r = await unblockSlot(id);
         if ("error" in r) toast.error(r.error);
         else {
             dispatch({ type: "REMOVE_BLOCK", id });
-            toast.success("Blokkering verwijderd.");
+            toast.success(dict.appointments.toasts.blockRemoved);
         }
-    }), []);
+    }), [dict]);
 
     const handleResizeDrag = useCallback((aptId: string, newDuration: number) => {
         // Optimistic update
@@ -558,10 +561,10 @@ export function useAppointmentsReducer(
                 toast.error(r.error);
                 // Revert — reload from DB would require a full refresh, so just notify
             } else {
-                toast.success(`Duur bijgewerkt naar ${newDuration}u.`);
+                toast.success(tpl(dict.appointments.toasts.durationUpdated, { hours: newDuration }));
             }
         });
-    }, []);
+    }, [dict]);
 
     return {
         state,
