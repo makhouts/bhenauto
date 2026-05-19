@@ -348,7 +348,7 @@ export default async function CarDetailPage(
                             />
 
                             {/* ── Location Card Google Maps ── */}
-                            <div className="theme-surface rounded-[28px] shadow-sm overflow-hidden p-3 mt-5" style={{ border: '1px solid var(--theme-border)' }}>
+                            <div className="hidden lg:block theme-surface rounded-[28px] shadow-sm overflow-hidden p-3 mt-5" style={{ border: '1px solid var(--theme-border)' }}>
                                 <div className="h-[250px] w-full rounded-[20px] overflow-hidden relative group">
                                     <div className="absolute inset-0 bg-transparent pointer-events-none shadow-[inset_0_0_20px_rgba(0,0,0,0.05)] z-10 transition-colors duration-300"></div>
                                     <DeferredMap />

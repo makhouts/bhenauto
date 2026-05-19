@@ -2,9 +2,9 @@ import CarCardSkeleton from "@/components/CarCardSkeleton";
 
 export default function InventoryLoading() {
   return (
-    <main className="min-h-screen theme-bg flex flex-col pt-8">
+    <main className="min-h-screen theme-bg flex flex-col pt-2 md:pt-8">
       {/* Header band */}
-      <header className="theme-bg py-16" style={{ borderBottom: "1px solid var(--theme-border)" }}>
+      <header className="theme-bg py-10 sm:py-16" style={{ borderBottom: "1px solid var(--theme-border)" }}>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="h-4 w-32 rounded mb-4 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
           <div className="h-12 w-80 rounded mb-3 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
@@ -12,7 +12,7 @@ export default function InventoryLoading() {
         </div>
       </header>
 
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col lg:flex-row gap-8 w-full items-start">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex flex-col lg:flex-row gap-8 w-full items-start">
         {/* Filter sidebar skeleton */}
         <aside className="w-full lg:w-80 shrink-0">
           <div className="rounded-lg p-6 animate-pulse space-y-6" style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}>

@@ -90,10 +90,10 @@ export default async function InventoryPage(props: {
   );
 
   return (
-    <main className="min-h-screen theme-bg flex flex-col pt-8">
+    <main className="min-h-screen theme-bg flex flex-col pt-2 md:pt-8">
 
       {/* Header Banner */}
-      <header className="theme-bg py-16" style={{ borderBottom: "1px solid var(--theme-border)" }}>
+      <header className="theme-bg py-10 sm:py-16" style={{ borderBottom: "1px solid var(--theme-border)" }}>
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 text-xs font-bold theme-text-faint uppercase tracking-widest mb-4">
             <Link href={`/${locale}`} className="hover:text-[#d91c1c]">
@@ -107,7 +107,7 @@ export default async function InventoryPage(props: {
         </div>
       </header>
 
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12 flex flex-col lg:flex-row gap-8 w-full items-start">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex flex-col lg:flex-row gap-8 w-full items-start">
 
         {/* Sidebar Filter */}
         <aside className="w-full lg:w-80 shrink-0">

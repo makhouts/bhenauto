@@ -69,10 +69,10 @@ export default async function ContactPage({
       {/* ── Subtle background accent ─────────────────────────────── */}
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#d91c1c]/4 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-20 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 md:pt-28 pb-20 relative z-10">
 
         {/* ── Hero text ────────────────────────────────────────── */}
-        <div className="mb-14">
+        <div className="mb-10 md:mb-14">
           <p className="text-[10px] font-black text-[#d91c1c] uppercase tracking-[0.25em] mb-4">
             {c.pageLabel}
           </p>

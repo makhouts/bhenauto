@@ -43,7 +43,7 @@ export default function ClientConditionalLayout({
   return (
     <>
       {!isAdminRoute && header}
-      <main className={`flex-grow ${!isAdminRoute && !isTransparentRoute ? "pt-20" : ""}`}>
+      <main className={`flex-grow ${!isAdminRoute && !isTransparentRoute ? "pt-8 md:pt-20" : ""}`}>
         {children}
       </main>
       {!isAdminRoute && footer}

@@ -15,6 +15,8 @@ interface ImageGalleryProps {
 const GALLERY_IMAGE_QUALITY = 80;
 const LIGHTBOX_IMAGE_QUALITY = 80;
 const LIGHTBOX_IMAGE_SIZES = "100vw";
+const MAIN_GALLERY_TRANSITION = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
+const LIGHTBOX_GALLERY_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
 
 export default function ImageGallery({ images, title }: ImageGalleryProps) {
     // Resolve all image URLs once (R2 keys → full CDN URLs)
@@ -37,9 +39,45 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
     );
 
     const slideVariants = {
-        enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
-        center: { x: 0, opacity: 1 },
-        exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
+        enter: (dir: number) => ({
+            x: dir > 0 ? 56 : -56,
+            opacity: 0,
+            scale: 1.025,
+            filter: "blur(10px)",
+        }),
+        center: {
+            x: 0,
+            opacity: 1,
+            scale: 1,
+            filter: "blur(0px)",
+        },
+        exit: (dir: number) => ({
+            x: dir > 0 ? -56 : 56,
+            opacity: 0,
+            scale: 0.985,
+            filter: "blur(10px)",
+        }),
+    };
+
+    const lightboxSlideVariants = {
+        enter: (dir: number) => ({
+            x: dir > 0 ? 72 : -72,
+            opacity: 0,
+            scale: 1.015,
+            filter: "blur(12px)",
+        }),
+        center: {
+            x: 0,
+            opacity: 1,
+            scale: 1,
+            filter: "blur(0px)",
+        },
+        exit: (dir: number) => ({
+            x: dir > 0 ? -72 : 72,
+            opacity: 0,
+            scale: 0.99,
+            filter: "blur(12px)",
+        }),
     };
 
     if (!resolvedImages || resolvedImages.length === 0) {
@@ -89,7 +127,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                 {/* ── Main Hero Image ── */}
                 <div
                     className="relative flex-1 overflow-hidden rounded-2xl cursor-pointer group"
-                    style={{ backgroundColor: 'var(--theme-skeleton)' }}
+                    style={{ backgroundColor: '#080808' }}
                     onClick={openLightbox}
                     onMouseMove={handleMouseMove}
                     onTouchStart={handleTouchStart}
@@ -103,14 +141,14 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                             initial="enter"
                             animate="center"
                             exit="exit"
-                            transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-                            className="absolute inset-0"
+                            transition={MAIN_GALLERY_TRANSITION}
+                            className="absolute inset-0 will-change-transform"
                         >
                             <Image
                                 src={resolvedImages[activeIndex].url}
                                 alt={`${title} - Foto ${activeIndex + 1}`}
                                 fill
-                                className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                                className="object-contain md:object-cover transition-transform duration-700 ease-out md:group-hover:scale-[1.03]"
                                 priority={activeIndex === 0}
                                 fetchPriority={activeIndex === 0 ? "high" : "auto"}
                                 sizes="(max-width: 768px) 100vw, 70vw"
@@ -268,16 +306,12 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 <motion.div
                                     key={activeIndex}
                                     custom={direction}
-                                    variants={{
-                                        enter: (dir: number) => ({ x: dir > 0 ? 200 : -200, opacity: 0, scale: 0.95 }),
-                                        center: { x: 0, opacity: 1, scale: 1 },
-                                        exit: (dir: number) => ({ x: dir > 0 ? -200 : 200, opacity: 0, scale: 0.95 }),
-                                    }}
+                                    variants={lightboxSlideVariants}
                                     initial="enter"
                                     animate="center"
                                     exit="exit"
-                                    transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-                                    className="absolute inset-0 flex items-center justify-center"
+                                    transition={LIGHTBOX_GALLERY_TRANSITION}
+                                    className="absolute inset-0 flex items-center justify-center will-change-transform"
                                 >
                                     <div
                                         className={`relative w-full h-full transition-transform duration-300 ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
