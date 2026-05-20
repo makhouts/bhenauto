@@ -75,6 +75,7 @@
         "showFilters": "Toon Filters",
         "hideFilters": "Verberg Filters",
         "brandLabel": "Merk",
+        "brandAll": "Alle merken",
         "mileageLabel": "Kilometerstand",
         "priceLabel": "Prijsklasse",
         "fuelLabel": "Brandstof",

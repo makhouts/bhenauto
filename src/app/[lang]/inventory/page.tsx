@@ -57,7 +57,9 @@ export default async function InventoryPage(props: {
   const query = searchParams.query as string | undefined;
   const brand = searchParams.brand as string | string[] | undefined;
   const sort = searchParams.sort as string | undefined;
+  const minPrice = searchParams.minPrice as string | undefined;
   const maxPrice = searchParams.maxPrice as string | undefined;
+  const minMileage = searchParams.minMileage as string | undefined;
   const maxMileage = searchParams.maxMileage as string | undefined;
   const fuel = searchParams.fuel as string | string[] | undefined;
 
@@ -66,10 +68,10 @@ export default async function InventoryPage(props: {
     await Promise.all([
       prisma.car.findMany({ select: { brand: true }, distinct: ["brand"] })
         .then(rows => rows.map(r => r.brand).filter(Boolean).sort() as string[]),
-      fetchCarsPaginated({ page: 1, pageSize: PAGE_SIZE, brand, query, sort, maxPrice, maxMileage, fuel }),
+      fetchCarsPaginated({ page: 1, pageSize: PAGE_SIZE, brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel }),
     ]);
 
-  const filterParams = { brand, query, sort, maxPrice, maxMileage, fuel };
+  const filterParams = { brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel };
 
   const renderPersonalRequestBlock = (className: string) => (
     <div className={`bg-[#d91c1c] rounded-xl p-8 text-white relative flex-col justify-center shadow-lg overflow-hidden group border border-[#d91c1c] ${className}`}>

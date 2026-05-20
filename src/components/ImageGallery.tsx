@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, X, ZoomIn, Maximize2 } from "lucide-react";
 import { useGallery } from "@/hooks/useGallery";
@@ -19,6 +19,8 @@ const MAIN_GALLERY_TRANSITION = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as co
 const LIGHTBOX_GALLERY_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
 
 export default function ImageGallery({ images, title }: ImageGalleryProps) {
+    const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(() => new Set());
+
     // Resolve all image URLs once (R2 keys → full CDN URLs)
     const resolvedImages = useMemo(() =>
         images.map(img => ({ ...img, url: getImageUrl(img.url) })),
@@ -37,6 +39,8 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
             .filter((index, position, array) => index >= 0 && index < resolvedImages.length && array.indexOf(index) === position),
         [activeIndex, resolvedImages.length]
     );
+    const activeImage = resolvedImages[activeIndex];
+    const isActiveImageLoaded = loadedImageIds.has(activeImage.id);
 
     const slideVariants = {
         enter: (dir: number) => ({
@@ -127,7 +131,6 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                 {/* ── Main Hero Image ── */}
                 <div
                     className="relative flex-1 overflow-hidden rounded-2xl cursor-pointer group"
-                    style={{ backgroundColor: '#080808' }}
                     onClick={openLightbox}
                     onMouseMove={handleMouseMove}
                     onTouchStart={handleTouchStart}
@@ -144,15 +147,33 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                             transition={MAIN_GALLERY_TRANSITION}
                             className="absolute inset-0 will-change-transform"
                         >
+                            {!isActiveImageLoaded && (
+                                <div
+                                    className="absolute inset-0 animate-pulse rounded-2xl"
+                                    style={{
+                                        background: "linear-gradient(90deg, var(--theme-skeleton-subtle) 0%, var(--theme-skeleton) 50%, var(--theme-skeleton-subtle) 100%)",
+                                    }}
+                                />
+                            )}
                             <Image
-                                src={resolvedImages[activeIndex].url}
+                                src={activeImage.url}
                                 alt={`${title} - Foto ${activeIndex + 1}`}
                                 fill
-                                className="object-contain md:object-cover transition-transform duration-700 ease-out md:group-hover:scale-[1.03]"
+                                className={`object-contain object-center md:object-cover transition-[opacity,transform] duration-700 ease-out md:group-hover:scale-[1.03] ${
+                                    isActiveImageLoaded ? "opacity-100" : "opacity-0"
+                                }`}
                                 priority={activeIndex === 0}
                                 fetchPriority={activeIndex === 0 ? "high" : "auto"}
                                 sizes="(max-width: 768px) 100vw, 70vw"
                                 quality={GALLERY_IMAGE_QUALITY}
+                                onLoad={() => {
+                                    setLoadedImageIds((current) => {
+                                        if (current.has(activeImage.id)) return current;
+                                        const next = new Set(current);
+                                        next.add(activeImage.id);
+                                        return next;
+                                    });
+                                }}
                             />
                         </motion.div>
                     </AnimatePresence>
@@ -241,10 +262,10 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                             <button
                                 key={img.id}
                                 onClick={() => goTo(i)}
-                                className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-lg transition-all duration-300
+                                className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-300
                                     ${activeIndex === i
-                                        ? "ring-2 ring-[#d91c1c] ring-offset-1 opacity-100 shadow-md"
-                                        : "opacity-50 hover:opacity-80 hover:ring-1 hover:ring-slate-300"
+                                        ? "border-[#d91c1c] opacity-100 shadow-md"
+                                        : "border-transparent opacity-50 hover:border-slate-300 hover:opacity-80"
                                     }`}
                             >
                                 <Image src={img.url} alt={`${title} - miniatuur ${i + 1}`} fill className="object-cover" sizes="96px" />

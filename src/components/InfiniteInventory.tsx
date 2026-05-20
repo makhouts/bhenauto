@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { X } from "lucide-react";
 import CarCard from "@/components/CarCard";
 import CarCardSkeleton from "@/components/CarCardSkeleton";
 import { fetchCarsPaginated, type CarWithImages } from "@/app/actions/fetchCars";
 import SortSelect from "@/components/SortSelect";
 import { useLocale } from "@/components/LocaleContext";
 import type { InventoryDict, CommonDict } from "@/lib/dictionaries";
+import {
+    MILEAGE_RANGE_CONFIG,
+    PRICE_RANGE_CONFIG,
+    normalizeQueryRange,
+} from "@/lib/inventoryFilterRanges";
 
 interface InfiniteInventoryProps {
     initialCars: CarWithImages[];
@@ -19,13 +26,105 @@ interface InfiniteInventoryProps {
         query?: string;
         sort?: string;
         type?: string | string[];
+        minPrice?: string;
         maxPrice?: string;
+        minMileage?: string;
         maxMileage?: string;
         fuel?: string | string[];
     };
 }
 
 const PAGE_SIZE = 9;
+
+function formatPriceChipValue(value: number): string {
+    return value >= PRICE_RANGE_CONFIG.max ? "€250k+" : `€${Math.round(value / 1000)}k`;
+}
+
+function formatMileageChipValue(value: number): string {
+    if (value <= MILEAGE_RANGE_CONFIG.min) return "0 km";
+    return value >= MILEAGE_RANGE_CONFIG.max ? "200k+ km" : `${Math.round(value / 1000)}k km`;
+}
+
+function ActiveFilterChips({ dict }: { dict: InventoryDict }) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const urlSearchParams = useSearchParams();
+
+    const removeParams = useCallback(
+        (names: string[]) => {
+            const params = new URLSearchParams(urlSearchParams.toString());
+            names.forEach((name) => params.delete(name));
+            params.delete("page");
+            const query = params.toString();
+            router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+        },
+        [pathname, router, urlSearchParams]
+    );
+
+    const brands = urlSearchParams.getAll("brand").filter(Boolean);
+    const fuels = urlSearchParams.getAll("fuel").filter(Boolean);
+    const priceRange = normalizeQueryRange(
+        urlSearchParams.get("minPrice"),
+        urlSearchParams.get("maxPrice"),
+        PRICE_RANGE_CONFIG
+    );
+    const mileageRange = normalizeQueryRange(
+        urlSearchParams.get("minMileage"),
+        urlSearchParams.get("maxMileage"),
+        MILEAGE_RANGE_CONFIG
+    );
+
+    const chips = [
+        ...(brands.length > 0
+            ? [{
+                key: "brand",
+                label: `${dict.brandLabel}: ${brands.join(", ")}`,
+                onRemove: () => removeParams(["brand"]),
+            }]
+            : []),
+        ...(fuels.length > 0
+            ? [{
+                key: "fuel",
+                label: `${dict.fuelLabel}: ${fuels.join(", ")}`,
+                onRemove: () => removeParams(["fuel"]),
+            }]
+            : []),
+        ...(priceRange.min > PRICE_RANGE_CONFIG.min || priceRange.max < PRICE_RANGE_CONFIG.max
+            ? [{
+                key: "price",
+                label: `${dict.priceLabel}: ${formatPriceChipValue(priceRange.min)} - ${formatPriceChipValue(priceRange.max)}`,
+                onRemove: () => removeParams(["minPrice", "maxPrice"]),
+            }]
+            : []),
+        ...(mileageRange.min > MILEAGE_RANGE_CONFIG.min || mileageRange.max < MILEAGE_RANGE_CONFIG.max
+            ? [{
+                key: "mileage",
+                label: `${dict.mileageLabel}: ${formatMileageChipValue(mileageRange.min)} - ${formatMileageChipValue(mileageRange.max)}`,
+                onRemove: () => removeParams(["minMileage", "maxMileage"]),
+            }]
+            : []),
+    ];
+
+    if (chips.length === 0) return null;
+
+    return (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+            {chips.map((chip) => (
+                <button
+                    key={chip.key}
+                    type="button"
+                    onClick={chip.onRemove}
+                    className="inline-flex min-h-9 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold theme-text-secondary transition-colors hover:text-[#d91c1c] focus:outline-none focus:ring-2 focus:ring-[#d91c1c]/25"
+                    style={{ backgroundColor: "var(--theme-badge-bg)", border: "1px solid var(--theme-border)" }}
+                    aria-label={`${chip.label} ${dict.clearFilters}`}
+                >
+                    <span>{chip.label}</span>
+                    <X size={14} strokeWidth={2.5} aria-hidden="true" />
+                </button>
+            ))}
+        </div>
+    );
+}
 
 export default function InfiniteInventory({
     initialCars,
@@ -147,6 +246,8 @@ export default function InfiniteInventory({
                     </div>
                 </div>
             </div>
+
+            <ActiveFilterChips dict={dict} />
 
             {/* Grid / List */}
             <div className={viewMode === 'grid'

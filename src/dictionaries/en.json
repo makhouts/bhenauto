@@ -75,6 +75,7 @@
         "showFilters": "Show Filters",
         "hideFilters": "Hide Filters",
         "brandLabel": "Brand",
+        "brandAll": "All brands",
         "mileageLabel": "Mileage",
         "priceLabel": "Price Range",
         "fuelLabel": "Fuel Type",

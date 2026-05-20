@@ -2,6 +2,11 @@
 
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import {
+    PRICE_RANGE_CONFIG,
+    MILEAGE_RANGE_CONFIG,
+    normalizeQueryRange,
+} from "@/lib/inventoryFilterRanges";
 
 export type CarWithImages = {
     id: string;
@@ -32,7 +37,9 @@ interface FetchCarsParams {
     query?: string;
     sort?: string;
     type?: string | string[];
+    minPrice?: string;
     maxPrice?: string;
+    minMileage?: string;
     maxMileage?: string;
     fuel?: string | string[];
 }
@@ -42,7 +49,7 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
     hasMore: boolean;
     total: number;
 }> {
-    const { brand, query, sort, type, maxPrice, maxMileage, fuel } = params;
+    const { brand, query, sort, type, minPrice, maxPrice, minMileage, maxMileage, fuel } = params;
     const page = Math.max(1, Math.trunc(params.page ?? 1));
     const pageSize = Math.min(24, Math.max(1, Math.trunc(params.pageSize ?? 9)));
     const safeQuery = query?.trim().slice(0, 80);
@@ -67,18 +74,24 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
         });
     }
 
-    if (maxPrice) {
-        const parsedPrice = parseInt(maxPrice, 10);
-        if (!isNaN(parsedPrice) && parsedPrice < 250000) {
-            conditions.push({ price: { lte: parsedPrice } });
-        }
+    const priceRange = normalizeQueryRange(minPrice, maxPrice, PRICE_RANGE_CONFIG);
+    if (priceRange.min > PRICE_RANGE_CONFIG.min || priceRange.max < PRICE_RANGE_CONFIG.max) {
+        conditions.push({
+            price: {
+                ...(priceRange.min > PRICE_RANGE_CONFIG.min ? { gte: priceRange.min } : {}),
+                ...(priceRange.max < PRICE_RANGE_CONFIG.max ? { lte: priceRange.max } : {}),
+            },
+        });
     }
 
-    if (maxMileage) {
-        const parsedMileage = parseInt(maxMileage, 10);
-        if (!isNaN(parsedMileage) && parsedMileage < 200000) {
-            conditions.push({ mileage: { lte: parsedMileage } });
-        }
+    const mileageRange = normalizeQueryRange(minMileage, maxMileage, MILEAGE_RANGE_CONFIG);
+    if (mileageRange.min > MILEAGE_RANGE_CONFIG.min || mileageRange.max < MILEAGE_RANGE_CONFIG.max) {
+        conditions.push({
+            mileage: {
+                ...(mileageRange.min > MILEAGE_RANGE_CONFIG.min ? { gte: mileageRange.min } : {}),
+                ...(mileageRange.max < MILEAGE_RANGE_CONFIG.max ? { lte: mileageRange.max } : {}),
+            },
+        });
     }
 
     if (fuel) {

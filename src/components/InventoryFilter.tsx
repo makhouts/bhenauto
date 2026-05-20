@@ -1,9 +1,186 @@
 "use client";
 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import type { InventoryDict } from "@/lib/dictionaries";
+import {
+    PRICE_RANGE_CONFIG,
+    MILEAGE_RANGE_CONFIG,
+    normalizeQueryRange,
+} from "@/lib/inventoryFilterRanges";
+
+function formatPriceValue(value: number, noLimitLabel: string): string {
+    return value >= PRICE_RANGE_CONFIG.max ? noLimitLabel : `€ ${value.toLocaleString("nl-NL")}`;
+}
+
+function formatMileageValue(value: number, noLimitLabel: string): string {
+    return value >= MILEAGE_RANGE_CONFIG.max ? noLimitLabel : `${value.toLocaleString("nl-NL")} km`;
+}
+
+function formatCompactPrice(value: number): string {
+    return value >= PRICE_RANGE_CONFIG.max ? "€250k+" : `€${Math.round(value / 1000)}k`;
+}
+
+function formatCompactMileage(value: number): string {
+    if (value <= 0) return "0 km";
+    return value >= MILEAGE_RANGE_CONFIG.max ? "200k+" : `${Math.round(value / 1000)}k`;
+}
+
+function RangeBubble({
+    leftPercent,
+    value,
+}: {
+    leftPercent: number;
+    value: string;
+}) {
+    return (
+        <div
+            className="absolute -top-3 z-40 -translate-x-1/2"
+            style={{ left: `${leftPercent}%` }}
+        >
+            <div className="relative rounded-lg bg-[#d91c1c] px-3 py-1.5 text-xs leading-none font-black text-white shadow-lg whitespace-nowrap tracking-tight [font-variant-numeric:tabular-nums]">
+                {value}
+                <span className="absolute left-1/2 top-full h-2.5 w-2.5 -translate-x-1/2 -translate-y-[55%] rotate-45 bg-[#d91c1c]" />
+            </div>
+        </div>
+    );
+}
+
+function DualRangeSlider({
+    initialMinValue,
+    initialMaxValue,
+    minLimit,
+    maxLimit,
+    step,
+    minAriaLabel,
+    maxAriaLabel,
+    formatBubbleValue,
+    startLabel,
+    endLabel,
+    showMinBubble,
+    showMaxBubble,
+    summaryFormatter,
+    onCommit,
+}: {
+    initialMinValue: number;
+    initialMaxValue: number;
+    minLimit: number;
+    maxLimit: number;
+    step: number;
+    minAriaLabel: string;
+    maxAriaLabel: string;
+    formatBubbleValue: (value: number) => string;
+    startLabel: string;
+    endLabel: string;
+    showMinBubble: (value: number) => boolean;
+    showMaxBubble: (value: number) => boolean;
+    summaryFormatter: (minValue: number, maxValue: number) => string;
+    onCommit: (minValue: number, maxValue: number) => void;
+}) {
+    const [localMinValue, setLocalMinValue] = useState(initialMinValue);
+    const [localMaxValue, setLocalMaxValue] = useState(initialMaxValue);
+    const lastCommittedRangeRef = useRef(`${initialMinValue}:${initialMaxValue}`);
+    const range = maxLimit - minLimit;
+    const minPercent = ((localMinValue - minLimit) / range) * 100;
+    const maxPercent = ((localMaxValue - minLimit) / range) * 100;
+    const minBubbleValue = formatBubbleValue(localMinValue);
+    const maxBubbleValue = formatBubbleValue(localMaxValue);
+    const commitIfChanged = useCallback(
+        (minValue: number, maxValue: number) => {
+            const nextRange = `${minValue}:${maxValue}`;
+            if (nextRange === lastCommittedRangeRef.current) return;
+
+            lastCommittedRangeRef.current = nextRange;
+            onCommit(minValue, maxValue);
+        },
+        [onCommit]
+    );
+
+    return (
+        <div className="pt-10">
+            <div className="relative h-10">
+                <div
+                    className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full"
+                    style={{ backgroundColor: "var(--theme-border)" }}
+                />
+                <div
+                    className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[#d91c1c]"
+                    style={{
+                        left: `${minPercent}%`,
+                        width: `${Math.max(maxPercent - minPercent, 0)}%`,
+                    }}
+                />
+
+                {showMinBubble(localMinValue) && (
+                    <RangeBubble leftPercent={minPercent} value={minBubbleValue} />
+                )}
+                {showMaxBubble(localMaxValue) && (
+                    <RangeBubble leftPercent={maxPercent} value={maxBubbleValue} />
+                )}
+
+                <input
+                    type="range"
+                    min={minLimit}
+                    max={maxLimit}
+                    step={step}
+                    value={localMinValue}
+                    aria-label={minAriaLabel}
+                    aria-valuemin={minLimit}
+                    aria-valuemax={maxLimit}
+                    aria-valuenow={localMinValue}
+                    aria-valuetext={minBubbleValue}
+                    onInput={(e) => {
+                        const value = Number(e.currentTarget.value);
+                        setLocalMinValue(Math.min(value, localMaxValue));
+                    }}
+                    onChange={(e) => {
+                        const value = Number(e.currentTarget.value);
+                        setLocalMinValue(Math.min(value, localMaxValue));
+                    }}
+                    onMouseUp={(e) => commitIfChanged(Math.min(Number(e.currentTarget.value), localMaxValue), localMaxValue)}
+                    onTouchEnd={(e) => commitIfChanged(Math.min(Number(e.currentTarget.value), localMaxValue), localMaxValue)}
+                    onKeyUp={(e) => commitIfChanged(Math.min(Number(e.currentTarget.value), localMaxValue), localMaxValue)}
+                    onBlur={(e) => commitIfChanged(Math.min(Number(e.currentTarget.value), localMaxValue), localMaxValue)}
+                    className="dual-range-input z-20"
+                />
+                <input
+                    type="range"
+                    min={minLimit}
+                    max={maxLimit}
+                    step={step}
+                    value={localMaxValue}
+                    aria-label={maxAriaLabel}
+                    aria-valuemin={minLimit}
+                    aria-valuemax={maxLimit}
+                    aria-valuenow={localMaxValue}
+                    aria-valuetext={maxBubbleValue}
+                    onInput={(e) => {
+                        const value = Number(e.currentTarget.value);
+                        setLocalMaxValue(Math.max(value, localMinValue));
+                    }}
+                    onChange={(e) => {
+                        const value = Number(e.currentTarget.value);
+                        setLocalMaxValue(Math.max(value, localMinValue));
+                    }}
+                    onMouseUp={(e) => commitIfChanged(localMinValue, Math.max(Number(e.currentTarget.value), localMinValue))}
+                    onTouchEnd={(e) => commitIfChanged(localMinValue, Math.max(Number(e.currentTarget.value), localMinValue))}
+                    onKeyUp={(e) => commitIfChanged(localMinValue, Math.max(Number(e.currentTarget.value), localMinValue))}
+                    onBlur={(e) => commitIfChanged(localMinValue, Math.max(Number(e.currentTarget.value), localMinValue))}
+                    className="dual-range-input z-30"
+                />
+            </div>
+
+            <div className="mt-3 flex justify-between text-sm font-medium theme-text-muted">
+                <span>{startLabel}</span>
+                <span>{endLabel}</span>
+            </div>
+            <div className="mt-1 text-center text-xs font-bold theme-text-secondary">
+                {summaryFormatter(localMinValue, localMaxValue)}
+            </div>
+        </div>
+    );
+}
 
 export default function InventoryFilter({ availableBrands = [], dict }: { availableBrands?: string[]; dict: InventoryDict }) {
     const searchParams = useSearchParams();
@@ -12,19 +189,16 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
 
     const [isOpen, setIsOpen] = useState(false);
 
-    // Local slider state — only pushed to URL on release
-    const paramMileage = searchParams.get("maxMileage") || "200000";
-    const paramPrice = searchParams.get("maxPrice") || "250000";
-    const [localMileage, setLocalMileage] = useState(paramMileage);
-    const [localPrice, setLocalPrice] = useState(paramPrice);
-
-    useEffect(() => {
-        setLocalMileage(paramMileage);
-    }, [paramMileage]);
-
-    useEffect(() => {
-        setLocalPrice(paramPrice);
-    }, [paramPrice]);
+    const priceRange = normalizeQueryRange(
+        searchParams.get("minPrice"),
+        searchParams.get("maxPrice"),
+        PRICE_RANGE_CONFIG
+    );
+    const mileageRange = normalizeQueryRange(
+        searchParams.get("minMileage"),
+        searchParams.get("maxMileage"),
+        MILEAGE_RANGE_CONFIG
+    );
 
     const createQueryString = useCallback(
         (name: string, value: string) => {
@@ -40,39 +214,89 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
         [searchParams]
     );
 
-    const toggleMultiFilter = useCallback(
-        (name: string, value: string) => {
-            const params = new URLSearchParams(searchParams.toString());
-            const currentValues = params.getAll(name);
+    const pushFilterUrl = useCallback(
+        (url: string) => {
+            router.push(url, { scroll: false });
+        },
+        [router]
+    );
 
-            if (currentValues.includes(value)) {
-                params.delete(name);
-                currentValues.filter(v => v !== value).forEach(v => params.append(name, v));
+    const buildPath = useCallback(
+        (queryString: string) => (queryString ? `${pathname}?${queryString}` : pathname),
+        [pathname]
+    );
+
+    const createRangeQueryString = useCallback(
+        (
+            minName: string,
+            minValue: number,
+            minDefault: number,
+            maxName: string,
+            maxValue: number,
+            maxDefault: number
+        ) => {
+            const params = new URLSearchParams(searchParams.toString());
+
+            if (minValue > minDefault) {
+                params.set(minName, String(minValue));
             } else {
-                params.append(name, value);
+                params.delete(minName);
+            }
+
+            if (maxValue < maxDefault) {
+                params.set(maxName, String(maxValue));
+            } else {
+                params.delete(maxName);
             }
 
             params.delete("page");
-            router.push(`${pathname}?${params.toString()}`);
+            return params.toString();
         },
-        [searchParams, pathname, router]
+        [searchParams]
     );
 
     const clearFilters = () => {
-        setLocalMileage("200000");
-        setLocalPrice("250000");
-        router.push(pathname);
+        pushFilterUrl(pathname);
     };
 
-    const currentBrands = searchParams.getAll("brand");
+    const currentBrand = searchParams.get("brand") || "";
+    const currentFuel = searchParams.get("fuel") || "";
+    const activeFilterCount = [
+        Boolean(currentBrand),
+        Boolean(currentFuel),
+        priceRange.min > PRICE_RANGE_CONFIG.min || priceRange.max < PRICE_RANGE_CONFIG.max,
+        mileageRange.min > MILEAGE_RANGE_CONFIG.min || mileageRange.max < MILEAGE_RANGE_CONFIG.max,
+    ].filter(Boolean).length;
 
-    // Commit slider value to URL (only on release)
-    const commitMileage = (val: string) => {
-        router.push(`${pathname}?${createQueryString("maxMileage", val)}`);
+    // Commit slider values to URL only on release
+    const commitMileageRange = (minValue: number, maxValue: number) => {
+        pushFilterUrl(
+            buildPath(
+                createRangeQueryString(
+                    "minMileage",
+                    minValue,
+                    MILEAGE_RANGE_CONFIG.min,
+                    "maxMileage",
+                    maxValue,
+                    MILEAGE_RANGE_CONFIG.max
+                )
+            )
+        );
     };
 
-    const commitPrice = (val: string) => {
-        router.push(`${pathname}?${createQueryString("maxPrice", val)}`);
+    const commitPriceRange = (minValue: number, maxValue: number) => {
+        pushFilterUrl(
+            buildPath(
+                createRangeQueryString(
+                    "minPrice",
+                    minValue,
+                    PRICE_RANGE_CONFIG.min,
+                    "maxPrice",
+                    maxValue,
+                    PRICE_RANGE_CONFIG.max
+                )
+            )
+        );
     };
 
     return (
@@ -96,7 +320,12 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                     className="w-full flex items-center justify-center py-3 text-sm font-bold uppercase tracking-wider theme-text-secondary rounded transition-colors"
                     style={{ border: '1px solid var(--theme-border)', backgroundColor: 'var(--theme-badge-bg)' }}
                 >
-                    {isOpen ? dict.hideFilters : dict.showFilters}
+                    <span>{isOpen ? dict.hideFilters : dict.showFilters}</span>
+                    {activeFilterCount > 0 && (
+                        <span className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#d91c1c] px-1.5 text-[11px] font-black leading-none text-white">
+                            {activeFilterCount}
+                        </span>
+                    )}
                     <SlidersHorizontal size={16} className="ml-2 theme-text-faint" />
                 </button>
             </div>
@@ -107,101 +336,32 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                 {/* Brand */}
                 <div>
                     <h4 className="font-bold theme-text mb-4 text-sm">{dict.brandLabel}</h4>
-                    <div className="space-y-3">
-                        {availableBrands.map(brand => (
-                            <label key={brand} className="flex items-center gap-3 cursor-pointer group">
-                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${currentBrands.includes(brand) ? 'bg-[#d91c1c] border-[#d91c1c] text-white' : 'group-hover:border-[var(--theme-text-faint)]'}`} style={!currentBrands.includes(brand) ? { borderColor: 'var(--theme-border)', backgroundColor: 'var(--theme-surface)' } : {}}>
-                                    {currentBrands.includes(brand) && (
-                                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        </svg>
-                                    )}
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    className="hidden"
-                                    checked={currentBrands.includes(brand)}
-                                    onChange={() => toggleMultiFilter("brand", brand)}
-                                />
-                                <span className={`text-sm ${currentBrands.includes(brand) ? 'theme-text font-medium' : 'theme-text-muted'}`}>{brand}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Mileage Range */}
-                <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
-                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.mileageLabel}</h4>
-                    <div className="pb-2">
-                        <input
-                            id="filter-mileage"
-                            type="range"
-                            min="0"
-                            max="200000"
-                            step="5000"
-                            value={localMileage}
-                            aria-label={dict.mileageLabel}
-                            aria-valuemin={0}
-                            aria-valuemax={200000}
-                            aria-valuenow={parseInt(localMileage)}
-                            onInput={(e) => {
-                                setLocalMileage((e.target as HTMLInputElement).value);
-                            }}
-                            onChange={(e) => {
-                                setLocalMileage(e.target.value);
-                            }}
-                            onMouseUp={(e) => commitMileage((e.target as HTMLInputElement).value)}
-                            onTouchEnd={(e) => commitMileage((e.target as HTMLInputElement).value)}
-                            className="slider-input w-full"
-                            style={{
-                                background: `linear-gradient(to right, #d91c1c 0%, #d91c1c ${(parseInt(localMileage) / 200000) * 100}%, var(--theme-border) ${(parseInt(localMileage) / 200000) * 100}%, var(--theme-border) 100%)`
-                            }}
-                        />
-                        <div className="flex justify-between mt-3 text-sm font-medium theme-text-muted">
-                            <span>0 km</span>
-                            <span>200k+ km</span>
-                        </div>
-                    </div>
-                    <div className="text-center mt-1 text-xs font-bold theme-text-secondary">
-                        Max: {parseInt(localMileage) >= 200000 ? dict.noLimit : `${parseInt(localMileage).toLocaleString('nl-NL')} km`}
-                    </div>
-                </div>
-
-                {/* Price Range */}
-                <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
-                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.priceLabel}</h4>
-                    <div className="pb-2">
-                        <input
-                            id="filter-price"
-                            type="range"
-                            min="10000"
-                            max="250000"
-                            step="5000"
-                            value={localPrice}
-                            aria-label={dict.priceLabel}
-                            aria-valuemin={10000}
-                            aria-valuemax={250000}
-                            aria-valuenow={parseInt(localPrice)}
-                            onInput={(e) => {
-                                setLocalPrice((e.target as HTMLInputElement).value);
-                            }}
-                            onChange={(e) => {
-                                setLocalPrice(e.target.value);
-                            }}
-                            onMouseUp={(e) => commitPrice((e.target as HTMLInputElement).value)}
-                            onTouchEnd={(e) => commitPrice((e.target as HTMLInputElement).value)}
-                            className="slider-input w-full"
-                            style={{
-                                background: `linear-gradient(to right, #d91c1c 0%, #d91c1c ${((parseInt(localPrice) - 10000) / 240000) * 100}%, var(--theme-border) ${((parseInt(localPrice) - 10000) / 240000) * 100}%, var(--theme-border) 100%)`
-                            }}
-                        />
-                        <div className="flex justify-between mt-3 text-sm font-medium theme-text-muted">
-                            <span>€10k</span>
-                            <span>€250k+</span>
-                        </div>
-                    </div>
-                    <div className="text-center mt-1 text-xs font-bold theme-text-secondary">
-                        Max: {parseInt(localPrice) >= 250000 ? dict.noLimit : `€ ${parseInt(localPrice).toLocaleString('nl-NL')}`}
+                    <div className="relative">
+                        <label
+                            htmlFor="filter-brand"
+                            className="sr-only"
+                        >
+                            {dict.brandLabel}
+                        </label>
+                        <select
+                            id="filter-brand"
+                            className="w-full appearance-none rounded-md py-2.5 pl-4 pr-10 text-sm theme-text focus:outline-none focus:ring-1 focus:ring-[#d91c1c] focus:border-[#d91c1c] cursor-pointer"
+                            style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}
+                            value={currentBrand}
+                            onChange={(e) => pushFilterUrl(buildPath(createQueryString("brand", e.target.value)))}
+                        >
+                            <option value="">{dict.brandAll}</option>
+                            {availableBrands.map((brand) => (
+                                <option key={brand} value={brand}>
+                                    {brand}
+                                </option>
+                            ))}
+                        </select>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none theme-text-faint">
+                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </span>
                     </div>
                 </div>
 
@@ -219,8 +379,8 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                             id="filter-fuel"
                             className="w-full appearance-none rounded-md py-2.5 pl-4 pr-10 text-sm theme-text focus:outline-none focus:ring-1 focus:ring-[#d91c1c] focus:border-[#d91c1c] cursor-pointer"
                             style={{ backgroundColor: 'var(--theme-surface)', border: '1px solid var(--theme-border)' }}
-                            value={searchParams.get("fuel") || ""}
-                            onChange={(e) => router.push(`${pathname}?${createQueryString("fuel", e.target.value)}`)}
+                            value={currentFuel}
+                            onChange={(e) => pushFilterUrl(buildPath(createQueryString("fuel", e.target.value)))}
                         >
                             <option value="">{dict.fuelAll}</option>
                             <option value="Benzine">Benzine</option>
@@ -234,6 +394,50 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                             </svg>
                         </span>
                     </div>
+                </div>
+
+                {/* Mileage Range */}
+                <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
+                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.mileageLabel}</h4>
+                    <DualRangeSlider
+                        key={`mileage-${mileageRange.min}-${mileageRange.max}`}
+                        initialMinValue={mileageRange.min}
+                        initialMaxValue={mileageRange.max}
+                        minLimit={MILEAGE_RANGE_CONFIG.min}
+                        maxLimit={MILEAGE_RANGE_CONFIG.max}
+                        step={MILEAGE_RANGE_CONFIG.step}
+                        minAriaLabel={`${dict.mileageLabel} minimum`}
+                        maxAriaLabel={`${dict.mileageLabel} maximum`}
+                        formatBubbleValue={formatCompactMileage}
+                        startLabel="0 km"
+                        endLabel="200k+ km"
+                        showMinBubble={(value) => value > MILEAGE_RANGE_CONFIG.min}
+                        showMaxBubble={(value) => value < MILEAGE_RANGE_CONFIG.max}
+                        onCommit={commitMileageRange}
+                        summaryFormatter={(minValue, maxValue) => `${formatMileageValue(minValue, dict.noLimit)} - ${formatMileageValue(maxValue, dict.noLimit)}`}
+                    />
+                </div>
+
+                {/* Price Range */}
+                <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
+                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.priceLabel}</h4>
+                    <DualRangeSlider
+                        key={`price-${priceRange.min}-${priceRange.max}`}
+                        initialMinValue={priceRange.min}
+                        initialMaxValue={priceRange.max}
+                        minLimit={PRICE_RANGE_CONFIG.min}
+                        maxLimit={PRICE_RANGE_CONFIG.max}
+                        step={PRICE_RANGE_CONFIG.step}
+                        minAriaLabel={`${dict.priceLabel} minimum`}
+                        maxAriaLabel={`${dict.priceLabel} maximum`}
+                        formatBubbleValue={formatCompactPrice}
+                        startLabel="€10k"
+                        endLabel="€250k+"
+                        showMinBubble={(value) => value > PRICE_RANGE_CONFIG.min}
+                        showMaxBubble={(value) => value < PRICE_RANGE_CONFIG.max}
+                        onCommit={commitPriceRange}
+                        summaryFormatter={(minValue, maxValue) => `${formatPriceValue(minValue, dict.noLimit)} - ${formatPriceValue(maxValue, dict.noLimit)}`}
+                    />
                 </div>
 
             </div>
