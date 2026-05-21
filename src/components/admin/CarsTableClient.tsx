@@ -52,13 +52,14 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                             <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.price}</th>
                             <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.visibility}</th>
                             <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.status}</th>
+                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.online}</th>
                             <th className="px-5 py-4 font-semibold text-right">{dict.carsTable.columns.actions}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filtered.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="px-6 py-12 text-center text-slate-500 font-medium">
+                                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
                                     {query ? (
                                         <p>{tpl(dict.carsTable.noMatch, { query })}</p>
                                     ) : (

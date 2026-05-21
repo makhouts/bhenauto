@@ -46,27 +46,44 @@ const INITIAL_STATE: GalleryState = {
     mousePos: { x: 50, y: 50 },
 };
 
+interface UseGalleryOptions {
+    onNavigateIntent?: (index: number, lightboxOpen: boolean) => void;
+}
+
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
-export function useGallery(imageCount: number) {
+export function useGallery(imageCount: number, options?: UseGalleryOptions) {
     const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
     const thumbStripRef = useRef<HTMLDivElement>(null);
     const lightboxThumbRef = useRef<HTMLDivElement>(null);
     const touchStart = useRef<number | null>(null);
 
     const { activeIndex, lightboxOpen } = state;
+    const onNavigateIntent = options?.onNavigateIntent;
 
     const goTo = useCallback(
         (index: number) => dispatch({ type: "GO_TO", index }),
         []
     );
+    const navigateWithIntent = useCallback((index: number) => {
+        if (imageCount === 0) return;
+        const nextIndex = Math.min(Math.max(index, 0), imageCount - 1);
+        if (nextIndex === activeIndex) return;
+
+        onNavigateIntent?.(nextIndex, lightboxOpen);
+        dispatch({ type: "GO_TO", index: nextIndex });
+    }, [activeIndex, imageCount, lightboxOpen, onNavigateIntent]);
     const goNext = useCallback(
-        () => { if (activeIndex < imageCount - 1) dispatch({ type: "GO_TO", index: activeIndex + 1 }); },
-        [activeIndex, imageCount]
+        () => {
+            if (activeIndex < imageCount - 1) navigateWithIntent(activeIndex + 1);
+        },
+        [activeIndex, imageCount, navigateWithIntent]
     );
     const goPrev = useCallback(
-        () => { if (activeIndex > 0) dispatch({ type: "GO_TO", index: activeIndex - 1 }); },
-        [activeIndex]
+        () => {
+            if (activeIndex > 0) navigateWithIntent(activeIndex - 1);
+        },
+        [activeIndex, navigateWithIntent]
     );
     const openLightbox = useCallback(() => dispatch({ type: "OPEN_LIGHTBOX" }), []);
     const closeLightbox = useCallback(() => dispatch({ type: "CLOSE_LIGHTBOX" }), []);

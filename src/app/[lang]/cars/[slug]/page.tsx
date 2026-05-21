@@ -1,14 +1,14 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import Image, { getImageProps } from 'next/image';
+import Image from 'next/image';
 import { Suspense, cache } from 'react';
 import prisma from '@/lib/prisma';
 import ImageGallery from '@/components/ImageGallery';
 import RelatedVehicles from '@/components/RelatedVehicles';
 import MobileContactBar from '@/components/MobileContactBar';
 import ExpandableDescription from '@/components/ExpandableDescription';
-import { getImageUrl } from '@/lib/image-url';
+import { getImageVariantUrl } from '@/lib/image-url';
 import { ShieldCheck } from 'lucide-react';
 import CarContactPanel from '@/components/CarContactPanel';
 import CarWhatsAppButton from '@/components/CarWhatsAppButton';
@@ -16,8 +16,6 @@ import DeferredMap from '@/components/DeferredMap';
 import carpassImg from '@/assets/carpass.webp';
 import { getDictionary } from '@/lib/dictionaries';
 import { isValidLocale, type Locale } from '@/lib/i18n';
-
-const MAIN_GALLERY_IMAGE_SIZES = "(max-width: 768px) 100vw, (max-width: 1280px) 68vw, 880px";
 
 // Deduplicate the car query between generateMetadata and the page component
 const getCar = cache(async (slug: string) => {
@@ -40,7 +38,7 @@ export async function generateMetadata(
         return { title: 'Voertuig Niet Gevonden | BhenAuto' };
     }
 
-    const imageUrl = car.images.length > 0 ? getImageUrl(car.images[0].url) : '';
+    const imageUrl = car.images.length > 0 ? getImageVariantUrl(car.images[0].url, 'gallery') : '';
     const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
     const ogDescription = `${car.brand} ${car.model} · ${car.year} · ${car.mileage.toLocaleString('nl-BE')} km · ${priceFormatted}`;
 
@@ -117,7 +115,7 @@ export default async function CarDetailPage(
             priceCurrency: 'EUR',
             availability: car.sold ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
         },
-        image: car.images.map((img: { url: string }) => getImageUrl(img.url)),
+        image: car.images.map((img: { url: string }) => getImageVariantUrl(img.url, 'gallery')),
         description: car.description
     };
 
@@ -131,26 +129,8 @@ export default async function CarDetailPage(
     const whatsappMsg = encodeURIComponent(`${whatsappText}\n${carUrl}`);
     const whatsappUrl = `https://wa.me/32477544294?text=${whatsappMsg}`;
 
-    // Preload properties for the LCP ImageGallery hero image
-    const mainImageUrl = getImageUrl(car.images[0]?.url || '');
-    const { props: { srcSet, src: preloadSrc } } = getImageProps({
-        src: mainImageUrl,
-        alt: car.title,
-        fill: true,
-        priority: true,
-        sizes: MAIN_GALLERY_IMAGE_SIZES,
-    });
-
     return (
         <div className="min-h-screen theme-bg">
-            <link
-                rel="preload"
-                as="image"
-                href={preloadSrc}
-                imageSrcSet={srcSet}
-                imageSizes={MAIN_GALLERY_IMAGE_SIZES}
-                fetchPriority="high"
-            />
             <script
                 type="application/ld+json"
                 suppressHydrationWarning
@@ -200,6 +180,13 @@ export default async function CarDetailPage(
                     </div>
                 )}
 
+                {/* ── VEHICLE HEADING ── */}
+                <div className="mb-5" aria-label={`${car.brand} ${car.model}`}>
+                    <p className="text-3xl md:text-4xl font-headings font-black theme-text leading-tight break-words">
+                        {car.brand} {car.model}
+                    </p>
+                </div>
+
                 {/* ── HERO GALLERY ── */}
                 <div className="relative mb-10">
                     <ImageGallery images={car.images} title={car.title} />
@@ -221,14 +208,14 @@ export default async function CarDetailPage(
                         ╚═══════════════════════════════╝ */}
                     <div className="flex-1 min-w-0">
                         {/* Title */}
-                        <h1 className="text-1xl md:text-2xl lg:text-3xl font-headings font-black theme-text leading-tight mb-2 break-words">
+                        <h1 className="text-[17px] font-headings font-black theme-text leading-snug mb-3 break-words">
                             {car.title}
                         </h1>
 
-                        {/* Subtitle + optional Carpass logo */}
+                        {/* Vehicle meta + optional Carpass logo */}
                         <div className="flex items-center justify-between mb-6">
                             <p className="theme-text-muted text-base">
-                                {car.brand} · {car.model} · {car.year} · {car.color}
+                                {car.year} · {car.color} · {transmissionLabel}
                             </p>
                             {car.carpass_url && (
                                 <a

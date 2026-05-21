@@ -27,6 +27,7 @@ export type CarWithImages = {
     reserved: boolean;
     createdAt: Date;
     updatedAt: Date;
+    isNew: boolean;
     images: { url: string }[];
 };
 
@@ -42,6 +43,13 @@ interface FetchCarsParams {
     minMileage?: string;
     maxMileage?: string;
     fuel?: string | string[];
+}
+
+const NEW_BADGE_LIFETIME_MS = 2 * 24 * 60 * 60 * 1000;
+
+function isRecentlyCreated(createdAt: Date): boolean {
+    const ageMs = Date.now() - createdAt.getTime();
+    return ageMs >= 0 && ageMs < NEW_BADGE_LIFETIME_MS;
 }
 
 export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
@@ -134,7 +142,10 @@ export async function fetchCarsPaginated(params: FetchCarsParams): Promise<{
     ]);
 
     return {
-        cars: cars as unknown as CarWithImages[],
+        cars: cars.map((car) => ({
+            ...car,
+            isNew: isRecentlyCreated(car.createdAt),
+        })) as unknown as CarWithImages[],
         hasMore: skip + cars.length < total,
         total,
     };

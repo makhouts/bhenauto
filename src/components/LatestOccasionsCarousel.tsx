@@ -19,6 +19,7 @@ interface CarouselCar {
   horsepower: number;
   fuel_type: string;
   image: string;
+  imageFallback?: string;
   sold: boolean;
 }
 
@@ -57,6 +58,7 @@ export default function LatestOccasionsCarousel({
   const [dragStart, setDragStart] = useState(0);
   const [dragDelta, setDragDelta] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [failedImages, setFailedImages] = useState<Set<string>>(() => new Set());
   const autoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -197,7 +199,9 @@ export default function LatestOccasionsCarousel({
               cursor: dragging ? 'grabbing' : 'grab',
             }}
           >
-            {cars.map((car) => (
+            {cars.map((car) => {
+              const imageSrc = failedImages.has(car.image) && car.imageFallback ? car.imageFallback : car.image;
+              return (
               <div
                 key={car.id}
                 className="shrink-0"
@@ -230,13 +234,21 @@ export default function LatestOccasionsCarousel({
                     style={{ aspectRatio: '16/10', backgroundColor: 'var(--theme-skeleton)' }}
                   >
                     <Image
-                      src={car.image}
+                      src={imageSrc}
                       alt={car.title}
                       fill
                       draggable={false}
                       className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                       quality={75}
+                      onError={() => {
+                        if (!car.imageFallback || failedImages.has(car.image)) return;
+                        setFailedImages((current) => {
+                          const next = new Set(current);
+                          next.add(car.image);
+                          return next;
+                        });
+                      }}
                     />
 
                     {/* Bottom scrim for price readability */}
@@ -329,7 +341,8 @@ export default function LatestOccasionsCarousel({
                   </div>
                 </Link>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

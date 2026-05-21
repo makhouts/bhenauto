@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import type { CommonDict } from "@/lib/dictionaries";
-import { getImageUrl } from "@/lib/image-url";
+import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
 
 interface CarImage { url: string; }
 
@@ -25,6 +25,8 @@ interface CarWithImages {
     featured: boolean;
     sold: boolean;
     reserved: boolean;
+    createdAt: Date | string;
+    isNew: boolean;
     images: CarImage[];
 }
 
@@ -89,10 +91,26 @@ function ReservedBadge({ label }: { label: string }) {
 export default function CarCard({ car, listView = false, commonDict, locale }: CarCardProps) {
     const [hovered, setHovered] = useState(false);
     const [imgError, setImgError] = useState(false);
+    const [failedVariantUrls, setFailedVariantUrls] = useState<Set<string>>(() => new Set());
 
-    const img1 = car.images[0]?.url ? getImageUrl(car.images[0].url) : null;
-    const img2 = car.images[1]?.url ? getImageUrl(car.images[1].url) : null;
+    const img1Source = car.images[0]?.url ? getImageUrl(car.images[0].url) : null;
+    const img2Source = car.images[1]?.url ? getImageUrl(car.images[1].url) : null;
+    const img1Variant = car.images[0]?.url ? getImageVariantUrl(car.images[0].url, "thumb") : null;
+    const img2Variant = car.images[1]?.url ? getImageVariantUrl(car.images[1].url, "thumb") : null;
+    const img1 = img1Variant && failedVariantUrls.has(img1Variant) ? img1Source : img1Variant;
+    const img2 = img2Variant && failedVariantUrls.has(img2Variant) ? img2Source : img2Variant;
     const href = `/${locale}/cars/${car.slug}`;
+    const handleImageError = (variantUrl: string | null, sourceUrl: string | null, isPrimary = false) => {
+        if (variantUrl && sourceUrl && variantUrl !== sourceUrl && !failedVariantUrls.has(variantUrl)) {
+            setFailedVariantUrls((current) => {
+                const next = new Set(current);
+                next.add(variantUrl);
+                return next;
+            });
+            return;
+        }
+        if (isPrimary) setImgError(true);
+    };
 
     if (listView) {
         return (
@@ -123,7 +141,7 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                             src={img1} alt={car.title} fill
                             sizes="(max-width: 768px) 100vw, 40vw"
                             quality={75}
-                            onError={() => setImgError(true)}
+                            onError={() => handleImageError(img1Variant, img1Source, true)}
                             className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.05]" : "scale-100"} ${hovered && img2 ? "opacity-0" : "opacity-100"}`}
                         />
                     )}
@@ -133,11 +151,31 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                             sizes="(max-width: 768px) 100vw, 40vw"
                             quality={75}
                             loading="lazy"
+                            onError={() => handleImageError(img2Variant, img2Source)}
                             className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
                         />
                     )}
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/2 z-[6]"
+                        style={{
+                            background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.16) 50%, transparent 100%)",
+                            mixBlendMode: "screen",
+                            opacity: hovered ? 1 : 0,
+                            transform: hovered ? "translateX(260%) skewX(-12deg)" : "translateX(-130%) skewX(-12deg)",
+                            transition: "transform 560ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease-out",
+                        }}
+                    />
                     {car.sold && <SoldOverlay label={commonDict.sold} />}
                     {!car.sold && car.reserved && <ReservedBadge label={commonDict.reserved} />}
+                    {car.isNew && (
+                        <div className="absolute top-3.5 left-3.5 z-10">
+                            <span className="text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1.5 rounded-full backdrop-blur-md"
+                                style={{ background: "rgba(10,10,15,0.65)", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.12)" }}>
+                                {commonDict.newBadge}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Content */}
@@ -240,7 +278,7 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
                         quality={80}
-                        onError={() => setImgError(true)}
+                        onError={() => handleImageError(img1Variant, img1Source, true)}
                         className={`object-cover transition-all duration-700 ${hovered && img2 ? "opacity-0" : "opacity-100"} ${hovered ? "scale-[1.04]" : "scale-100"}`}
                     />
                 )}
@@ -253,9 +291,21 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
                         quality={75}
                         loading="lazy"
+                        onError={() => handleImageError(img2Variant, img2Source)}
                         className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
                     />
                 )}
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/2 z-[6]"
+                    style={{
+                        background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.16) 50%, transparent 100%)",
+                        mixBlendMode: "screen",
+                        opacity: hovered ? 1 : 0,
+                        transform: hovered ? "translateX(260%) skewX(-12deg)" : "translateX(-130%) skewX(-12deg)",
+                        transition: "transform 560ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease-out",
+                    }}
+                />
 
                 <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none"
                     style={{ background: "linear-gradient(to top, rgba(0,0,0,0.18), transparent)" }} />
@@ -264,16 +314,10 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                 {!car.sold && car.reserved && <ReservedBadge label={commonDict.reserved} />}
 
                 <div className="absolute top-3.5 left-3.5 flex gap-2 z-10">
-                    {car.year > 2023 && (
+                    {car.isNew && (
                         <span className="text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1.5 rounded-full backdrop-blur-md"
                             style={{ background: "rgba(10,10,15,0.65)", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.12)" }}>
                             {commonDict.newBadge}
-                        </span>
-                    )}
-                    {car.price > 100000 && (
-                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1.5 rounded-full backdrop-blur-md"
-                            style={{ background: "rgba(20,16,5,0.7)", color: "#d4b678", border: "1px solid rgba(212,182,120,0.25)" }}>
-                            {commonDict.premiumBadge}
                         </span>
                     )}
                 </div>

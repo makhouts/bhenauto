@@ -87,7 +87,7 @@ export default function Footer({ dict }: FooterProps) {
                         <ul className="space-y-3 text-sm">
                             <li><Link href={`/${locale}/legal`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkPrivacy}</Link></li>
                             <li><Link href={`/${locale}/legal`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkTerms}</Link></li>
-                            <li><Link href={`/${locale}/sitemap`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkSitemap}</Link></li>
+                            <li><Link href={`/${locale}/site-map`} className="text-white hover:text-white/70 transition-colors duration-300 hover:translate-x-1 inline-block">{dict.linkSitemap}</Link></li>
                         </ul>
                     </div>
 

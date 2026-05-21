@@ -5,10 +5,9 @@ import { revalidatePath } from "next/cache";
 import { revalidateLocalizedPath } from "@/lib/revalidate";
 import { requireAdmin } from "@/lib/auth-guard";
 import { z } from "zod";
-import { DeleteObjectsCommand, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { r2Client, R2_BUCKET } from "@/lib/r2";
-import { getThumbnailKey, isR2Key } from "@/lib/image-url";
-import { optimizeThumbnail } from "@/lib/image-optimize";
+import { getImageKeysForDeletion, isR2Key } from "@/lib/image-url";
 
 function isAllowedCarImage(value: string): boolean {
     if (isR2Key(value)) return /^[a-zA-Z0-9/_-]+\.webp$/.test(value);
@@ -27,9 +26,9 @@ function isAllowedCarImage(value: string): boolean {
 function expandImageKeysForDeletion(keys: string[]): string[] {
     const deleteSet = new Set<string>();
     for (const key of keys) {
-        deleteSet.add(key);
-        const thumbnailKey = getThumbnailKey(key);
-        if (thumbnailKey) deleteSet.add(thumbnailKey);
+        for (const keyToDelete of getImageKeysForDeletion(key)) {
+            deleteSet.add(keyToDelete);
+        }
     }
     return [...deleteSet];
 }
@@ -45,51 +44,6 @@ async function deleteR2Keys(keys: string[]) {
             },
         })
     );
-}
-
-async function syncCoverThumbnail(imageUrls: string[]) {
-    const r2ImageKeys = imageUrls.filter(isR2Key);
-    const coverKey = imageUrls[0] && isR2Key(imageUrls[0]) ? imageUrls[0] : null;
-    const coverThumbnailKey = coverKey ? getThumbnailKey(coverKey) : null;
-
-    const staleThumbnailKeys = r2ImageKeys
-        .map((key) => getThumbnailKey(key))
-        .filter((key): key is string => Boolean(key))
-        .filter((key) => key !== coverThumbnailKey);
-
-    if (staleThumbnailKeys.length > 0) {
-        await deleteR2Keys([...new Set(staleThumbnailKeys)]).catch((err: Error) => {
-            console.warn("Failed to delete stale cover thumbnails:", err.message);
-        });
-    }
-
-    if (!coverKey || !coverThumbnailKey) return;
-
-    try {
-        const sourceObject = await r2Client.send(
-            new GetObjectCommand({
-                Bucket: R2_BUCKET,
-                Key: coverKey,
-            })
-        );
-
-        if (!sourceObject.Body) return;
-
-        const bytes = await sourceObject.Body.transformToByteArray();
-        const thumbnail = await optimizeThumbnail(Buffer.from(bytes));
-
-        await r2Client.send(
-            new PutObjectCommand({
-                Bucket: R2_BUCKET,
-                Key: coverThumbnailKey,
-                Body: thumbnail,
-                ContentType: "image/webp",
-                CacheControl: "public, max-age=31536000, immutable",
-            })
-        );
-    } catch (err) {
-        console.warn("Failed to sync cover thumbnail:", err);
-    }
 }
 
 export async function toggleFeatured(id: string, featured: boolean) {
@@ -237,8 +191,6 @@ export async function saveCar(data: unknown) {
                 },
             });
         }
-
-        await syncCoverThumbnail(images);
 
         revalidatePath("/admin/cars");
         revalidateLocalizedPath("/inventory");

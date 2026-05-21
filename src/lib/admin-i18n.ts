@@ -138,6 +138,7 @@ export const adminDictionaries = {
                 price: "Prijs",
                 visibility: "Zichtbaarheid",
                 status: "Status",
+                online: "Online",
                 actions: "Acties",
             },
             noMatch: "Geen voertuigen gevonden voor \"{query}\".",
@@ -149,6 +150,10 @@ export const adminDictionaries = {
                 available: "Beschikbaar",
                 reserved: "Gereserveerd",
                 sold: "Verkocht",
+            },
+            onlineDays: {
+                one: "{count} dag",
+                other: "{count} dagen",
             },
             featured: {
                 active: "Uitgelicht",
@@ -503,6 +508,7 @@ export const adminDictionaries = {
                 price: "Prix",
                 visibility: "Visibilité",
                 status: "Statut",
+                online: "En ligne",
                 actions: "Actions",
             },
             noMatch: "Aucun véhicule trouvé pour \"{query}\".",
@@ -514,6 +520,10 @@ export const adminDictionaries = {
                 available: "Disponible",
                 reserved: "Réservé",
                 sold: "Vendu",
+            },
+            onlineDays: {
+                one: "{count} jour",
+                other: "{count} jours",
             },
             featured: {
                 active: "Mis en avant",

@@ -8,7 +8,13 @@
  */
 
 const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "";
-const THUMBNAIL_SUFFIX = "__thumb";
+const IMAGE_VARIANT_SUFFIXES = {
+    thumb: "__thumb",
+    gallery: "__gallery",
+    lightbox: "__lightbox",
+} as const;
+
+export type ImageVariant = keyof typeof IMAGE_VARIANT_SUFFIXES;
 
 export function getImageUrl(urlOrKey: string): string {
     if (!urlOrKey) return "";
@@ -29,12 +35,40 @@ export function isR2Key(urlOrKey: string): boolean {
     return !!urlOrKey && !urlOrKey.startsWith("http://") && !urlOrKey.startsWith("https://");
 }
 
-export function getThumbnailKey(urlOrKey: string): string | null {
+export function getImageVariantKey(urlOrKey: string, variant: ImageVariant): string | null {
     if (!isR2Key(urlOrKey) || !urlOrKey.endsWith(".webp")) return null;
-    return urlOrKey.replace(/\.webp$/, `${THUMBNAIL_SUFFIX}.webp`);
+    if (isImageVariantKey(urlOrKey)) return urlOrKey;
+    return urlOrKey.replace(/\.webp$/, `${IMAGE_VARIANT_SUFFIXES[variant]}.webp`);
+}
+
+export function getImageVariantUrl(urlOrKey: string, variant: ImageVariant): string {
+    const variantKey = getImageVariantKey(urlOrKey, variant);
+    return getImageUrl(variantKey ?? urlOrKey);
+}
+
+export function isImageVariantKey(urlOrKey: string): boolean {
+    return Object.values(IMAGE_VARIANT_SUFFIXES).some((suffix) => urlOrKey.endsWith(`${suffix}.webp`));
+}
+
+export function getImageKeysForDeletion(urlOrKey: string): string[] {
+    if (!isR2Key(urlOrKey)) return [];
+
+    const keys = new Set<string>([urlOrKey]);
+
+    if (!isImageVariantKey(urlOrKey)) {
+        for (const variant of Object.keys(IMAGE_VARIANT_SUFFIXES) as ImageVariant[]) {
+            const variantKey = getImageVariantKey(urlOrKey, variant);
+            if (variantKey) keys.add(variantKey);
+        }
+    }
+
+    return [...keys];
+}
+
+export function getThumbnailKey(urlOrKey: string): string | null {
+    return getImageVariantKey(urlOrKey, "thumb");
 }
 
 export function getThumbnailImageUrl(urlOrKey: string): string {
-    const thumbnailKey = getThumbnailKey(urlOrKey);
-    return getImageUrl(thumbnailKey ?? urlOrKey);
+    return getImageVariantUrl(urlOrKey, "thumb");
 }

@@ -8,7 +8,7 @@ import WhyChooseUs from "@/components/WhyChooseUs";
 import prisma from "@/lib/prisma";
 import heroBg from "@/assets/wallpaper.avif";
 import { getDictionary, type Dictionary } from "@/lib/dictionaries";
-import { getImageUrl } from "@/lib/image-url";
+import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
@@ -97,8 +97,9 @@ async function FeaturedCarsSection({ dict }: { dict: Dictionary }) {
     fuel_type: c.fuel_type,
     image:
       c.images[0]?.url
-        ? getImageUrl(c.images[0].url)
+        ? getImageVariantUrl(c.images[0].url, "thumb")
         : "https://images.unsplash.com/photo-1555312399-28c11e73dbd6?q=80&w=2070&auto=format&fit=crop",
+    imageFallback: c.images[0]?.url ? getImageUrl(c.images[0].url) : undefined,
     sold: c.sold,
   }));
 

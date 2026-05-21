@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { r2Client, R2_BUCKET } from "@/lib/r2";
-import { optimizeImage } from "@/lib/image-optimize";
+import { optimizeCarImageVariants } from "@/lib/image-optimize";
+import { getImageVariantKey } from "@/lib/image-url";
 import { isValidSession } from "@/lib/session";
 import { v4 as uuidv4 } from "uuid";
 import { getClientIp } from "@/lib/request-ip";
@@ -129,22 +130,35 @@ export async function POST(request: NextRequest) {
             const bytes = await file.arrayBuffer();
             const rawBuffer = Buffer.from(bytes);
 
-            // Optimize: resize to max 1600px width, convert to WebP
+            const key = generateKey(carId);
+            const thumbKey = getImageVariantKey(key, "thumb");
+            const galleryKey = getImageVariantKey(key, "gallery");
+            const lightboxKey = getImageVariantKey(key, "lightbox");
+
+            if (!thumbKey || !galleryKey || !lightboxKey) {
+                throw new Error("Failed to generate image variant keys.");
+            }
+
             // This also serves as content-based validation — sharp will throw
             // if the buffer is not a valid image, regardless of declared MIME type.
-            const optimized = await optimizeImage(rawBuffer);
+            const variants = await optimizeCarImageVariants(rawBuffer);
 
-            const key = generateKey(carId);
+            const objects = [
+                { key, body: variants.source },
+                { key: thumbKey, body: variants.thumb },
+                { key: galleryKey, body: variants.gallery },
+                { key: lightboxKey, body: variants.lightbox },
+            ];
 
-            await r2Client.send(
-                new PutObjectCommand({
+            await Promise.all(objects.map(({ key, body }) =>
+                r2Client.send(new PutObjectCommand({
                     Bucket: R2_BUCKET,
                     Key: key,
-                    Body: optimized,
+                    Body: body,
                     ContentType: "image/webp",
                     CacheControl: "public, max-age=31536000, immutable",
-                })
-            );
+                }))
+            ));
 
             return key;
         });

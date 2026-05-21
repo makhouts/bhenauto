@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
-import { getImageUrl } from "@/lib/image-url";
+import { getImageVariantUrl } from "@/lib/image-url";
 import type { CarDetailDict } from "@/lib/dictionaries";
 
 interface RelatedVehiclesProps {
@@ -67,7 +67,7 @@ export default async function RelatedVehicles({ currentCarId, brand, priceRange,
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {related.map((car) => {
-                    const imgUrl = car.images[0]?.url ? getImageUrl(car.images[0].url) : null;
+                    const imgUrl = car.images[0]?.url ? getImageVariantUrl(car.images[0].url, "thumb") : null;
                     return (
                         <Link
                             key={car.id}

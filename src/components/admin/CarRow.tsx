@@ -1,5 +1,6 @@
 "use client";
 
+import { differenceInCalendarDays } from "date-fns";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
@@ -17,6 +18,7 @@ type Status = "beschikbaar" | "gereserveerd" | "verkocht";
 export type AdminCarRow = {
     id: string;
     slug: string;
+    createdAt: Date | string;
     brand: string;
     model: string;
     year: number;
@@ -54,6 +56,12 @@ const STATUS_CONFIG = {
         dotClass: "bg-red-500",
     },
 } as const;
+
+function getDaysOnline(createdAt: Date | string) {
+    const publishedAt = new Date(createdAt);
+    if (Number.isNaN(publishedAt.getTime())) return null;
+    return Math.max(1, differenceInCalendarDays(new Date(), publishedAt) + 1);
+}
 
 export default function CarRow({ car }: { car: AdminCarRow }) {
     const { locale, dict } = useAdminI18n();
@@ -130,6 +138,7 @@ export default function CarRow({ car }: { car: AdminCarRow }) {
         gereserveerd: dict.carRow.statuses.reserved,
         verkocht: dict.carRow.statuses.sold,
     };
+    const daysOnline = getDaysOnline(car.createdAt);
 
     // Format price in Euros
     const formattedPrice = new Intl.NumberFormat(locale === "fr" ? "fr-BE" : "nl-BE", {
@@ -229,6 +238,15 @@ export default function CarRow({ car }: { car: AdminCarRow }) {
                         </div>
                     )}
                 </div>
+            </td>
+
+            {/* Days online */}
+            <td className="px-5 py-3 whitespace-nowrap text-sm font-semibold text-slate-700">
+                {daysOnline === null
+                    ? "—"
+                    : tpl(daysOnline === 1 ? dict.carRow.onlineDays.one : dict.carRow.onlineDays.other, {
+                        count: daysOnline.toLocaleString(locale === "fr" ? "fr-BE" : "nl-BE"),
+                    })}
             </td>
 
             {/* Actions */}
