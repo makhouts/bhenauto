@@ -8,7 +8,6 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import ClientConditionalLayout from "@/components/ClientConditionalLayout";
-import PageTransition from "@/components/PageTransition";
 
 export default async function ConditionalLayout({
   children,
@@ -30,7 +29,7 @@ export default async function ConditionalLayout({
         />
       }
     >
-      <PageTransition>{children}</PageTransition>
+      {children}
     </ClientConditionalLayout>
   );
 }

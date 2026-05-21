@@ -15,6 +15,7 @@ interface ImageGalleryProps {
 const GALLERY_IMAGE_QUALITY = 80;
 const LIGHTBOX_IMAGE_QUALITY = 80;
 const LIGHTBOX_IMAGE_SIZES = "100vw";
+const MAIN_GALLERY_IMAGE_SIZES = "(max-width: 768px) 100vw, (max-width: 1280px) 68vw, 880px";
 const MAIN_GALLERY_TRANSITION = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
 const LIGHTBOX_GALLERY_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
 
@@ -34,11 +35,6 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
         handlers: { handleTouchStart, handleTouchEnd, handleMouseMove },
     } = useGallery(resolvedImages.length);
 
-    const preloadIndexes = useMemo(
-        () => [activeIndex + 1, activeIndex + 2, activeIndex - 1]
-            .filter((index, position, array) => index >= 0 && index < resolvedImages.length && array.indexOf(index) === position),
-        [activeIndex, resolvedImages.length]
-    );
     const activeImage = resolvedImages[activeIndex];
     const isActiveImageLoaded = loadedImageIds.has(activeImage.id);
 
@@ -97,35 +93,6 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
     return (
         <>
             {/* ── GALLERY GRID ── */}
-            <div aria-hidden="true" className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px overflow-hidden opacity-0">
-                {preloadIndexes.map((index) => (
-                    <Image
-                        key={`preload-${resolvedImages[index].id}`}
-                        src={resolvedImages[index].url}
-                        alt=""
-                        width={1200}
-                        height={800}
-                        sizes="(max-width: 768px) 100vw, 70vw"
-                        quality={GALLERY_IMAGE_QUALITY}
-                        loading="eager"
-                        fetchPriority="low"
-                    />
-                ))}
-                {preloadIndexes.map((index) => (
-                    <Image
-                        key={`preload-lightbox-${resolvedImages[index].id}`}
-                        src={resolvedImages[index].url}
-                        alt=""
-                        width={1600}
-                        height={1200}
-                        sizes={LIGHTBOX_IMAGE_SIZES}
-                        quality={LIGHTBOX_IMAGE_QUALITY}
-                        loading="eager"
-                        fetchPriority={lightboxOpen ? "high" : "low"}
-                    />
-                ))}
-            </div>
-
             <div className="flex gap-2.5 h-[380px] md:h-[520px]">
 
                 {/* ── Main Hero Image ── */}
@@ -164,7 +131,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 }`}
                                 priority={activeIndex === 0}
                                 fetchPriority={activeIndex === 0 ? "high" : "auto"}
-                                sizes="(max-width: 768px) 100vw, 70vw"
+                                sizes={MAIN_GALLERY_IMAGE_SIZES}
                                 quality={GALLERY_IMAGE_QUALITY}
                                 onLoad={() => {
                                     setLoadedImageIds((current) => {

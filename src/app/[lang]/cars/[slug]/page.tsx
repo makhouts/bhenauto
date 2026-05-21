@@ -17,6 +17,8 @@ import carpassImg from '@/assets/carpass.webp';
 import { getDictionary } from '@/lib/dictionaries';
 import { isValidLocale, type Locale } from '@/lib/i18n';
 
+const MAIN_GALLERY_IMAGE_SIZES = "(max-width: 768px) 100vw, (max-width: 1280px) 68vw, 880px";
+
 // Deduplicate the car query between generateMetadata and the page component
 const getCar = cache(async (slug: string) => {
     return prisma.car.findUnique({
@@ -48,6 +50,7 @@ export async function generateMetadata(
     return {
         title: `${car.title} | BhenAuto`,
         description: ogDescription,
+        metadataBase: new URL(BASE_URL),
         alternates: {
             canonical: `${BASE_URL}/${params.lang}/cars/${car.slug}`,
             languages: {
@@ -135,7 +138,7 @@ export default async function CarDetailPage(
         alt: car.title,
         fill: true,
         priority: true,
-        sizes: "(max-width: 768px) 100vw, 70vw",
+        sizes: MAIN_GALLERY_IMAGE_SIZES,
     });
 
     return (
@@ -145,7 +148,7 @@ export default async function CarDetailPage(
                 as="image"
                 href={preloadSrc}
                 imageSrcSet={srcSet}
-                imageSizes="(max-width: 768px) 100vw, 70vw"
+                imageSizes={MAIN_GALLERY_IMAGE_SIZES}
                 fetchPriority="high"
             />
             <script

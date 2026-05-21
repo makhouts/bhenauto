@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+.email-at::before {
+  content: "\40";
+}
+
 @theme inline {
   --font-sans: var(--font-inter);
   --font-headings: var(--font-inter);

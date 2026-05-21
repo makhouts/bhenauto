@@ -4,7 +4,7 @@ import ContactForm from "@/components/ContactForm";
 import { Mail, MapPin, Phone, Clock, ArrowRight, CheckCircle2 } from "lucide-react";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
-import { PublicEmail, PUBLIC_EMAIL_HREF } from "@/components/PublicEmail";
+import { PublicEmail, PublicEmailLink } from "@/components/PublicEmail";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
@@ -176,7 +176,7 @@ export default async function ContactPage({
                     <p className="theme-text font-bold text-sm">02 582 83 53</p>
                   </div>
                 </a>
-                <a href={PUBLIC_EMAIL_HREF} className="flex items-center gap-3 group/link">
+                <PublicEmailLink className="flex items-center gap-3 group/link">
                   <div
                     className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-300"
                     style={{ backgroundColor: "var(--theme-badge-bg)", border: "1px solid var(--theme-border)" }}
@@ -187,7 +187,7 @@ export default async function ContactPage({
                     <p className="text-[10px] theme-text-faint font-bold uppercase tracking-wider">{c.emailLabel}</p>
                     <p className="theme-text font-bold text-sm"><PublicEmail /></p>
                   </div>
-                </a>
+                </PublicEmailLink>
               </div>
             </div>
 

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import InventoryFilter from "@/components/InventoryFilter";
 import InfiniteInventory from "@/components/InfiniteInventory";
 import CarCardSkeleton from "@/components/CarCardSkeleton";
+import PageTransition from "@/components/PageTransition";
 import { fetchCarsPaginated } from "@/app/actions/fetchCars";
 import prisma from "@/lib/prisma";
 import { getDictionary } from "@/lib/dictionaries";
@@ -92,6 +93,7 @@ export default async function InventoryPage(props: {
   );
 
   return (
+    <PageTransition>
     <main className="min-h-screen theme-bg flex flex-col pt-2 md:pt-8">
 
       {/* Header Banner */}
@@ -142,5 +144,6 @@ export default async function InventoryPage(props: {
         </section>
       </div>
     </main>
+    </PageTransition>
   );
 }

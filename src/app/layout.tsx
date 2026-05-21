@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Inter, Playfair_Display, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -20,6 +21,16 @@ const nunitoSans = Nunito_Sans({
   display: "swap",
 });
 
+export const metadata: Metadata = {
+  title: {
+    default: "BhenAuto | Premium Pre-Owned Vehicles",
+    template: "%s | BhenAuto",
+  },
+  description:
+    "BhenAuto in Asse offers carefully selected premium pre-owned vehicles, transparent service, bodywork, repairs, and workshop appointments.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com"),
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,8 +39,6 @@ export default function RootLayout({
   return (
     <html lang="fr" className="scroll-smooth" data-scroll-behavior="smooth">
       <head>
-        {/* Preconnect to image CDN — vehicle photos are served from R2 */}
-        <link rel="preconnect" href="https://images.bhenauto.com" />
         <link rel="dns-prefetch" href="https://images.bhenauto.com" />
         {/* Favicon */}
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

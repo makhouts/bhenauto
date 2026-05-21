@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Shield, FileText, ChevronRight, Mail, Phone, MapPin, Cookie } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
-import { PublicEmail, PUBLIC_EMAIL_HREF } from "@/components/PublicEmail";
+import { PublicEmail, PublicEmailLink } from "@/components/PublicEmail";
 
 /* ─── tiny prose helpers ─── */
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -120,7 +120,7 @@ function PrivacyContent({ locale }: { locale: Locale }) {
       <SectionTitle>{t.share}</SectionTitle>
       <P>{t.shareText}</P>
       <SectionTitle>{t.rights}</SectionTitle>
-      <P>{t.rightsText}{" "}<a href={PUBLIC_EMAIL_HREF} className="text-[#d91c1c] font-semibold hover:underline"><PublicEmail /></a>.</P>
+      <P>{t.rightsText}{" "}<PublicEmailLink className="text-[#d91c1c] font-semibold hover:underline"><PublicEmail /></PublicEmailLink>.</P>
     </>
   );
 }
@@ -224,7 +224,7 @@ function CookieContent({ locale }: { locale: Locale }) {
       <SectionTitle>{t.retentionTitle}</SectionTitle>
       <P>{t.retentionText}</P>
       <SectionTitle>{t.contactTitle}</SectionTitle>
-      <P>{t.contactText}{" "}<a href={PUBLIC_EMAIL_HREF} className="text-[#d91c1c] font-semibold hover:underline"><PublicEmail /></a>.</P>
+      <P>{t.contactText}{" "}<PublicEmailLink className="text-[#d91c1c] font-semibold hover:underline"><PublicEmail /></PublicEmailLink>.</P>
     </>
   );
 }

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Phone, Mail, ArrowLeft } from "lucide-react";
 import type { CarDetailDict } from "@/lib/dictionaries";
-import { PublicEmail, PUBLIC_EMAIL_HREF } from "@/components/PublicEmail";
+import { PublicEmail, PublicEmailLink } from "@/components/PublicEmail";
 
 interface CarContactPanelProps {
     lang: string;
@@ -79,7 +79,7 @@ export default function CarContactPanel({ lang, carSlug, carTitle, whatsappUrl, 
                     </a>
 
                     {/* Mail */}
-                    <a href={PUBLIC_EMAIL_HREF} className="group flex items-center rounded-[16px] p-4 transition-all duration-300 hover:shadow-md"
+                    <PublicEmailLink className="group flex items-center rounded-[16px] p-4 transition-all duration-300 hover:shadow-md"
                         style={{ backgroundColor: "var(--theme-bg-alt)", border: "1px solid var(--theme-border)", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
                         <div className="flex items-center justify-center text-[#d91c1c] mr-5">
                             <Mail className="w-[22px] h-[22px] transform group-hover:scale-110 group-hover:translate-y-px transition-transform duration-300" strokeWidth={2.5} />
@@ -88,7 +88,7 @@ export default function CarContactPanel({ lang, carSlug, carTitle, whatsappUrl, 
                             <p className="text-[10px] font-bold theme-text-muted uppercase tracking-widest mb-1.5">{dict.contactMail}</p>
                             <p className="text-[15px] font-bold theme-text tracking-tight group-hover:text-[#d91c1c] transition-colors"><PublicEmail /></p>
                         </div>
-                    </a>
+                    </PublicEmailLink>
                 </div>
 
                 {/* Action buttons */}
