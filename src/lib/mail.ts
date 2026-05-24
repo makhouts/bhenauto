@@ -28,6 +28,11 @@ export interface MailOptions {
   to: string;
   subject: string;
   html: string;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    contentType?: string;
+  }>;
 }
 
 export type MailResult =
@@ -77,6 +82,7 @@ export async function sendMail(options: MailOptions): Promise<MailResult> {
         to: options.to,
         subject: options.subject,
         html: options.html,
+        attachments: options.attachments,
       }),
       SMTP_TIMEOUT_MS,
       `SMTP send via ${SMTP_HOST}:${SMTP_PORT}`

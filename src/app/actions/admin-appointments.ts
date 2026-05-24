@@ -71,6 +71,7 @@ export async function confirmAppointment(
     revalidateLocalizedPath("/werkplaats");
 
     const mailResult = await sendAppointmentConfirmed({
+      id: apt.id,
       name: apt.name,
       email: apt.email,
       date: apt.date,
@@ -78,6 +79,7 @@ export async function confirmAppointment(
       service: apt.service,
       notes: apt.notes,
       locale: apt.locale,
+      durationHours: apt.durationHours,
     });
     if (!mailResult.success) {
       console.error("Appointment confirmed, but confirmation email failed", {
@@ -203,6 +205,7 @@ export async function createAdminAppointment(
 
     if (input.sendConfirmation) {
       const mailResult = await sendAppointmentConfirmed({
+        id: apt.id,
         name: apt.name,
         email: apt.email,
         date: apt.date,
@@ -210,6 +213,7 @@ export async function createAdminAppointment(
         service: apt.service,
         notes: apt.notes,
         locale: input.emailLocale ?? "fr",
+        durationHours: apt.durationHours,
       });
       if (!mailResult.success) {
         console.error("Manual appointment saved, but confirmation email failed", {
@@ -290,6 +294,7 @@ export async function updateAppointment(
 
     if (input.sendConfirmation) {
       const mailResult = await sendAppointmentConfirmed({
+        id: input.id,
         name: input.name.trim(),
         email: input.email.trim().toLowerCase(),
         date: utcDate,
@@ -297,6 +302,7 @@ export async function updateAppointment(
         service: input.service,
         notes: input.notes?.trim() || null,
         locale: input.emailLocale ?? "fr",
+        durationHours: input.durationHours ?? 1,
       });
       if (!mailResult.success) {
         console.error("Appointment updated, but confirmation email failed", {

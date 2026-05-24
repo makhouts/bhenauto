@@ -1,17 +1,21 @@
 import { sendMail, type MailResult } from "./mail";
 import { format } from "date-fns";
 import { nl, fr, enGB } from "date-fns/locale";
-import { toZonedTime } from "date-fns-tz";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { getLocalizedAppointmentService } from "./appointment-service";
 
 const TZ = "Europe/Brussels";
 const LOGO_URL = "https://images.bhenauto.com/bhenauto-logo-mail.png";
+const SHOP_ADDRESS = "Brusselsesteenweg 223, 1730 Asse, Belgium";
+const SHOP_EMAIL = "info@bhenauto.com";
+const SHOP_PHONE = "02 582 83 53";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface AppointmentData {
+  id?: string;
   name: string;
   email: string;
   date: Date;
@@ -19,6 +23,7 @@ interface AppointmentData {
   service: string;
   notes?: string | null;
   locale?: string;
+  durationHours?: number;
 }
 
 type Locale = "nl" | "fr" | "en";
@@ -42,6 +47,7 @@ const i18n: Record<Locale, {
   labelNotes: string;
   footer: string;
   cancelText: string;
+  calendarHint: string;
   address: string;
   phone: string;
   seeYou: string;
@@ -62,6 +68,7 @@ const i18n: Record<Locale, {
     labelNotes: "Opmerkingen",
     footer: "Heeft u vragen? Neem gerust contact met ons op.",
     cancelText: "Wilt u uw afspraak annuleren of verzetten? Bel ons op <strong>02 582 83 53</strong> of stuur een bericht via <a href=\"https://wa.me/32477544294\" style=\"color:#d91c1c;text-decoration:none;font-weight:700;\">WhatsApp</a>.",
+    calendarHint: "In de bijlage vindt u een kalenderbestand (.ics) dat u aan uw agenda kunt toevoegen.",
     address: "Brusselsesteenweg 223, 1730 Asse",
     phone: "02 582 83 53",
     seeYou: "Tot binnenkort!",
@@ -82,6 +89,7 @@ const i18n: Record<Locale, {
     labelNotes: "Remarques",
     footer: "Des questions ? N'hésitez pas à nous contacter.",
     cancelText: "Vous souhaitez annuler ou modifier votre rendez-vous ? Appelez-nous au <strong>02 582 83 53</strong> ou envoyez-nous un message via <a href=\"https://wa.me/32477544294\" style=\"color:#d91c1c;text-decoration:none;font-weight:700;\">WhatsApp</a>.",
+    calendarHint: "Vous trouverez en pièce jointe un fichier calendrier (.ics) que vous pouvez ajouter à votre agenda.",
     address: "Brusselsesteenweg 223, 1730 Asse",
     phone: "02 582 83 53",
     seeYou: "À bientôt !",
@@ -102,6 +110,7 @@ const i18n: Record<Locale, {
     labelNotes: "Notes",
     footer: "Any questions? Feel free to contact us.",
     cancelText: "Need to cancel or reschedule your appointment? Call us at <strong>02 582 83 53</strong> or send us a message via <a href=\"https://wa.me/32477544294\" style=\"color:#d91c1c;text-decoration:none;font-weight:700;\">WhatsApp</a>.",
+    calendarHint: "Attached is a calendar file (.ics) that you can add to your calendar.",
     address: "Brusselsesteenweg 223, 1730 Asse",
     phone: "02 582 83 53",
     seeYou: "See you soon!",
@@ -120,6 +129,10 @@ function formatDate(date: Date, locale: Locale): string {
   return format(zoned, "EEEE d MMMM yyyy", { locale: dateFnsLocales[locale] });
 }
 
+function formatIcsDate(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -127,6 +140,56 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function escapeIcs(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function buildAppointmentDateTime(date: Date, timeSlot: string): Date {
+  const [hour, minute] = timeSlot.split(":").map(Number);
+  const localDate = toZonedTime(date, TZ);
+  localDate.setHours(hour, minute, 0, 0);
+  return fromZonedTime(localDate, TZ);
+}
+
+function buildCalendarInvite(apt: AppointmentData, locale: Locale): string {
+  const startsAt = buildAppointmentDateTime(apt.date, apt.timeSlot);
+  const endsAt = new Date(startsAt.getTime() + (apt.durationHours ?? 1) * 60 * 60 * 1000);
+  const serviceName = getLocalizedAppointmentService(apt.service, locale);
+  const summary = `BhenAuto - ${serviceName}`;
+  const description = [
+    `${i18n[locale].confirmedTitle}: ${serviceName}`,
+    `${i18n[locale].labelDate}: ${formatDate(apt.date, locale)}`,
+    `${i18n[locale].labelTime}: ${apt.timeSlot}`,
+    apt.notes ? `${i18n[locale].labelNotes}: ${apt.notes}` : null,
+    `${SHOP_PHONE} · ${SHOP_EMAIL}`,
+  ].filter(Boolean).join("\\n");
+  const uid = `${apt.id ?? `${apt.email}-${apt.date.toISOString()}-${apt.timeSlot}`.replace(/[^a-zA-Z0-9]/g, "")}@bhenauto.com`;
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "CALSCALE:GREGORIAN",
+    "PRODID:-//BhenAuto//Appointments//EN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${formatIcsDate(new Date())}`,
+    `DTSTART:${formatIcsDate(startsAt)}`,
+    `DTEND:${formatIcsDate(endsAt)}`,
+    `SUMMARY:${escapeIcs(summary)}`,
+    `DESCRIPTION:${escapeIcs(description)}`,
+    `LOCATION:${escapeIcs(SHOP_ADDRESS)}`,
+    "STATUS:CONFIRMED",
+    "END:VEVENT",
+    "END:VCALENDAR",
+    "",
+  ].join("\r\n");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -255,12 +318,16 @@ export async function sendBookingReceived(apt: AppointmentData): Promise<MailRes
 export async function sendAppointmentConfirmed(apt: AppointmentData): Promise<MailResult> {
   const locale = (apt.locale as Locale) || "fr";
   const t = i18n[locale];
+  const calendarInvite = buildCalendarInvite(apt, locale);
 
   const body = `
     <p style="margin:0 0 8px;font-size:15px;font-weight:600;color:#111827;">${t.confirmedIntro(escapeHtml(apt.name))}</p>
     <p style="margin:0 0 20px;font-size:14px;color:#374151;line-height:1.6;">${t.confirmedBody}</p>
     <div style="text-align:center;margin-bottom:20px;">${statusBadge(t.confirmedTitle, "#16a34a")}</div>
     ${detailsTable(apt, locale)}
+    <div style="margin:20px 0;padding:14px 18px;background-color:#eff6ff;border-left:4px solid #2563eb;border-radius:0 8px 8px 0;">
+      <p style="margin:0;font-size:13px;color:#1f2937;line-height:1.7;">${t.calendarHint}</p>
+    </div>
     <div style="margin:24px 0;padding:16px 20px;background-color:#fef2f2;border-left:4px solid #d91c1c;border-radius:0 8px 8px 0;">
       <p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#d91c1c;text-transform:uppercase;letter-spacing:0.05em;">📍 ${t.address}</p>
       <p style="margin:0;font-size:13px;color:#374151;">📞 ${t.phone} · ✉️ info@bhenauto.com</p>
@@ -276,5 +343,12 @@ export async function sendAppointmentConfirmed(apt: AppointmentData): Promise<Ma
     to: apt.email,
     subject: t.confirmedSubject,
     html: emailLayout(t.confirmedTitle, body),
+    attachments: [
+      {
+        filename: "bhenauto-appointment.ics",
+        content: calendarInvite,
+        contentType: "text/calendar; charset=utf-8; method=PUBLISH",
+      },
+    ],
   });
 }

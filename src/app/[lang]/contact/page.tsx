@@ -5,6 +5,7 @@ import { Mail, MapPin, Phone, Clock, ArrowRight, CheckCircle2 } from "lucide-rea
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 import { PublicEmail, PublicEmailLink } from "@/components/PublicEmail";
+import OpeningStatus from "@/components/OpeningStatus";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
@@ -49,11 +50,6 @@ export default async function ContactPage({
   const locale: Locale = isValidLocale(lang) ? lang : "fr";
   const dict = await getDictionary(locale);
   const c = dict.contact;
-
-  const now = new Date();
-  const day = now.getDay();
-  const hour = now.getHours();
-  const isOpen = day >= 1 && day <= 6 && hour >= 10 && hour < 18;
 
   const hours = [
     { day: c.hoursMon, time: c.hoursMonTime, accent: false },
@@ -212,15 +208,7 @@ export default async function ContactPage({
                 ))}
               </div>
               <div className="mt-5 pt-4" style={{ borderTop: "1px solid var(--theme-border-subtle)" }}>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`inline-block w-2 h-2 rounded-full ${isOpen ? "bg-green-400 animate-pulse" : ""}`}
-                    style={!isOpen ? { backgroundColor: "var(--theme-text-faint)" } : {}}
-                  />
-                  <span className="text-[12px] theme-text-muted font-semibold">
-                    {isOpen ? c.openNow : c.closedNow}
-                  </span>
-                </div>
+                <OpeningStatus openLabel={c.openNow} closedLabel={c.closedNow} />
               </div>
             </div>
 

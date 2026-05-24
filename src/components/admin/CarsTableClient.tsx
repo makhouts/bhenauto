@@ -1,19 +1,71 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import CarRow, { type AdminCarRow } from "@/components/admin/CarRow";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 import { tpl } from "@/lib/admin-i18n";
 
+type SortKey = "vehicle" | "price" | "visibility" | "status" | "online";
+type SortDirection = "asc" | "desc";
+
+function getStatusPriority(car: AdminCarRow) {
+    if (car.sold) return 2;
+    if (car.reserved) return 1;
+    return 0;
+}
+
+function getCreatedAtTime(createdAt: AdminCarRow["createdAt"]) {
+    const timestamp = new Date(createdAt).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function getDefaultDirection(key: SortKey): SortDirection {
+    switch (key) {
+        case "visibility":
+        case "online":
+            return "desc";
+        default:
+            return "asc";
+    }
+}
+
 export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
     const { dict } = useAdminI18n();
     const [query, setQuery] = useState("");
+    const [sortKey, setSortKey] = useState<SortKey>("status");
+    const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-    const statusPriority = (car: AdminCarRow) => {
-        if (car.sold) return 2;       // verkocht — last
-        if (car.reserved) return 1;   // gereserveerd — middle
-        return 0;                     // beschikbaar — first
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+            return;
+        }
+
+        setSortKey(key);
+        setSortDirection(getDefaultDirection(key));
+    };
+
+    const compareCars = (a: AdminCarRow, b: AdminCarRow) => {
+        const direction = sortDirection === "asc" ? 1 : -1;
+
+        switch (sortKey) {
+            case "vehicle": {
+                const vehicleA = `${a.brand} ${a.model}`.trim();
+                const vehicleB = `${b.brand} ${b.model}`.trim();
+                return vehicleA.localeCompare(vehicleB, undefined, { sensitivity: "base" }) * direction;
+            }
+            case "price":
+                return (a.price - b.price) * direction;
+            case "visibility":
+                return ((Number(a.featured) - Number(b.featured)) * direction);
+            case "status":
+                return (getStatusPriority(a) - getStatusPriority(b)) * direction;
+            case "online":
+                return (getCreatedAtTime(a.createdAt) - getCreatedAtTime(b.createdAt)) * direction;
+            default:
+                return 0;
+        }
     };
 
     const filtered = cars
@@ -28,7 +80,39 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                 car.color?.toLowerCase().includes(q)
             );
         })
-        .sort((a, b) => statusPriority(a) - statusPriority(b));
+        .slice()
+        .sort((a, b) => {
+            const primary = compareCars(a, b);
+            if (primary !== 0) return primary;
+
+            const statusFallback = getStatusPriority(a) - getStatusPriority(b);
+            if (statusFallback !== 0) return statusFallback;
+
+            return getCreatedAtTime(b.createdAt) - getCreatedAtTime(a.createdAt);
+        });
+
+    const renderSortButton = (key: SortKey, label: string) => {
+        const isActive = sortKey === key;
+        const Icon = !isActive ? ArrowUpDown : sortDirection === "asc" ? ArrowUp : ArrowDown;
+        const ariaSort = isActive
+            ? sortDirection === "asc"
+                ? "ascending"
+                : "descending"
+            : "none";
+
+        return (
+            <th aria-sort={ariaSort} className="px-5 py-4 font-semibold" scope="col">
+                <button
+                    type="button"
+                    onClick={() => handleSort(key)}
+                    className={`inline-flex cursor-pointer items-center gap-1.5 transition-colors ${isActive ? "text-slate-800" : "hover:text-slate-700"}`}
+                >
+                    <span>{label}</span>
+                    <Icon size={13} className={isActive ? "text-[#d91c1c]" : "text-slate-400"} />
+                </button>
+            </th>
+        );
+    };
 
     return (
         <>
@@ -48,12 +132,12 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-widest text-slate-500">
-                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.vehicle}</th>
-                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.price}</th>
-                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.visibility}</th>
-                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.status}</th>
-                            <th className="px-5 py-4 font-semibold">{dict.carsTable.columns.online}</th>
-                            <th className="px-5 py-4 font-semibold text-right">{dict.carsTable.columns.actions}</th>
+                            {renderSortButton("vehicle", dict.carsTable.columns.vehicle)}
+                            {renderSortButton("price", dict.carsTable.columns.price)}
+                            {renderSortButton("visibility", dict.carsTable.columns.visibility)}
+                            {renderSortButton("status", dict.carsTable.columns.status)}
+                            {renderSortButton("online", dict.carsTable.columns.online)}
+                            <th className="px-5 py-4 font-semibold text-right" scope="col">{dict.carsTable.columns.actions}</th>
                         </tr>
                     </thead>
                     <tbody>
