@@ -6,7 +6,7 @@ import LatestOccasionsCarousel from "@/components/LatestOccasionsCarousel";
 import ScrollReveal from "@/components/ScrollReveal";
 import WhyChooseUs from "@/components/WhyChooseUs";
 import prisma from "@/lib/prisma";
-import heroBg from "@/assets/wallpaper.avif";
+import heroBg from "@/assets/wallpaper.webp";
 import { getDictionary, type Dictionary } from "@/lib/dictionaries";
 import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
@@ -36,10 +36,7 @@ export async function generateMetadata({
   };
 
   return {
-    title: {
-      default: `BhenAuto | ${dict.home.heroLabel}`,
-      template: "%s | BhenAuto",
-    },
+    title: dict.home.heroLabel,
     description: dict.home.heroSubtitle,
     metadataBase: new URL(BASE_URL),
     alternates: {
@@ -157,15 +154,9 @@ const localBusinessJsonLd = {
   "openingHoursSpecification": [
     {
       "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
       "opens": "10:00",
       "closes": "18:00",
-    },
-    {
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": "Saturday",
-      "opens": "10:00",
-      "closes": "17:00",
     },
   ],
 };

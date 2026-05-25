@@ -35,7 +35,7 @@ export async function generateMetadata(
     const car = await getCar(params.slug);
 
     if (!car) {
-        return { title: 'Voertuig Niet Gevonden | BhenAuto' };
+        return { title: 'Voertuig Niet Gevonden' };
     }
 
     const imageUrl = car.images.length > 0 ? getImageVariantUrl(car.images[0].url, 'gallery') : '';
@@ -46,7 +46,7 @@ export async function generateMetadata(
     const ogLocales: Record<string, string> = { nl: 'nl_BE', fr: 'fr_BE', en: 'en_GB' };
 
     return {
-        title: `${car.title} | BhenAuto`,
+        title: car.title,
         description: ogDescription,
         metadataBase: new URL(BASE_URL),
         alternates: {

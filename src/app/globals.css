@@ -5,8 +5,9 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-inter);
-  --font-headings: var(--font-inter);
+  --font-sans: var(--font-manrope);
+  --font-headings: var(--font-manrope);
+  --font-accent: var(--font-manrope);
 
   --color-primary-red: #d91c1c;
   --color-primary-red-hover: #b91515;
@@ -61,7 +62,7 @@ h5,
 h6 {
   font-family: var(--font-headings);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 /* ── Utility classes ── */

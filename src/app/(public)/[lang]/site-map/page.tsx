@@ -17,9 +17,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   const titles: Record<string, string> = {
-    nl: "Sitemap | BhenAuto",
-    fr: "Plan du site | BhenAuto",
-    en: "Sitemap | BhenAuto",
+    nl: "Sitemap",
+    fr: "Plan du site",
+    en: "Sitemap",
   };
   const descriptions: Record<string, string> = {
     nl: "Bekijk alle belangrijke BhenAuto-pagina's en beschikbare voertuigen op een overzichtelijke sitemap.",
@@ -27,7 +27,7 @@ export async function generateMetadata({
     en: "View all important BhenAuto pages and available vehicles in a clear website sitemap.",
   };
   return {
-    title: titles[lang] ?? "Sitemap | BhenAuto",
+    title: titles[lang] ?? "Sitemap",
     description: descriptions[lang] ?? descriptions.fr,
     alternates: {
       canonical: `${BASE_URL}/${lang}/site-map`,

@@ -94,11 +94,10 @@ export async function proxy(request: NextRequest) {
   }
 
   // If the pathname already has a locale prefix, just pass through
-  // but set the x-pathname header for the not-found page and persist the cookie
+  // and persist the cookie.
   if (pathnameHasLocale(pathname)) {
     const locale = pathname.split("/")[1] as Locale;
     const response = NextResponse.next();
-    response.headers.set("x-pathname", pathname);
     // Persist locale preference (30 days)
     response.cookies.set(COOKIE_NAME, locale, {
       path: "/",

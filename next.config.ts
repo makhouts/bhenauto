@@ -35,6 +35,7 @@ const nextConfig: NextConfig = {
   htmlLimitedBots,
   serverExternalPackages: ["@prisma/adapter-pg", "pg"],
   experimental: {
+    globalNotFound: true,
     serverActions: {
       allowedOrigins: serverActionOrigins,
     },

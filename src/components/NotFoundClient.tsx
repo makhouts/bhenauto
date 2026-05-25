@@ -193,7 +193,7 @@ export default function NotFoundClient({ dict, locale }: { dict: NotFoundDict; l
           <span
             className="text-[130px] sm:text-[170px] font-black leading-none"
             style={{
-              fontFamily: "var(--font-inter)",
+              fontFamily: "var(--font-manrope)",
               background: "linear-gradient(160deg, #ffffff 0%, rgba(255,255,255,0.35) 100%)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -215,7 +215,7 @@ export default function NotFoundClient({ dict, locale }: { dict: NotFoundDict; l
         <motion.h1
           variants={fadeUp}
           className="text-2xl sm:text-3xl font-black mt-8 mb-3"
-          style={{ color: "#f1f5f9", fontFamily: "var(--font-inter)", letterSpacing: "-0.02em" }}
+          style={{ color: "#f1f5f9", fontFamily: "var(--font-manrope)", letterSpacing: "-0.01em" }}
         >
           {dict.headline}
         </motion.h1>

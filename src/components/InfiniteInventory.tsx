@@ -9,6 +9,7 @@ import { fetchCarsPaginated, type CarWithImages } from "@/app/actions/fetchCars"
 import SortSelect from "@/components/SortSelect";
 import { useLocale } from "@/components/LocaleContext";
 import type { InventoryDict, CommonDict } from "@/lib/dictionaries";
+import { buildPathWithQuery, updateSearchParams } from "@/lib/search-params";
 import {
     MILEAGE_RANGE_CONFIG,
     PRICE_RANGE_CONFIG,
@@ -52,11 +53,11 @@ function ActiveFilterChips({ dict }: { dict: InventoryDict }) {
 
     const removeParams = useCallback(
         (names: string[]) => {
-            const params = new URLSearchParams(urlSearchParams.toString());
-            names.forEach((name) => params.delete(name));
-            params.delete("page");
-            const query = params.toString();
-            router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+            const query = updateSearchParams(
+                urlSearchParams.toString(),
+                Object.fromEntries(names.map((name) => [name, null]))
+            );
+            router.push(buildPathWithQuery(pathname, query), { scroll: false });
         },
         [pathname, router, urlSearchParams]
     );

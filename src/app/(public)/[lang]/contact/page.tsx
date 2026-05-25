@@ -35,7 +35,7 @@ export async function generateMetadata({
       languages: alternateLanguages,
     },
     openGraph: {
-      title: `Contact | BhenAuto`,
+      title: "Contact",
       description: c.pageSubtitle,
     },
   };
@@ -60,8 +60,6 @@ export default async function ContactPage({
 
   return (
     <main className="min-h-screen theme-bg relative overflow-hidden">
-      <h1 className="sr-only">Contact BhenAuto</h1>
-
       {/* ── Subtle background accent ─────────────────────────────── */}
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#d91c1c]/4 rounded-full blur-[140px] pointer-events-none" />
 
@@ -72,12 +70,12 @@ export default async function ContactPage({
           <p className="text-[10px] font-black text-[#d91c1c] uppercase tracking-[0.25em] mb-4">
             {c.pageLabel}
           </p>
-          <h2 className="font-headings font-black theme-text leading-none tracking-tight">
+          <h1 className="font-headings font-black theme-text leading-none tracking-tight">
             <span className="text-4xl md:text-6xl lg:text-7xl block">{c.pageTitle}</span>
             <span className="text-4xl md:text-6xl lg:text-7xl block">
               <span className="text-[#d91c1c] italic">{c.pageTitleHighlight}</span>
             </span>
-          </h2>
+          </h1>
           <p className="mt-5 theme-text-muted max-w-md text-base leading-relaxed">
             {c.pageSubtitle}
           </p>

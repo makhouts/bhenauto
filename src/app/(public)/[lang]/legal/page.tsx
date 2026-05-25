@@ -19,9 +19,9 @@ export async function generateMetadata({
   const locale: Locale = isValidLocale(lang) ? lang : "fr";
 
   const titles: Record<string, string> = {
-    nl: "Privacybeleid & Algemene Voorwaarden | BhenAuto",
-    fr: "Politique de Confidentialité & Conditions Générales | BhenAuto",
-    en: "Privacy Policy & Terms and Conditions | BhenAuto",
+    nl: "Privacybeleid & Algemene Voorwaarden",
+    fr: "Politique de Confidentialité & Conditions Générales",
+    en: "Privacy Policy & Terms and Conditions",
   };
   const descriptions: Record<string, string> = {
     nl: "Lees het privacybeleid en de algemene voorwaarden van Bhenauto BV, gevestigd te Asse.",

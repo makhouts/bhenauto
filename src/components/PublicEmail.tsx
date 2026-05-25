@@ -1,13 +1,8 @@
-"use client";
-
-import { useEffect, useRef } from "react";
 import type { AnchorHTMLAttributes, ReactNode } from "react";
 
 const EMAIL_USER = "info";
 const EMAIL_DOMAIN_NAME = "bhenauto";
 const EMAIL_TLD = "com";
-
-export const PUBLIC_EMAIL_HREF = "#email";
 
 export function PublicEmail() {
     return (
@@ -24,24 +19,12 @@ export function PublicEmailLink({
 }: Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "children"> & {
     children?: ReactNode;
 }) {
-    const linkRef = useRef<HTMLAnchorElement>(null);
-
-    useEffect(() => {
-        if (linkRef.current) {
-            linkRef.current.href = `mailto:${EMAIL_USER}@${EMAIL_DOMAIN_NAME}.${EMAIL_TLD}`;
-        }
-    }, []);
+    const href = `mailto:${EMAIL_USER}@${EMAIL_DOMAIN_NAME}.${EMAIL_TLD}`;
 
     return (
         <a
             {...props}
-            ref={linkRef}
-            href={PUBLIC_EMAIL_HREF}
-            onClick={(event) => {
-                props.onClick?.(event);
-                if (event.defaultPrevented) return;
-                if (linkRef.current?.getAttribute("href") === PUBLIC_EMAIL_HREF) event.preventDefault();
-            }}
+            href={href}
             className={className}
             aria-label={props["aria-label"] ?? "Email BhenAuto"}
         >

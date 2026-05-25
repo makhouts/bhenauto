@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { locales, isValidLocale, type Locale } from "@/lib/i18n";
 import { LocaleProvider } from "@/components/LocaleContext";
 import ConditionalLayout from "@/components/ConditionalLayout";
-import HtmlLangUpdater from "@/components/HtmlLangUpdater";
+import { manrope } from "@/app/fonts";
+import "../../globals.css";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
@@ -94,9 +95,17 @@ export default async function LangLayout({
   }
 
   return (
-    <LocaleProvider locale={lang as Locale}>
-      <HtmlLangUpdater lang={lang} />
-      <ConditionalLayout locale={lang as Locale}>{children}</ConditionalLayout>
-    </LocaleProvider>
+    <html lang={lang} className="scroll-smooth" data-scroll-behavior="smooth">
+      <head>
+        <link rel="dns-prefetch" href="https://images.bhenauto.com" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <meta name="theme-color" content="#020214" />
+      </head>
+      <body className={`${manrope.variable} antialiased min-h-screen flex flex-col`}>
+        <LocaleProvider locale={lang as Locale}>
+          <ConditionalLayout locale={lang as Locale}>{children}</ConditionalLayout>
+        </LocaleProvider>
+      </body>
+    </html>
   );
 }

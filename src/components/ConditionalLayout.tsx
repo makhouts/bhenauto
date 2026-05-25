@@ -1,6 +1,6 @@
 // Server Component — fetches nav/footer dict slices and passes them to Header/Footer.
-// The locale is passed directly from [lang]/layout.tsx to avoid re-deriving it
-// from the x-pathname header (which could fall back to "fr" on certain routes).
+// The locale is passed directly from [lang]/layout.tsx so the public root
+// document can remain static/ISR-friendly.
 
 import { getDictionary } from "@/lib/dictionaries";
 import { type Locale } from "@/lib/i18n";

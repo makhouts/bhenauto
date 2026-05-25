@@ -129,7 +129,7 @@ export default function Header({ dict }: HeaderProps) {
                                     <Link
                                         key={link.name}
                                         href={link.href}
-                                        className={`relative text-[12px] uppercase tracking-[0.25em] font-bold font-[family-name:var(--font-nunito)] transition-colors duration-300 py-2 group ${getNavLinkColor(isActive)}`}
+                                        className={`relative text-[12px] uppercase tracking-[0.25em] font-bold font-[family-name:var(--font-manrope)] transition-colors duration-300 py-2 group ${getNavLinkColor(isActive)}`}
                                     >
                                         {link.name}
                                         <span className={`absolute bottom-0 left-0 w-full h-[2px] ${getIndicatorColor()} transition-transform duration-300 origin-right group-hover:origin-left ${isActive ? "scale-x-100 origin-left" : "scale-x-0 group-hover:scale-x-100"

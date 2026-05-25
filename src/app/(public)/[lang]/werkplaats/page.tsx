@@ -34,7 +34,7 @@ export async function generateMetadata({
       languages: alternateLanguages,
     },
     openGraph: {
-      title: `${w.heroTitle} | BhenAuto`,
+      title: w.heroTitle,
       description: w.heroSubtitle,
     },
   };

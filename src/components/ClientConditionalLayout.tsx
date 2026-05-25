@@ -43,9 +43,9 @@ export default function ClientConditionalLayout({
   return (
     <>
       {!isAdminRoute && header}
-      <main className={`flex-grow ${!isAdminRoute && !isTransparentRoute ? "pt-8 md:pt-20" : ""}`}>
+      <div className={`flex-grow ${!isAdminRoute && !isTransparentRoute ? "pt-8 md:pt-20" : ""}`}>
         {children}
-      </main>
+      </div>
       {!isAdminRoute && footer}
       {!isAdminRoute && !isCarDetailPage && whatsApp}
     </>

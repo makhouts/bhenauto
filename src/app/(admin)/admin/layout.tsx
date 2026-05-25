@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import { isValidSession } from "@/lib/session";
+import { manrope } from "@/app/fonts";
 import Link from "next/link";
 import Image from "next/image";
 import { Car, MessageSquare, LayoutDashboard, LogOut, CalendarCheck } from "lucide-react";
@@ -12,12 +13,34 @@ import { AdminI18nProvider } from "@/components/admin/AdminI18nProvider";
 import AdminLocaleSwitcher from "@/components/admin/AdminLocaleSwitcher";
 import { getAdminDictionary } from "@/lib/admin-i18n";
 import { getAdminLocale } from "@/lib/admin-i18n.server";
+import "../../globals.css";
 
 // Ensure every /admin/* response carries X-Robots-Tag: noindex,nofollow.
 // robots.txt is advisory; this header is a hard signal to compliant crawlers.
 export const metadata: Metadata = {
     robots: { index: false, follow: false },
 };
+
+function AdminDocument({
+    children,
+    locale,
+}: {
+    children: ReactNode;
+    locale: string;
+}) {
+    return (
+        <html lang={locale} className="scroll-smooth" data-scroll-behavior="smooth">
+            <head>
+                <link rel="dns-prefetch" href="https://images.bhenauto.com" />
+                <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+                <meta name="theme-color" content="#020214" />
+            </head>
+            <body className={`${manrope.variable} antialiased min-h-screen flex flex-col`}>
+                {children}
+            </body>
+        </html>
+    );
+}
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
     const cookieStore = await cookies();
@@ -32,9 +55,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     // /admin/login itself, so redirecting would create an infinite loop.
     if (!isAuthenticated) {
         return (
-            <AdminI18nProvider locale={locale} dict={dict}>
-                {children}
-            </AdminI18nProvider>
+            <AdminDocument locale={locale}>
+                <AdminI18nProvider locale={locale} dict={dict}>
+                    {children}
+                </AdminI18nProvider>
+            </AdminDocument>
         );
     }
 
@@ -52,8 +77,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     ];
 
     return (
-        <AdminI18nProvider locale={locale} dict={dict}>
-        <div className="min-h-screen flex flex-col md:flex-row" style={{ background: "#f4f5f7" }}>
+        <AdminDocument locale={locale}>
+            <AdminI18nProvider locale={locale} dict={dict}>
+            <div className="min-h-screen flex flex-col md:flex-row" style={{ background: "#f4f5f7" }}>
 
             {/* ── Sidebar ── */}
             <aside
@@ -137,7 +163,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                 position="bottom-right"
                 toastOptions={{
                     style: {
-                        fontFamily: "var(--font-inter)",
+                        fontFamily: "var(--font-manrope)",
                         borderRadius: "12px",
                         fontSize: "13px",
                         fontWeight: "600",
@@ -146,7 +172,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                 closeButton
                 richColors
             />
-        </div>
-        </AdminI18nProvider>
+            </div>
+            </AdminI18nProvider>
+        </AdminDocument>
     );
 }

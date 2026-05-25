@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { buildPathWithQuery, updateSearchParams } from "@/lib/search-params";
 
 interface SortDict {
     sortNewest: string;
@@ -15,22 +15,14 @@ export default function SortSelect({ dict }: { dict: SortDict }) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const createQueryString = useCallback(
-        (name: string, value: string) => {
-            const params = new URLSearchParams(searchParams.toString());
-            if (value) {
-                params.set(name, value);
-            } else {
-                params.delete(name);
-            }
-            params.delete("page");
-            return params.toString();
-        },
-        [searchParams]
-    );
-
     const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        router.push(`${pathname}?${createQueryString("sort", e.target.value)}`);
+        router.push(
+            buildPathWithQuery(
+                pathname,
+                updateSearchParams(searchParams.toString(), { sort: e.target.value })
+            ),
+            { scroll: false }
+        );
     };
 
     return (
@@ -59,4 +51,3 @@ export default function SortSelect({ dict }: { dict: SortDict }) {
         </div>
     );
 }
-

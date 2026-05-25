@@ -4,6 +4,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import type { InventoryDict } from "@/lib/dictionaries";
+import { buildPathWithQuery, updateSearchParams } from "@/lib/search-params";
 import {
     PRICE_RANGE_CONFIG,
     MILEAGE_RANGE_CONFIG,
@@ -200,30 +201,11 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
         MILEAGE_RANGE_CONFIG
     );
 
-    const createQueryString = useCallback(
-        (name: string, value: string) => {
-            const params = new URLSearchParams(searchParams.toString());
-            if (value) {
-                params.set(name, value);
-            } else {
-                params.delete(name);
-            }
-            params.delete("page");
-            return params.toString();
-        },
-        [searchParams]
-    );
-
     const pushFilterUrl = useCallback(
         (url: string) => {
             router.push(url, { scroll: false });
         },
         [router]
-    );
-
-    const buildPath = useCallback(
-        (queryString: string) => (queryString ? `${pathname}?${queryString}` : pathname),
-        [pathname]
     );
 
     const createRangeQueryString = useCallback(
@@ -235,22 +217,10 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
             maxValue: number,
             maxDefault: number
         ) => {
-            const params = new URLSearchParams(searchParams.toString());
-
-            if (minValue > minDefault) {
-                params.set(minName, String(minValue));
-            } else {
-                params.delete(minName);
-            }
-
-            if (maxValue < maxDefault) {
-                params.set(maxName, String(maxValue));
-            } else {
-                params.delete(maxName);
-            }
-
-            params.delete("page");
-            return params.toString();
+            return updateSearchParams(searchParams.toString(), {
+                [minName]: minValue > minDefault ? String(minValue) : null,
+                [maxName]: maxValue < maxDefault ? String(maxValue) : null,
+            });
         },
         [searchParams]
     );
@@ -271,7 +241,8 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
     // Commit slider values to URL only on release
     const commitMileageRange = (minValue: number, maxValue: number) => {
         pushFilterUrl(
-            buildPath(
+            buildPathWithQuery(
+                pathname,
                 createRangeQueryString(
                     "minMileage",
                     minValue,
@@ -286,7 +257,8 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
 
     const commitPriceRange = (minValue: number, maxValue: number) => {
         pushFilterUrl(
-            buildPath(
+            buildPathWithQuery(
+                pathname,
                 createRangeQueryString(
                     "minPrice",
                     minValue,
@@ -348,7 +320,14 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                             className="w-full appearance-none rounded-md py-2.5 pl-4 pr-10 text-sm theme-text focus:outline-none focus:ring-1 focus:ring-[#d91c1c] focus:border-[#d91c1c] cursor-pointer"
                             style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}
                             value={currentBrand}
-                            onChange={(e) => pushFilterUrl(buildPath(createQueryString("brand", e.target.value)))}
+                            onChange={(e) =>
+                                pushFilterUrl(
+                                    buildPathWithQuery(
+                                        pathname,
+                                        updateSearchParams(searchParams.toString(), { brand: e.target.value })
+                                    )
+                                )
+                            }
                         >
                             <option value="">{dict.brandAll}</option>
                             {availableBrands.map((brand) => (
@@ -380,7 +359,14 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                             className="w-full appearance-none rounded-md py-2.5 pl-4 pr-10 text-sm theme-text focus:outline-none focus:ring-1 focus:ring-[#d91c1c] focus:border-[#d91c1c] cursor-pointer"
                             style={{ backgroundColor: 'var(--theme-surface)', border: '1px solid var(--theme-border)' }}
                             value={currentFuel}
-                            onChange={(e) => pushFilterUrl(buildPath(createQueryString("fuel", e.target.value)))}
+                            onChange={(e) =>
+                                pushFilterUrl(
+                                    buildPathWithQuery(
+                                        pathname,
+                                        updateSearchParams(searchParams.toString(), { fuel: e.target.value })
+                                    )
+                                )
+                            }
                         >
                             <option value="">{dict.fuelAll}</option>
                             <option value="Benzine">Benzine</option>
