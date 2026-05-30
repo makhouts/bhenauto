@@ -23,8 +23,31 @@ const EnvSchema = z.object({
     TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
     GEMINI_API_KEY: z.string().optional(),
+    CRON_SECRET: z.string().min(16).optional(),
+    AUTOSCOUT24_USERNAME: z.string().min(1).optional(),
+    AUTOSCOUT24_PASSWORD: z.string().min(1).optional(),
+    AUTOSCOUT24_CUSTOMER_ID: z.string().min(1).optional(),
+    AUTOSCOUT24_MARKETPLACE: z.string().min(2).default("be"),
+    AUTOSCOUT24_CULTURE: z.string().min(5).default("nl-BE"),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 }).superRefine((env, ctx) => {
+    const hasAutoscoutConfig = Boolean(
+        env.AUTOSCOUT24_USERNAME ||
+        env.AUTOSCOUT24_PASSWORD ||
+        env.AUTOSCOUT24_CUSTOMER_ID
+    );
+    if (hasAutoscoutConfig) {
+        for (const key of ["AUTOSCOUT24_USERNAME", "AUTOSCOUT24_PASSWORD"] as const) {
+            if (!env[key]) {
+                ctx.addIssue({
+                    code: "custom",
+                    path: [key],
+                    message: `${key} is required when AutoScout24 integration is configured`,
+                });
+            }
+        }
+    }
+
     if (env.NODE_ENV !== "production") return;
 
     const requiredInProduction: Array<keyof typeof env> = [

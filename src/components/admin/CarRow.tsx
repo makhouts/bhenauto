@@ -6,8 +6,8 @@ import { createPortal } from "react-dom";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import Link from "next/link";
 import Image from "next/image";
-import { toggleFeatured, deleteCar, updateCarStatus } from "@/app/actions/cars";
-import { Star, Edit, Trash2, Loader2, ChevronDown, CheckCircle, Clock, XCircle, X } from "lucide-react";
+import { toggleFeatured, deleteCar, retryCarAutoscoutSync, updateCarStatus } from "@/app/actions/cars";
+import { Star, Edit, Trash2, Loader2, ChevronDown, CheckCircle, Clock, XCircle, X, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import { getImageUrl, getThumbnailImageUrl } from "@/lib/image-url";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
@@ -29,6 +29,9 @@ export type AdminCarRow = {
     featured: boolean;
     sold: boolean;
     reserved: boolean;
+    autoscoutListingId?: string | null;
+    autoscoutSyncStatus?: string | null;
+    autoscoutSyncError?: string | null;
     images?: { url: string }[];
 };
 
@@ -63,10 +66,36 @@ function getDaysOnline(createdAt: Date | string) {
     return Math.max(1, differenceInCalendarDays(new Date(), publishedAt) + 1);
 }
 
-export default function CarRow({ car }: { car: AdminCarRow }) {
+export type AutoScoutSyncState = "synced" | "pending" | "not-synced";
+
+export function isAutoScoutSynced(car: AdminCarRow) {
+    if (car.autoscoutSyncStatus === "synced") return true;
+    if (car.sold && car.autoscoutSyncStatus === "deleted") return true;
+    return Boolean(car.autoscoutListingId && !car.autoscoutSyncStatus);
+}
+
+export function isAutoScoutPending(status: string | null | undefined) {
+    return status === "pending" || status === "pending-delete";
+}
+
+export function getAutoScoutSyncState(car: AdminCarRow): AutoScoutSyncState {
+    if (isAutoScoutPending(car.autoscoutSyncStatus)) return "pending";
+    if (isAutoScoutSynced(car)) return "synced";
+    return "not-synced";
+}
+
+export default function CarRow({
+    car,
+    onAutoscoutChange,
+}: {
+    car: AdminCarRow;
+    onAutoscoutChange?: (id: string, patch: Partial<AdminCarRow>) => void;
+}) {
     const { locale, dict } = useAdminI18n();
     const initialStatus = getStatus(car);
+    const [rowCar, setRowCar] = useState(car);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [isRetryingAutoScout, setIsRetryingAutoScout] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [thumbFailedFor, setThumbFailedFor] = useState<string | null>(null);
@@ -74,8 +103,50 @@ export default function CarRow({ car }: { car: AdminCarRow }) {
     const [optimisticStatus, setOptimisticStatus] = useState<Status>(initialStatus);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
+    useEffect(() => {
+        setRowCar(car);
+        setOptimisticStatus(getStatus(car));
+    }, [car]);
+
     // Close dropdown on outside click
     useOutsideClick(dropdownRef, () => setDropdownOpen(false), dropdownOpen);
+
+    useEffect(() => {
+        if (!isAutoScoutPending(rowCar.autoscoutSyncStatus)) return;
+
+        let cancelled = false;
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+        const pollStatus = async () => {
+            try {
+                const response = await fetch(`/api/admin/cars/${rowCar.id}/autoscout-sync`, {
+                    cache: "no-store",
+                    credentials: "same-origin",
+                });
+                if (response.ok) {
+                    const next = await response.json() as Partial<AdminCarRow>;
+                    if (!cancelled) {
+                        setRowCar((current) => ({ ...current, ...next }));
+                        onAutoscoutChange?.(rowCar.id, next);
+                    }
+                    if (!isAutoScoutPending(next.autoscoutSyncStatus)) return;
+                }
+            } catch (error) {
+                console.warn("AutoScout24 status polling failed:", error);
+            }
+
+            if (!cancelled) {
+                timeoutId = setTimeout(pollStatus, 3000);
+            }
+        };
+
+        timeoutId = setTimeout(pollStatus, 1500);
+
+        return () => {
+            cancelled = true;
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+    }, [onAutoscoutChange, rowCar.id, rowCar.autoscoutSyncStatus]);
 
     useEffect(() => {
         if (!showDeleteConfirm) return;
@@ -110,12 +181,29 @@ export default function CarRow({ car }: { car: AdminCarRow }) {
             setOptimisticStatus(initialStatus);
             toast.error(dict.carRow.statusUpdateError);
         } else {
+            const patch = {
+                sold: newStatus === "verkocht",
+                reserved: newStatus === "gereserveerd",
+                autoscoutSyncStatus: result?.autoscoutQueued
+                    ? newStatus === "verkocht" ? "pending-delete" : "pending"
+                    : rowCar.autoscoutSyncStatus,
+                autoscoutSyncError: result?.autoscoutQueued ? null : rowCar.autoscoutSyncError,
+            };
+            setRowCar((current) => ({
+                ...current,
+                ...patch,
+            }));
+            onAutoscoutChange?.(rowCar.id, patch);
             const labels: Record<Status, string> = {
                 beschikbaar: dict.carRow.statuses.available,
                 gereserveerd: dict.carRow.statuses.reserved,
                 verkocht: dict.carRow.statuses.sold,
             };
-            toast.success(tpl(dict.carRow.statusUpdated, { status: labels[newStatus] }));
+            if (result?.autoscoutQueued) {
+                toast.info(dict.carRow.autoscoutQueued);
+            } else {
+                toast.success(tpl(dict.carRow.statusUpdated, { status: labels[newStatus] }));
+            }
         }
         setIsUpdating(false);
     };
@@ -130,6 +218,50 @@ export default function CarRow({ car }: { car: AdminCarRow }) {
         } else {
             toast.success(tpl(dict.carRow.deleted, { name: `${car.brand} ${car.model}` }));
         }
+    };
+
+    const handleRetryAutoScoutSync = async () => {
+        if (autoscoutSynced || autoscoutPending || isRetryingAutoScout) return;
+
+        const previousStatus = rowCar.autoscoutSyncStatus;
+        const previousError = rowCar.autoscoutSyncError;
+        const nextStatus = rowCar.sold ? "pending-delete" : "pending";
+        setIsRetryingAutoScout(true);
+        setRowCar((current) => ({
+            ...current,
+            autoscoutSyncStatus: nextStatus,
+            autoscoutSyncError: null,
+        }));
+        onAutoscoutChange?.(rowCar.id, {
+            autoscoutSyncStatus: nextStatus,
+            autoscoutSyncError: null,
+        });
+
+        const result = await retryCarAutoscoutSync(rowCar.id);
+        if (result?.error) {
+            const patch = {
+                autoscoutSyncStatus: previousStatus,
+                autoscoutSyncError: previousError ?? result.error,
+            };
+            setRowCar((current) => ({
+                ...current,
+                ...patch,
+            }));
+            onAutoscoutChange?.(rowCar.id, patch);
+            toast.error(dict.carRow.autoscoutSync.retryError);
+        } else {
+            const patch = {
+                autoscoutSyncStatus: result.autoscoutSyncStatus ?? nextStatus,
+                autoscoutSyncError: null,
+            };
+            setRowCar((current) => ({
+                ...current,
+                ...patch,
+            }));
+            onAutoscoutChange?.(rowCar.id, patch);
+            toast.info(result.autoscoutQueued ? dict.carRow.autoscoutSync.retryQueued : dict.carRow.autoscoutSync.synced);
+        }
+        setIsRetryingAutoScout(false);
     };
 
     const statusConfig = STATUS_CONFIG[optimisticStatus];
@@ -151,6 +283,15 @@ export default function CarRow({ car }: { car: AdminCarRow }) {
     const thumbnailUrl = primaryImage
         ? (thumbFailedFor === primaryImage ? getImageUrl(primaryImage) : getThumbnailImageUrl(primaryImage))
         : null;
+    const autoscoutState = getAutoScoutSyncState(rowCar);
+    const autoscoutSynced = autoscoutState === "synced";
+    const autoscoutPending = autoscoutState === "pending";
+    const autoscoutLabel = autoscoutPending ? dict.carRow.autoscoutSync.pending : (
+        autoscoutSynced ? dict.carRow.autoscoutSync.synced : dict.carRow.autoscoutSync.notSynced
+    );
+    const autoscoutTitle = !autoscoutSynced && rowCar.autoscoutSyncError
+        ? `${autoscoutLabel}: ${rowCar.autoscoutSyncError}`
+        : autoscoutLabel;
 
     return (
         <tr className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors relative">
@@ -247,6 +388,44 @@ export default function CarRow({ car }: { car: AdminCarRow }) {
                     : tpl(daysOnline === 1 ? dict.carRow.onlineDays.one : dict.carRow.onlineDays.other, {
                         count: daysOnline.toLocaleString(locale === "fr" ? "fr-BE" : "nl-BE"),
                     })}
+            </td>
+
+            {/* AutoScout sync */}
+            <td className="px-5 py-3 whitespace-nowrap">
+                {autoscoutSynced || autoscoutPending ? (
+                    <span
+                        title={autoscoutTitle}
+                        aria-label={autoscoutTitle}
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${
+                            autoscoutSynced
+                                ? "border-green-500 bg-green-50 text-green-700"
+                                : "border-amber-500 bg-amber-50 text-amber-700"
+                        }`}
+                    >
+                        {autoscoutPending ? (
+                            <Loader2 size={11} className="animate-spin" />
+                        ) : (
+                            <span className="h-2 w-2 rounded-full bg-green-500" />
+                        )}
+                        {autoscoutPending ? dict.carRow.autoscoutSync.pendingShort : dict.carRow.autoscoutSync.syncedShort}
+                    </span>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={handleRetryAutoScoutSync}
+                        disabled={isRetryingAutoScout}
+                        title={autoscoutTitle}
+                        aria-label={dict.carRow.autoscoutSync.retry}
+                        className="inline-flex items-center gap-2 rounded-full border border-red-500 bg-red-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-red-700 transition-colors hover:bg-red-100 hover:text-red-800 disabled:cursor-wait disabled:opacity-70"
+                    >
+                        {isRetryingAutoScout ? (
+                            <Loader2 size={11} className="animate-spin" />
+                        ) : (
+                            <RefreshCcw size={11} />
+                        )}
+                        {dict.carRow.autoscoutSync.notSyncedShort}
+                    </button>
+                )}
             </td>
 
             {/* Actions */}

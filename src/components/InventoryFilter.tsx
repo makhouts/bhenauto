@@ -11,6 +11,11 @@ import {
     normalizeQueryRange,
 } from "@/lib/inventoryFilterRanges";
 
+type FilterOption = {
+    value: string;
+    label: string;
+};
+
 function formatPriceValue(value: number, noLimitLabel: string): string {
     return value >= PRICE_RANGE_CONFIG.max ? noLimitLabel : `€ ${value.toLocaleString("nl-NL")}`;
 }
@@ -183,7 +188,17 @@ function DualRangeSlider({
     );
 }
 
-export default function InventoryFilter({ availableBrands = [], dict }: { availableBrands?: string[]; dict: InventoryDict }) {
+export default function InventoryFilter({
+    availableBrands = [],
+    fuelOptions = [],
+    transmissionOptions = [],
+    dict,
+}: {
+    availableBrands?: string[];
+    fuelOptions?: FilterOption[];
+    transmissionOptions?: FilterOption[];
+    dict: InventoryDict;
+}) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const pathname = usePathname();
@@ -231,9 +246,11 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
 
     const currentBrand = searchParams.get("brand") || "";
     const currentFuel = searchParams.get("fuel") || "";
+    const currentTransmission = searchParams.get("transmission") || "";
     const activeFilterCount = [
         Boolean(currentBrand),
         Boolean(currentFuel),
+        Boolean(currentTransmission),
         priceRange.min > PRICE_RANGE_CONFIG.min || priceRange.max < PRICE_RANGE_CONFIG.max,
         mileageRange.min > MILEAGE_RANGE_CONFIG.min || mileageRange.max < MILEAGE_RANGE_CONFIG.max,
     ].filter(Boolean).length;
@@ -369,10 +386,50 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                             }
                         >
                             <option value="">{dict.fuelAll}</option>
-                            <option value="Benzine">Benzine</option>
-                            <option value="Diesel">Diesel</option>
-                            <option value="Elektrisch">Elektrisch</option>
-                            <option value="Hybride">Hybride</option>
+                            {fuelOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none theme-text-faint">
+                            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+
+                {/* Transmission */}
+                <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
+                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.transmissionLabel}</h4>
+                    <div className="relative">
+                        <label
+                            htmlFor="filter-transmission"
+                            className="sr-only"
+                        >
+                            {dict.transmissionLabel}
+                        </label>
+                        <select
+                            id="filter-transmission"
+                            className="w-full appearance-none rounded-md py-2.5 pl-4 pr-10 text-sm theme-text focus:outline-none focus:ring-1 focus:ring-[#d91c1c] focus:border-[#d91c1c] cursor-pointer"
+                            style={{ backgroundColor: 'var(--theme-surface)', border: '1px solid var(--theme-border)' }}
+                            value={currentTransmission}
+                            onChange={(e) =>
+                                pushFilterUrl(
+                                    buildPathWithQuery(
+                                        pathname,
+                                        updateSearchParams(searchParams.toString(), { transmission: e.target.value })
+                                    )
+                                )
+                            }
+                        >
+                            <option value="">{dict.transmissionAll}</option>
+                            {transmissionOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
                         </select>
                         <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none theme-text-faint">
                             <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -417,7 +474,7 @@ export default function InventoryFilter({ availableBrands = [], dict }: { availa
                         minAriaLabel={`${dict.priceLabel} minimum`}
                         maxAriaLabel={`${dict.priceLabel} maximum`}
                         formatBubbleValue={formatCompactPrice}
-                        startLabel="€10k"
+                        startLabel="€0"
                         endLabel="€250k+"
                         showMinBubble={(value) => value > PRICE_RANGE_CONFIG.min}
                         showMaxBubble={(value) => value < PRICE_RANGE_CONFIG.max}

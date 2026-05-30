@@ -80,6 +80,8 @@
         "priceLabel": "Prijsklasse",
         "fuelLabel": "Brandstof",
         "fuelAll": "Alle Typen",
+        "transmissionLabel": "Transmissie",
+        "transmissionAll": "Alle transmissies",
         "noLimit": "Geen limiet",
         "sort": "Sorteer",
         "found": "voertuig gevonden",

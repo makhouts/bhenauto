@@ -21,7 +21,7 @@ export default async function AdminCarsPage() {
         orderBy: { createdAt: "desc" },
         include: {
             images: {
-                orderBy: { createdAt: "asc" },
+                orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
                 take: 1,
             }
         }

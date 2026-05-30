@@ -80,6 +80,8 @@
         "priceLabel": "Fourchette de Prix",
         "fuelLabel": "Carburant",
         "fuelAll": "Tous Types",
+        "transmissionLabel": "Transmission",
+        "transmissionAll": "Toutes les transmissions",
         "noLimit": "Sans limite",
         "sort": "Trier",
         "found": "véhicule trouvé",

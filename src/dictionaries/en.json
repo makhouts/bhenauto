@@ -80,6 +80,8 @@
         "priceLabel": "Price Range",
         "fuelLabel": "Fuel Type",
         "fuelAll": "All Types",
+        "transmissionLabel": "Transmission",
+        "transmissionAll": "All transmissions",
         "noLimit": "No limit",
         "sort": "Sort",
         "found": "vehicle found",

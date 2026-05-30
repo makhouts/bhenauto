@@ -16,12 +16,14 @@ import DeferredMap from '@/components/DeferredMap';
 import carpassImg from '@/assets/carpass.webp';
 import { getDictionary } from '@/lib/dictionaries';
 import { isValidLocale, type Locale } from '@/lib/i18n';
+import { getTranslatedEquipmentOptions } from '@/lib/autoscout24/translated-options';
+import { localizeCarForPublic } from '@/lib/autoscout24/public-presentation';
 
 // Deduplicate the car query between generateMetadata and the page component
 const getCar = cache(async (slug: string) => {
     return prisma.car.findUnique({
         where: { slug },
-        include: { images: { orderBy: { createdAt: 'asc' } } },
+        include: { images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] } },
     });
 });
 
@@ -79,15 +81,17 @@ export default async function CarDetailPage(
 ) {
     const params = await props.params;
     const { lang } = params;
-    const car = await getCar(params.slug);
+    const dbCar = await getCar(params.slug);
 
-    if (!car) {
+    if (!dbCar) {
         notFound();
     }
 
     const locale: Locale = isValidLocale(lang) ? lang : 'nl';
     const dict = await getDictionary(locale);
+    const car = await localizeCarForPublic(dbCar, locale);
     const t = dict.carDetail;
+    const translatedFeatures = await getTranslatedEquipmentOptions(car.equipmentCodes, locale, car.features);
 
     // JSON-LD Structured Data
     const jsonLd = {
@@ -119,8 +123,7 @@ export default async function CarDetailPage(
         description: car.description
     };
 
-    // Transmission label
-    const transmissionLabel = car.transmission === 'Automatic' ? t.transmissionAuto : t.transmissionManual;
+    const transmissionLabel = car.transmission;
 
     // WhatsApp — include lang in the shared URL so the link resolves correctly
     const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bhenauto.com';
@@ -298,13 +301,13 @@ export default async function CarDetailPage(
                         </div>
 
                         {/* ── Features / Options ── */}
-                        {car.features && car.features.length > 0 && (
+                        {translatedFeatures.length > 0 && (
                             <div className="theme-surface rounded-xl shadow-sm p-7" style={{ border: '1px solid var(--theme-border)' }}>
                                 <h2 className="text-xl font-headings font-black theme-text mb-5">
                                     {t.featuresTitle}
                                 </h2>
                                 <div className="flex flex-wrap gap-2">
-                                    {car.features.map((feature: string, idx: number) => (
+                                    {translatedFeatures.map((feature: string, idx: number) => (
                                         <span
                                             key={idx}
                                             className="text-[#d91c1c] text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm"

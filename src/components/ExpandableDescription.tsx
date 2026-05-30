@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown } from "lucide-react";
+import { normalizeVehicleDescription } from "@/lib/autoscout24/presentation-format";
 
 const COLLAPSED_HEIGHT = 160; // px — roughly 5-6 lines
 
@@ -10,6 +11,7 @@ export default function ExpandableDescription({ description }: { description: st
   const [needsToggle, setNeedsToggle] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const innerRef = useRef<HTMLDivElement>(null);
+  const normalizedDescription = normalizeVehicleDescription(description);
 
   useEffect(() => {
     if (innerRef.current) {
@@ -17,9 +19,9 @@ export default function ExpandableDescription({ description }: { description: st
       setContentHeight(h);
       setNeedsToggle(h > COLLAPSED_HEIGHT + 20);
     }
-  }, [description]);
+  }, [normalizedDescription]);
 
-  const paragraphs = description.split("\n").filter(Boolean);
+  const paragraphs = normalizedDescription.split("\n").filter(Boolean);
 
   return (
     <div>

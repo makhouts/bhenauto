@@ -6,6 +6,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getAdminDictionary, tpl } from "@/lib/admin-i18n";
 import { getAdminLocale } from "@/lib/admin-i18n.server";
+import { getAutoScoutFormOptions } from "@/lib/autoscout24/form-options";
+import { getTranslatedEquipmentOptions } from "@/lib/autoscout24/translated-options";
 
 export async function generateMetadata(): Promise<Metadata> {
     const dict = getAdminDictionary(await getAdminLocale());
@@ -17,16 +19,20 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function EditCarPage(
     props: { params: Promise<{ id: string }> }
 ) {
-    const dict = getAdminDictionary(await getAdminLocale());
+    const locale = await getAdminLocale();
+    const dict = getAdminDictionary(locale);
+    const autoscoutOptions = await getAutoScoutFormOptions(locale);
     const params = await props.params;
     const car = await prisma.car.findUnique({
         where: { id: params.id },
-        include: { images: true },
+        include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
     });
 
     if (!car) {
         notFound();
     }
+
+    const translatedFeatures = await getTranslatedEquipmentOptions(car.equipmentCodes, locale, car.features);
 
     return (
         <div>
@@ -44,7 +50,7 @@ export default async function EditCarPage(
                 </p>
             </div>
 
-            <CarForm initialData={car} />
+            <CarForm initialData={{ ...car, features: translatedFeatures }} autoscoutOptions={autoscoutOptions} />
         </div>
     );
 }

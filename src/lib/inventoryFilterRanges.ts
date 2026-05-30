@@ -5,7 +5,7 @@ export interface NumericRangeConfig {
 }
 
 export const PRICE_RANGE_CONFIG: NumericRangeConfig = {
-    min: 10000,
+    min: 0,
     max: 250000,
     step: 5000,
 };

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
-import CarRow, { type AdminCarRow } from "@/components/admin/CarRow";
+import CarRow, { getAutoScoutSyncState, type AdminCarRow } from "@/components/admin/CarRow";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 import { tpl } from "@/lib/admin-i18n";
 
-type SortKey = "vehicle" | "price" | "visibility" | "status" | "online";
+type SortKey = "vehicle" | "price" | "visibility" | "status" | "online" | "autoscout";
 type SortDirection = "asc" | "desc";
 
 function getStatusPriority(car: AdminCarRow) {
@@ -20,11 +20,20 @@ function getCreatedAtTime(createdAt: AdminCarRow["createdAt"]) {
     return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
+function getAutoScoutPriority(car: AdminCarRow) {
+    const state = getAutoScoutSyncState(car);
+    if (state === "not-synced") return 0;
+    if (state === "pending") return 1;
+    return 2;
+}
+
 function getDefaultDirection(key: SortKey): SortDirection {
     switch (key) {
         case "visibility":
         case "online":
             return "desc";
+        case "autoscout":
+            return "asc";
         default:
             return "asc";
     }
@@ -32,9 +41,20 @@ function getDefaultDirection(key: SortKey): SortDirection {
 
 export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
     const { dict } = useAdminI18n();
+    const [rows, setRows] = useState(cars);
     const [query, setQuery] = useState("");
     const [sortKey, setSortKey] = useState<SortKey>("status");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+    useEffect(() => {
+        setRows(cars);
+    }, [cars]);
+
+    const updateRow = useCallback((id: string, patch: Partial<AdminCarRow>) => {
+        setRows((current) => current.map((car) => (
+            car.id === id ? { ...car, ...patch } : car
+        )));
+    }, []);
 
     const handleSort = (key: SortKey) => {
         if (sortKey === key) {
@@ -63,12 +83,14 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                 return (getStatusPriority(a) - getStatusPriority(b)) * direction;
             case "online":
                 return (getCreatedAtTime(a.createdAt) - getCreatedAtTime(b.createdAt)) * direction;
+            case "autoscout":
+                return (getAutoScoutPriority(a) - getAutoScoutPriority(b)) * direction;
             default:
                 return 0;
         }
     };
 
-    const filtered = cars
+    const filtered = rows
         .filter((car) => {
             if (!query.trim()) return true;
             const q = query.toLowerCase();
@@ -137,13 +159,14 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                             {renderSortButton("visibility", dict.carsTable.columns.visibility)}
                             {renderSortButton("status", dict.carsTable.columns.status)}
                             {renderSortButton("online", dict.carsTable.columns.online)}
+                            {renderSortButton("autoscout", dict.carsTable.columns.autoscout)}
                             <th className="px-5 py-4 font-semibold text-right" scope="col">{dict.carsTable.columns.actions}</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filtered.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
+                                <td colSpan={7} className="px-6 py-12 text-center text-slate-500 font-medium">
                                     {query ? (
                                         <p>{tpl(dict.carsTable.noMatch, { query })}</p>
                                     ) : (
@@ -153,7 +176,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                             </tr>
                         ) : (
                             filtered.map((car) => (
-                                <CarRow key={car.id} car={car} />
+                                <CarRow key={car.id} car={car} onAutoscoutChange={updateRow} />
                             ))
                         )}
                     </tbody>
@@ -162,7 +185,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
 
             {query && filtered.length > 0 && (
                 <p className="text-xs text-slate-400 font-medium mt-3">
-                    {tpl(dict.carsTable.found, { filtered: filtered.length, total: cars.length })}
+                    {tpl(dict.carsTable.found, { filtered: filtered.length, total: rows.length })}
                 </p>
             )}
         </>

@@ -7,6 +7,11 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "import:autoscout24": "tsx scripts/import-autoscout24-listings.ts",
+    "sync:autoscout24-references": "tsx scripts/sync-autoscout24-references.ts",
+    "sync:autoscout24-jobs": "tsx scripts/process-autoscout24-sync-jobs.ts",
+    "cleanup:sold-cars": "tsx scripts/cleanup-sold-cars.ts",
+    "test:autoscout24": "tsx --test src/lib/autoscout24/*.test.ts src/lib/cars/*.test.ts",
     "backfill:car-thumbs": "tsx scripts/backfill-car-thumbnails.ts",
     "backfill:car-image-variants": "tsx scripts/backfill-car-thumbnails.ts"
   },

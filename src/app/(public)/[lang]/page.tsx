@@ -10,6 +10,7 @@ import heroBg from "@/assets/wallpaper.webp";
 import { getDictionary, type Dictionary } from "@/lib/dictionaries";
 import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
+import { localizeCarsForPublic } from "@/lib/autoscout24/public-presentation";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 
@@ -60,19 +61,19 @@ export async function generateMetadata({
 
 // Async server component — runs its Prisma queries independently so the hero
 // renders immediately while this streams in behind a Suspense boundary.
-async function FeaturedCarsSection({ dict }: { dict: Dictionary }) {
+async function FeaturedCarsSection({ dict, locale }: { dict: Dictionary; locale: Locale }) {
   const [featuredDb, fillDb] = await Promise.all([
     prisma.car.findMany({
       where: { featured: true },
       orderBy: { createdAt: "desc" },
       take: 9,
-      include: { images: { orderBy: { createdAt: "asc" }, take: 1 } },
+      include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
     }),
     prisma.car.findMany({
       where: { featured: false },
       orderBy: { createdAt: "desc" },
       take: 9,
-      include: { images: { orderBy: { createdAt: "asc" }, take: 1 } },
+      include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
     }),
   ]);
 
@@ -80,8 +81,9 @@ async function FeaturedCarsSection({ dict }: { dict: Dictionary }) {
     featuredDb.length >= 9
       ? featuredDb
       : [...featuredDb, ...fillDb.slice(0, 9 - featuredDb.length)];
+  const localizedCars = await localizeCarsForPublic(displayCarsDb, locale);
 
-  const carouselData = displayCarsDb.map((c) => ({
+  const carouselData = localizedCars.map((c) => ({
     id: c.id,
     title: c.title,
     slug: c.slug,
@@ -230,9 +232,9 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       </section>
 
       {/* Carousel — streams in once Prisma resolves, hero is already visible */}
-      <Suspense fallback={<CarouselSkeleton />}>
-        <FeaturedCarsSection dict={dict} />
-      </Suspense>
+        <Suspense fallback={<CarouselSkeleton />}>
+          <FeaturedCarsSection dict={dict} locale={locale} />
+        </Suspense>
 
       <WhyChooseUs lang={locale} dict={dict.whyChooseUs} />
 

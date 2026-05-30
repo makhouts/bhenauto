@@ -11,7 +11,7 @@ async function main() {
     const cars = await prisma.car.findMany({
         select: {
             images: {
-                orderBy: { createdAt: "asc" },
+                orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
                 select: { url: true },
             },
         },

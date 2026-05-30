@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getAdminDictionary } from "@/lib/admin-i18n";
 import { getAdminLocale } from "@/lib/admin-i18n.server";
+import { getAutoScoutFormOptions } from "@/lib/autoscout24/form-options";
 
 export async function generateMetadata(): Promise<Metadata> {
     const dict = getAdminDictionary(await getAdminLocale());
@@ -13,7 +14,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function NewCarPage() {
-    const dict = getAdminDictionary(await getAdminLocale());
+    const locale = await getAdminLocale();
+    const dict = getAdminDictionary(locale);
+    const autoscoutOptions = await getAutoScoutFormOptions(locale);
     return (
         <div>
             <div className="mb-8">
@@ -28,7 +31,7 @@ export default async function NewCarPage() {
                 <p className="text-slate-500 font-medium text-sm">{dict.carEditPage.newDescription}</p>
             </div>
 
-            <CarForm />
+            <CarForm autoscoutOptions={autoscoutOptions} />
         </div>
     );
 }

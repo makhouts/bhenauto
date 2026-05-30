@@ -20,6 +20,8 @@ interface InfiniteInventoryProps {
     initialCars: CarWithImages[];
     initialHasMore: boolean;
     initialTotal: number;
+    fuelOptions: Array<{ value: string; label: string }>;
+    transmissionOptions: Array<{ value: string; label: string }>;
     dict: InventoryDict;
     commonDict: CommonDict;
     searchParams: {
@@ -32,6 +34,7 @@ interface InfiniteInventoryProps {
         minMileage?: string;
         maxMileage?: string;
         fuel?: string | string[];
+        transmission?: string | string[];
     };
 }
 
@@ -46,7 +49,15 @@ function formatMileageChipValue(value: number): string {
     return value >= MILEAGE_RANGE_CONFIG.max ? "200k+ km" : `${Math.round(value / 1000)}k km`;
 }
 
-function ActiveFilterChips({ dict }: { dict: InventoryDict }) {
+function ActiveFilterChips({
+    dict,
+    fuelOptions,
+    transmissionOptions,
+}: {
+    dict: InventoryDict;
+    fuelOptions: Array<{ value: string; label: string }>;
+    transmissionOptions: Array<{ value: string; label: string }>;
+}) {
     const router = useRouter();
     const pathname = usePathname();
     const urlSearchParams = useSearchParams();
@@ -64,6 +75,7 @@ function ActiveFilterChips({ dict }: { dict: InventoryDict }) {
 
     const brands = urlSearchParams.getAll("brand").filter(Boolean);
     const fuels = urlSearchParams.getAll("fuel").filter(Boolean);
+    const transmissions = urlSearchParams.getAll("transmission").filter(Boolean);
     const priceRange = normalizeQueryRange(
         urlSearchParams.get("minPrice"),
         urlSearchParams.get("maxPrice"),
@@ -74,6 +86,8 @@ function ActiveFilterChips({ dict }: { dict: InventoryDict }) {
         urlSearchParams.get("maxMileage"),
         MILEAGE_RANGE_CONFIG
     );
+    const fuelLabels = new Map(fuelOptions.map((option) => [option.value, option.label]));
+    const transmissionLabels = new Map(transmissionOptions.map((option) => [option.value, option.label]));
 
     const chips = [
         ...(brands.length > 0
@@ -86,8 +100,15 @@ function ActiveFilterChips({ dict }: { dict: InventoryDict }) {
         ...(fuels.length > 0
             ? [{
                 key: "fuel",
-                label: `${dict.fuelLabel}: ${fuels.join(", ")}`,
+                label: `${dict.fuelLabel}: ${fuels.map((fuelValue) => fuelLabels.get(fuelValue) ?? fuelValue).join(", ")}`,
                 onRemove: () => removeParams(["fuel"]),
+            }]
+            : []),
+        ...(transmissions.length > 0
+            ? [{
+                key: "transmission",
+                label: `${dict.transmissionLabel}: ${transmissions.map((value) => transmissionLabels.get(value) ?? value).join(", ")}`,
+                onRemove: () => removeParams(["transmission"]),
             }]
             : []),
         ...(priceRange.min > PRICE_RANGE_CONFIG.min || priceRange.max < PRICE_RANGE_CONFIG.max
@@ -131,6 +152,8 @@ export default function InfiniteInventory({
     initialCars,
     initialHasMore,
     initialTotal,
+    fuelOptions,
+    transmissionOptions,
     searchParams,
     dict,
     commonDict,
@@ -167,6 +190,7 @@ export default function InfiniteInventory({
             const result = await fetchCarsPaginated({
                 page,
                 pageSize: PAGE_SIZE,
+                locale,
                 ...params,
             });
             setCars(prev => {
@@ -178,7 +202,7 @@ export default function InfiniteInventory({
             setPage(p => p + 1);
             loadingRef.current = false;
         });
-    }, [hasMore, page, searchParamsKey]);
+    }, [hasMore, locale, page, searchParamsKey]);
 
     // IntersectionObserver to trigger loadMore
     useEffect(() => {
@@ -248,7 +272,11 @@ export default function InfiniteInventory({
                 </div>
             </div>
 
-            <ActiveFilterChips dict={dict} />
+            <ActiveFilterChips
+                dict={dict}
+                fuelOptions={fuelOptions}
+                transmissionOptions={transmissionOptions}
+            />
 
             {/* Grid / List */}
             <div className={viewMode === 'grid'

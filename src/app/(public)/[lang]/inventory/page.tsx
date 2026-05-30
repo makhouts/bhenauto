@@ -9,9 +9,23 @@ import { fetchCarsPaginated } from "@/app/actions/fetchCars";
 import prisma from "@/lib/prisma";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
+import { translateFuelLabel, translateTransmissionLabel } from "@/lib/autoscout24/presentation-format";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 const PAGE_SIZE = 9;
+
+type FilterOption = {
+  value: string;
+  label: string;
+};
+
+function uniqueNonEmpty(values: Array<string | null | undefined>) {
+  return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)))];
+}
+
+function sortFilterOptions(options: FilterOption[]) {
+  return options.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
+}
 
 // ISR: rebuild at most every 60 seconds; admin actions call revalidatePath to bust sooner
 export const revalidate = 60;
@@ -63,16 +77,38 @@ export default async function InventoryPage(props: {
   const minMileage = searchParams.minMileage as string | undefined;
   const maxMileage = searchParams.maxMileage as string | undefined;
   const fuel = searchParams.fuel as string | string[] | undefined;
+  const transmission = searchParams.transmission as string | string[] | undefined;
 
   // Fetch both in parallel — single render pass, no Suspense flash on re-navigation
-  const [availableBrands, { cars: initialCars, hasMore: initialHasMore, total }] =
+  const [availableBrands, inventoryFilterRows, { cars: initialCars, hasMore: initialHasMore, total }] =
     await Promise.all([
       prisma.car.findMany({ select: { brand: true }, distinct: ["brand"] })
         .then(rows => rows.map(r => r.brand).filter(Boolean).sort() as string[]),
-      fetchCarsPaginated({ page: 1, pageSize: PAGE_SIZE, brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel }),
+      prisma.car.findMany({
+        select: {
+          fuelCategory: true,
+          fuel_type: true,
+          transmission: true,
+        },
+      }),
+      fetchCarsPaginated({ page: 1, pageSize: PAGE_SIZE, locale, brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel, transmission }),
     ]);
 
-  const filterParams = { brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel };
+  const fuelOptions = sortFilterOptions(uniqueNonEmpty(
+    inventoryFilterRows.map((row) => row.fuelCategory?.trim() || row.fuel_type?.trim())
+  ).map((value) => ({
+    value,
+    label: translateFuelLabel(value, locale) ?? value,
+  })));
+
+  const transmissionOptions = sortFilterOptions(uniqueNonEmpty(
+    inventoryFilterRows.map((row) => row.transmission?.trim())
+  ).map((value) => ({
+    value,
+    label: translateTransmissionLabel(value, locale) ?? value,
+  })));
+
+  const filterParams = { brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel, transmission };
 
   const renderPersonalRequestBlock = (className: string) => (
     <div className={`bg-[#d91c1c] rounded-xl p-8 text-white relative flex-col justify-center shadow-lg overflow-hidden group border border-[#d91c1c] ${className}`}>
@@ -115,7 +151,12 @@ export default async function InventoryPage(props: {
 
         {/* Sidebar Filter */}
         <aside className="w-full lg:w-80 shrink-0">
-          <InventoryFilter availableBrands={availableBrands} dict={inv} />
+          <InventoryFilter
+            availableBrands={availableBrands}
+            fuelOptions={fuelOptions}
+            transmissionOptions={transmissionOptions}
+            dict={inv}
+          />
           {renderPersonalRequestBlock("mt-8 hidden lg:flex")}
         </aside>
 
@@ -136,6 +177,8 @@ export default async function InventoryPage(props: {
               initialHasMore={initialHasMore}
               initialTotal={total}
               searchParams={filterParams}
+              fuelOptions={fuelOptions}
+              transmissionOptions={transmissionOptions}
               dict={inv}
               commonDict={dict.common}
             />

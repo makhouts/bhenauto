@@ -22,7 +22,7 @@ export default async function RelatedVehicles({ currentCarId, brand, priceRange,
         },
         take: 4,
         orderBy: { createdAt: "desc" },
-        include: { images: { take: 1 } },
+        include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
     });
 
     let related = [...sameBrand];
@@ -40,7 +40,7 @@ export default async function RelatedVehicles({ currentCarId, brand, priceRange,
             },
             take: 4 - related.length,
             orderBy: { createdAt: "desc" },
-            include: { images: { take: 1 } },
+            include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
         });
         related = [...related, ...similarPrice];
     }
