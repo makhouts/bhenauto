@@ -23,7 +23,7 @@ interface CarouselCar {
   sold: boolean;
 }
 
-const AUTO_PLAY_MS = 5000;
+const AUTO_PLAY_MS = 4000;
 
 export default function LatestOccasionsCarousel({
   cars,
@@ -42,7 +42,7 @@ export default function LatestOccasionsCarousel({
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1280) { setVisible(3); setGap(40); }
+      if (window.innerWidth >= 1280) { setVisible(4); setGap(28); }
       else if (window.innerWidth >= 768) { setVisible(2); setGap(28); }
       else { setVisible(1); setGap(20); }
     };
@@ -64,13 +64,15 @@ export default function LatestOccasionsCarousel({
 
   const total = cars.length;
   const maxIndex = Math.max(0, total - visible);
+  const autoPlayEnabled = maxIndex > 0;
 
   const resetAutoPlay = useCallback(() => {
     if (autoRef.current) clearTimeout(autoRef.current);
+    if (!autoPlayEnabled) return;
     autoRef.current = setTimeout(() => {
       setIndex(i => (i >= maxIndex ? 0 : i + 1));
     }, AUTO_PLAY_MS);
-  }, [maxIndex]);
+  }, [autoPlayEnabled, maxIndex]);
 
   useEffect(() => {
     resetAutoPlay();
@@ -114,7 +116,7 @@ export default function LatestOccasionsCarousel({
   return (
     <section className="py-16 sm:py-24 theme-bg overflow-hidden">
       {/* Standard boxed container to align with website layout */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-10 xl:px-12">
 
         {/* ── Header ── */}
         <div className="flex items-end justify-between mb-10 sm:mb-14">
@@ -142,14 +144,22 @@ export default function LatestOccasionsCarousel({
                   key={i}
                   onClick={() => goTo(i)}
                   aria-label={`Ga naar positie ${i + 1}`}
-                  className="transition-all duration-300 rounded-full"
+                  className="relative overflow-hidden transition-all duration-300 rounded-full"
                   style={{
                     width: i === index ? 24 : 7,
                     height: 7,
                     borderRadius: 4,
                     backgroundColor: i === index ? '#d91c1c' : 'var(--theme-border)',
                   }}
-                />
+                >
+                  {i === index && autoPlayEnabled ? (
+                    <span
+                      key={`desktop-progress-${index}`}
+                      className="absolute inset-y-0 left-0 rounded-full bg-white/55"
+                      style={{ animation: `carousel-progress ${AUTO_PLAY_MS}ms linear forwards` }}
+                    />
+                  ) : null}
+                </button>
               ))}
             </div>
 
@@ -197,6 +207,7 @@ export default function LatestOccasionsCarousel({
               transform: `translateX(calc(-${index * (100 / visible)}% - ${index * (gap / visible)}px + ${dragging ? dragDelta : 0}px))`,
               transition: dragging ? 'none' : 'transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
               cursor: dragging ? 'grabbing' : 'grab',
+              willChange: 'transform',
             }}
           >
             {cars.map((car) => {
@@ -231,7 +242,7 @@ export default function LatestOccasionsCarousel({
                   {/* ── Image ── */}
                   <div
                     className="relative overflow-hidden"
-                    style={{ aspectRatio: '16/10', backgroundColor: 'var(--theme-skeleton)' }}
+                    style={{ aspectRatio: '4/3', backgroundColor: 'var(--theme-skeleton)' }}
                   >
                     <Image
                       src={imageSrc}
@@ -239,7 +250,7 @@ export default function LatestOccasionsCarousel({
                       fill
                       draggable={false}
                       className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 25vw"
                       quality={75}
                       onError={() => {
                         if (!car.imageFallback || failedImages.has(car.image)) return;
@@ -273,18 +284,18 @@ export default function LatestOccasionsCarousel({
                   </div>
 
                   {/* ── Card Body ── */}
-                  <div className="p-5 sm:p-6">
+                  <div className="p-4 sm:p-4">
 
                     {/* Brand + Model */}
-                    <div className="mb-4">
-                      <h3 className="text-lg sm:text-xl font-headings font-black theme-text leading-tight line-clamp-1">
+                    <div className="mb-3">
+                      <h3 className="text-lg sm:text-[1.15rem] font-headings font-black theme-text leading-tight line-clamp-1">
                         {car.brand} {car.model}
                       </h3>
                     </div>
 
                     {/* Specs — 3-column split */}
                     <div
-                      className="flex items-stretch mb-5 rounded-xl overflow-hidden"
+                      className="flex items-stretch mb-3 rounded-xl overflow-hidden"
                       style={{ border: '1px solid var(--theme-border)' }}
                     >
                       {[
@@ -294,7 +305,7 @@ export default function LatestOccasionsCarousel({
                       ].map((spec, i) => (
                         <div
                           key={i}
-                          className="flex-1 flex flex-col items-center justify-center gap-1 py-3.5 px-2 relative"
+                          className="relative flex-1 flex flex-col items-center justify-center gap-1 px-2 py-2.5"
                           style={{ backgroundColor: 'var(--theme-bg-alt)' }}
                         >
                           {/* Divider between columns */}
@@ -315,7 +326,7 @@ export default function LatestOccasionsCarousel({
                             </span>
                           </div>
                           {/* Value */}
-                          <span className="text-sm font-extrabold theme-text leading-none text-center">
+                          <span className="text-[13px] font-extrabold theme-text leading-none text-center">
                             {spec.value}
                           </span>
                         </div>
@@ -323,7 +334,7 @@ export default function LatestOccasionsCarousel({
                     </div>
 
                     {/* Divider */}
-                    <div className="w-full h-px mb-4" style={{ backgroundColor: 'var(--theme-border)' }} />
+                    <div className="mb-3 h-px w-full" style={{ backgroundColor: 'var(--theme-border)' }} />
 
                     {/* CTA */}
                     <div className="flex items-center justify-between">
@@ -353,14 +364,22 @@ export default function LatestOccasionsCarousel({
               <button
                 key={i}
                 onClick={() => goTo(i)}
-                className="transition-all duration-300 rounded-full"
+                className="relative overflow-hidden transition-all duration-300 rounded-full"
                 style={{
                   width: i === index ? 18 : 6,
                   height: 6,
                   borderRadius: 3,
                   backgroundColor: i === index ? '#d91c1c' : 'var(--theme-border)',
                 }}
-              />
+              >
+                {i === index && autoPlayEnabled ? (
+                  <span
+                    key={`mobile-progress-${index}`}
+                    className="absolute inset-y-0 left-0 rounded-full bg-white/55"
+                    style={{ animation: `carousel-progress ${AUTO_PLAY_MS}ms linear forwards` }}
+                  />
+                ) : null}
+              </button>
             ))}
           </div>
           <Link
@@ -385,6 +404,16 @@ export default function LatestOccasionsCarousel({
         </div>
 
       </div>
+      <style jsx>{`
+        @keyframes carousel-progress {
+          from {
+            width: 0%;
+          }
+          to {
+            width: 100%;
+          }
+        }
+      `}</style>
     </section>
   );
 }

@@ -6,6 +6,7 @@ import CarsTableClient from "@/components/admin/CarsTableClient";
 import { requireAdmin } from "@/lib/auth-guard";
 import { getAdminDictionary } from "@/lib/admin-i18n";
 import { getAdminLocale } from "@/lib/admin-i18n.server";
+import { AdminPage, AdminPageHeader, AdminSurface } from "@/components/admin/admin-ui";
 
 export async function generateMetadata(): Promise<Metadata> {
     const dict = getAdminDictionary(await getAdminLocale());
@@ -28,22 +29,25 @@ export default async function AdminCarsPage() {
     });
 
     return (
-        <div>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 border-b border-slate-200 pb-6 gap-4">
-                <div>
-                    <h1 className="text-3xl font-headings text-slate-900 mb-2 font-black">{dict.carsPage.title}</h1>
-                    <p className="text-slate-500 font-medium text-sm">{dict.carsPage.description}</p>
-                </div>
-                <Link
-                    href="/admin/cars/new"
-                    className="flex items-center bg-[#d91c1c] hover:bg-[#b91515] text-white px-6 py-3 font-bold uppercase tracking-widest text-sm transition-all shadow-md shadow-[#d91c1c]/20 rounded-lg shrink-0"
-                >
-                    <Plus size={18} className="mr-2" />
-                    {dict.carsPage.add}
-                </Link>
-            </div>
+        <AdminPage>
+            <AdminPageHeader
+                eyebrow={dict.layout.nav.cars}
+                title={dict.carsPage.title}
+                description={dict.carsPage.description}
+                actions={(
+                    <Link
+                        href="/admin/cars/new"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#d91c1c] px-5 py-3 text-sm font-bold text-white shadow-[0_12px_24px_rgba(217,28,28,0.18)] transition-colors hover:bg-[#b91515]"
+                    >
+                        <Plus size={18} />
+                        {dict.carsPage.add}
+                    </Link>
+                )}
+            />
 
-            <CarsTableClient cars={cars} />
-        </div>
+            <AdminSurface padded={false}>
+                <CarsTableClient cars={cars} />
+            </AdminSurface>
+        </AdminPage>
     );
 }

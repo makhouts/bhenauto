@@ -7,6 +7,16 @@ import { manrope } from "@/app/fonts";
 import "../../globals.css";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
+const imageHosts = (() => {
+  const hosts = new Set<string>(["https://images.bhenauto.com"]);
+  const configured = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+  if (configured) {
+    try {
+      hosts.add(new URL(configured).origin);
+    } catch {}
+  }
+  return [...hosts];
+})();
 
 // Generate static params for all locales
 export function generateStaticParams() {
@@ -97,7 +107,12 @@ export default async function LangLayout({
   return (
     <html lang={lang} className="scroll-smooth" data-scroll-behavior="smooth">
       <head>
-        <link rel="dns-prefetch" href="https://images.bhenauto.com" />
+        {imageHosts.map((href) => (
+          <link key={`${href}-prefetch`} rel="dns-prefetch" href={href} />
+        ))}
+        {imageHosts.map((href) => (
+          <link key={`${href}-preconnect`} rel="preconnect" href={href} crossOrigin="" />
+        ))}
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

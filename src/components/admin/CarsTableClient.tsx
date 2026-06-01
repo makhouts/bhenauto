@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CarFront, CheckCircle2, Clock3, Search, ShieldAlert, Star } from "lucide-react";
 import CarRow, { getAutoScoutSyncState, type AdminCarRow } from "@/components/admin/CarRow";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 import { tpl } from "@/lib/admin-i18n";
+import { AdminBadge, AdminInputWrap, AdminToolbar } from "@/components/admin/admin-ui";
 
 type SortKey = "vehicle" | "price" | "visibility" | "status" | "online" | "autoscout";
 type SortDirection = "asc" | "desc";
+type QuickFilter = "all" | "available" | "reserved" | "sold" | "featured" | "autoscout-problem";
 
 function getStatusPriority(car: AdminCarRow) {
     if (car.sold) return 2;
@@ -45,6 +47,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
     const [query, setQuery] = useState("");
     const [sortKey, setSortKey] = useState<SortKey>("status");
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+    const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
 
     useEffect(() => {
         setRows(cars);
@@ -55,6 +58,10 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
             car.id === id ? { ...car, ...patch } : car
         )));
     }, []);
+
+    const toggleQuickFilter = (next: QuickFilter) => {
+        setQuickFilter((current) => current === next ? "all" : next);
+    };
 
     const handleSort = (key: SortKey) => {
         if (sortKey === key) {
@@ -102,6 +109,22 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                 car.color?.toLowerCase().includes(q)
             );
         })
+        .filter((car) => {
+            switch (quickFilter) {
+                case "available":
+                    return !car.sold && !car.reserved;
+                case "reserved":
+                    return car.reserved;
+                case "sold":
+                    return car.sold;
+                case "featured":
+                    return car.featured;
+                case "autoscout-problem":
+                    return getAutoScoutSyncState(car) === "not-synced";
+                default:
+                    return true;
+            }
+        })
         .slice()
         .sort((a, b) => {
             const primary = compareCars(a, b);
@@ -112,6 +135,26 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
 
             return getCreatedAtTime(b.createdAt) - getCreatedAtTime(a.createdAt);
         });
+
+    const availableCount = rows.filter((car) => !car.sold && !car.reserved).length;
+    const reservedCount = rows.filter((car) => car.reserved).length;
+    const soldCount = rows.filter((car) => car.sold).length;
+    const featuredCount = rows.filter((car) => car.featured).length;
+    const autoscoutProblemCount = rows.filter((car) => getAutoScoutSyncState(car) === "not-synced").length;
+
+    const filterBadgeClass = (value: QuickFilter) => (
+        quickFilter === value
+            ? "border-current/35 ring-2 ring-current/18 ring-offset-2 ring-offset-white shadow-[0_12px_24px_rgba(15,23,42,0.10)]"
+            : "opacity-92 hover:opacity-100"
+    );
+
+    const filterButtonClass = (value: QuickFilter) => (
+        `cursor-pointer rounded-full transition-all duration-200 ease-out ${
+            quickFilter === value
+                ? "-translate-y-0.5 scale-[1.02]"
+                : "hover:-translate-y-0.5 hover:scale-[1.01]"
+        }`
+    );
 
     const renderSortButton = (key: SortKey, label: string) => {
         const isActive = sortKey === key;
@@ -138,22 +181,67 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
 
     return (
         <>
-            {/* Search bar */}
-            <div className="relative mb-4">
-                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <input
-                    type="text"
-                    placeholder={dict.carsTable.searchPlaceholder}
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    className="w-full sm:w-72 pl-10 pr-4 py-2.5 text-sm font-medium border border-slate-200 rounded-xl bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#d91c1c]/20 focus:border-[#d91c1c] transition-all placeholder:text-slate-400"
-                />
+            <div className="px-5 py-5 sm:px-6">
+                <AdminToolbar>
+                    <div className="min-w-0 flex-1">
+                        <AdminInputWrap className="max-w-xl">
+                            <Search size={18} className="shrink-0 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder={dict.carsTable.searchPlaceholder}
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+                            />
+                        </AdminInputWrap>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={() => setQuickFilter("all")} aria-pressed={quickFilter === "all"} className={filterButtonClass("all")}>
+                            <AdminBadge tone="blue" className={filterBadgeClass("all")}>
+                                <CarFront size={13} />
+                                {tpl(dict.dashboard.inventory.total, { count: rows.length })}
+                            </AdminBadge>
+                        </button>
+                        <button type="button" onClick={() => toggleQuickFilter("available")} aria-pressed={quickFilter === "available"} className={filterButtonClass("available")}>
+                            <AdminBadge tone="green" className={filterBadgeClass("available")}>
+                                <CheckCircle2 size={13} />
+                                {availableCount} {dict.carRow.statuses.available.toLowerCase()}
+                            </AdminBadge>
+                        </button>
+                        <button type="button" onClick={() => toggleQuickFilter("reserved")} aria-pressed={quickFilter === "reserved"} className={filterButtonClass("reserved")}>
+                            <AdminBadge tone="amber" className={filterBadgeClass("reserved")}>
+                                <Clock3 size={13} />
+                                {reservedCount} {dict.carRow.statuses.reserved.toLowerCase()}
+                            </AdminBadge>
+                        </button>
+                        <button type="button" onClick={() => toggleQuickFilter("sold")} aria-pressed={quickFilter === "sold"} className={filterButtonClass("sold")}>
+                            <AdminBadge tone="red" className={filterBadgeClass("sold")}>
+                                <ShieldAlert size={13} />
+                                {soldCount} {dict.carRow.statuses.sold.toLowerCase()}
+                            </AdminBadge>
+                        </button>
+                        <button type="button" onClick={() => toggleQuickFilter("featured")} aria-pressed={quickFilter === "featured"} className={filterButtonClass("featured")}>
+                            <AdminBadge tone="violet" className={filterBadgeClass("featured")}>
+                                <Star size={13} />
+                                {featuredCount} {dict.carRow.featured.active.toLowerCase()}
+                            </AdminBadge>
+                        </button>
+                        {autoscoutProblemCount > 0 ? (
+                            <button type="button" onClick={() => toggleQuickFilter("autoscout-problem")} aria-pressed={quickFilter === "autoscout-problem"} className={filterButtonClass("autoscout-problem")}>
+                                <AdminBadge tone="red" className={filterBadgeClass("autoscout-problem")}>
+                                    <ShieldAlert size={13} />
+                                    {autoscoutProblemCount} {dict.carRow.autoscoutSync.notSyncedShort}
+                                </AdminBadge>
+                            </button>
+                        ) : null}
+                    </div>
+                </AdminToolbar>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-widest text-slate-500">
+            <div className="overflow-x-auto">
+                <table className="min-w-[1120px] w-full text-left border-collapse">
+                    <thead className="sticky top-0 z-10">
+                        <tr className="border-b border-slate-200 bg-slate-50/95 text-xs uppercase tracking-widest text-slate-500 backdrop-blur">
                             {renderSortButton("vehicle", dict.carsTable.columns.vehicle)}
                             {renderSortButton("price", dict.carsTable.columns.price)}
                             {renderSortButton("visibility", dict.carsTable.columns.visibility)}
@@ -163,10 +251,10 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                             <th className="px-5 py-4 font-semibold text-right" scope="col">{dict.carsTable.columns.actions}</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody key={`${quickFilter}:${query}`} className="motion-safe:animate-[fadeIn_220ms_ease-out]">
                         {filtered.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-6 py-12 text-center text-slate-500 font-medium">
+                                <td colSpan={7} className="px-6 py-16 text-center text-slate-500 font-medium">
                                     {query ? (
                                         <p>{tpl(dict.carsTable.noMatch, { query })}</p>
                                     ) : (
@@ -183,11 +271,13 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                 </table>
             </div>
 
-            {query && filtered.length > 0 && (
-                <p className="text-xs text-slate-400 font-medium mt-3">
-                    {tpl(dict.carsTable.found, { filtered: filtered.length, total: rows.length })}
+            <div className="border-t border-slate-100 px-5 py-4 sm:px-6">
+                <p className="text-xs font-medium text-slate-400">
+                    {query
+                        ? tpl(dict.carsTable.found, { filtered: filtered.length, total: rows.length })
+                        : tpl(dict.carsTable.found, { filtered: rows.length, total: rows.length })}
                 </p>
-            )}
+            </div>
         </>
     );
 }

@@ -4,12 +4,12 @@ import type { Metadata } from "next";
 import InventoryFilter from "@/components/InventoryFilter";
 import InfiniteInventory from "@/components/InfiniteInventory";
 import CarCardSkeleton from "@/components/CarCardSkeleton";
-import PageTransition from "@/components/PageTransition";
 import { fetchCarsPaginated } from "@/app/actions/fetchCars";
 import prisma from "@/lib/prisma";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 import { translateFuelLabel, translateTransmissionLabel } from "@/lib/autoscout24/presentation-format";
+import { getLocalizedReferenceLabels } from "@/lib/autoscout24/public-presentation";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 const PAGE_SIZE = 9;
@@ -80,29 +80,30 @@ export default async function InventoryPage(props: {
   const transmission = searchParams.transmission as string | string[] | undefined;
 
   // Fetch both in parallel — single render pass, no Suspense flash on re-navigation
-  const [availableBrands, inventoryFilterRows, { cars: initialCars, hasMore: initialHasMore, total }] =
+  const [availableBrands, fuelCategoryRows, fuelTypeRows, transmissionRows, { cars: initialCars, hasMore: initialHasMore, total }] =
     await Promise.all([
       prisma.car.findMany({ select: { brand: true }, distinct: ["brand"] })
         .then(rows => rows.map(r => r.brand).filter(Boolean).sort() as string[]),
-      prisma.car.findMany({
-        select: {
-          fuelCategory: true,
-          fuel_type: true,
-          transmission: true,
-        },
-      }),
+      prisma.car.findMany({ select: { fuelCategory: true }, distinct: ["fuelCategory"] }),
+      prisma.car.findMany({ select: { fuel_type: true }, distinct: ["fuel_type"] }),
+      prisma.car.findMany({ select: { transmission: true }, distinct: ["transmission"] }),
       fetchCarsPaginated({ page: 1, pageSize: PAGE_SIZE, locale, brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel, transmission }),
     ]);
 
-  const fuelOptions = sortFilterOptions(uniqueNonEmpty(
-    inventoryFilterRows.map((row) => row.fuelCategory?.trim() || row.fuel_type?.trim())
-  ).map((value) => ({
+  const fuelValues = uniqueNonEmpty(
+    [
+      ...fuelCategoryRows.map((row) => row.fuelCategory?.trim()),
+      ...fuelTypeRows.map((row) => row.fuel_type?.trim()),
+    ]
+  );
+  const fuelCategoryLabels = await getLocalizedReferenceLabels("FuelCategory", fuelValues, locale);
+  const fuelOptions = sortFilterOptions(fuelValues.map((value) => ({
     value,
-    label: translateFuelLabel(value, locale) ?? value,
+    label: fuelCategoryLabels.get(value) ?? translateFuelLabel(value, locale) ?? value,
   })));
 
   const transmissionOptions = sortFilterOptions(uniqueNonEmpty(
-    inventoryFilterRows.map((row) => row.transmission?.trim())
+    transmissionRows.map((row) => row.transmission?.trim())
   ).map((value) => ({
     value,
     label: translateTransmissionLabel(value, locale) ?? value,
@@ -129,7 +130,6 @@ export default async function InventoryPage(props: {
   );
 
   return (
-    <PageTransition>
     <main className="min-h-screen theme-bg flex flex-col pt-2 md:pt-8">
 
       {/* Header Banner */}
@@ -187,6 +187,5 @@ export default async function InventoryPage(props: {
         </section>
       </div>
     </main>
-    </PageTransition>
   );
 }

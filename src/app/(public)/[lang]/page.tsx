@@ -13,6 +13,7 @@ import { isValidLocale, locales, type Locale } from "@/lib/i18n";
 import { localizeCarsForPublic } from "@/lib/autoscout24/public-presentation";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
+const HOMEPAGE_CAROUSEL_LIMIT = 12;
 
 export const revalidate = 60;
 
@@ -66,21 +67,21 @@ async function FeaturedCarsSection({ dict, locale }: { dict: Dictionary; locale:
     prisma.car.findMany({
       where: { featured: true },
       orderBy: { createdAt: "desc" },
-      take: 9,
+      take: HOMEPAGE_CAROUSEL_LIMIT,
       include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
     }),
     prisma.car.findMany({
       where: { featured: false },
       orderBy: { createdAt: "desc" },
-      take: 9,
+      take: HOMEPAGE_CAROUSEL_LIMIT,
       include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
     }),
   ]);
 
   const displayCarsDb =
-    featuredDb.length >= 9
+    featuredDb.length >= HOMEPAGE_CAROUSEL_LIMIT
       ? featuredDb
-      : [...featuredDb, ...fillDb.slice(0, 9 - featuredDb.length)];
+      : [...featuredDb, ...fillDb.slice(0, HOMEPAGE_CAROUSEL_LIMIT - featuredDb.length)];
   const localizedCars = await localizeCarsForPublic(displayCarsDb, locale);
 
   const carouselData = localizedCars.map((c) => ({
@@ -118,8 +119,8 @@ function CarouselSkeleton() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="h-5 w-32 rounded mb-3 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
         <div className="h-10 w-64 rounded mb-14 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="rounded-2xl overflow-hidden animate-pulse" style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}>
               <div className="h-52 w-full" style={{ backgroundColor: "var(--theme-skeleton)" }} />
               <div className="p-6 space-y-3">

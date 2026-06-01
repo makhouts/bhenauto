@@ -36,6 +36,33 @@ function uniqueCodes(values: Array<string | null | undefined>) {
   return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)))];
 }
 
+export async function getLocalizedReferenceLabels(
+  referenceType: string,
+  referenceIds: Array<string | null | undefined>,
+  locale: Locale,
+) {
+  const uniqueReferenceIds = uniqueCodes(referenceIds);
+  if (uniqueReferenceIds.length === 0) return new Map<string, string>();
+
+  const references = await prisma.autoScoutReference.findMany({
+    where: {
+      referenceType,
+      referenceId: { in: uniqueReferenceIds },
+    },
+    select: {
+      referenceId: true,
+      nameNl: true,
+      nameFr: true,
+      nameEn: true,
+    },
+  });
+
+  return new Map(references.flatMap((reference) => {
+    const localized = localizedName(reference, locale);
+    return localized ? [[reference.referenceId, localized]] : [];
+  }));
+}
+
 export async function localizeCarsForPublic<T extends PublicCarPresentationInput>(
   cars: T[],
   locale: Locale,
@@ -43,10 +70,12 @@ export async function localizeCarsForPublic<T extends PublicCarPresentationInput
   if (cars.length === 0) return cars;
 
   const fuelCodes = uniqueCodes(cars.map((car) => car.fuelTypeCode));
+  const fuelCategoryCodes = uniqueCodes(cars.map((car) => car.fuelCategory));
   const transmissionCodes = uniqueCodes(cars.map((car) => car.transmissionCode));
   const colorCodes = uniqueCodes(cars.map((car) => car.exteriorColorCode));
   const referenceFilters = [
     ...(fuelCodes.length > 0 ? [{ referenceType: "FuelType", referenceId: { in: fuelCodes } }] : []),
+    ...(fuelCategoryCodes.length > 0 ? [{ referenceType: "FuelCategory", referenceId: { in: fuelCategoryCodes } }] : []),
     ...(transmissionCodes.length > 0 ? [{ referenceType: "Transmission", referenceId: { in: transmissionCodes } }] : []),
     ...(colorCodes.length > 0 ? [{ referenceType: "BodyColor", referenceId: { in: colorCodes } }] : []),
   ];
@@ -72,10 +101,11 @@ export async function localizeCarsForPublic<T extends PublicCarPresentationInput
   }
 
   return cars.map((car) => {
-    const translatedFuel = translateFuelLabel(car.fuelCategory, locale)
-      ?? car.fuelCategory?.trim()
+    const translatedFuel = labels.get(`FuelCategory:${car.fuelCategory ?? ""}`)
+      ?? translateFuelLabel(car.fuelCategory, locale)
       ?? labels.get(`FuelType:${car.fuelTypeCode ?? ""}`)
       ?? translateFuelLabel(car.fuel_type, locale)
+      ?? car.fuelCategory?.trim()
       ?? car.fuel_type?.trim()
       ?? unknownVehicleLabel(locale);
 

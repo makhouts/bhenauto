@@ -59,7 +59,9 @@ const baseCar: AutoScoutSyncCarInput = {
   bodyTypeCode: "6",
   vehicleTypeCode: "C",
   fuelTypeCode: "1",
-  fuelCategory: null,
+  fuelCategory: "B",
+  additionalFuelTypeCodes: [],
+  isPluginHybrid: null,
   transmissionCode: "A",
   drivetrainCode: null,
   powerKw: 250,
@@ -105,6 +107,7 @@ test("builds a complete AutoScout listing payload from a website car", () => {
   assert.deepEqual(result.errors, []);
   assert.equal(result.payload?.make, 13);
   assert.equal(result.payload?.model, 1641);
+  assert.equal(result.payload?.modelVersion, "M Sport");
   assert.equal(result.payload?.vehicleType, "C");
   assert.equal(result.payload?.publication.status, "Active");
   assert.equal(result.payload?.productionYear, "2021");
@@ -112,6 +115,36 @@ test("builds a complete AutoScout listing payload from a website car", () => {
   assert.equal(result.payload?.prices.public.isTaxDeductible, true);
   assert.deepEqual(result.payload?.images, [{ id: "image-1" }, { id: "image-2" }]);
   assert.deepEqual(result.payload?.equipment, [1]);
+});
+
+test("derives AutoScout modelVersion from the internal title without duplicating make and model", () => {
+  const result = buildAutoScoutListingPayload({
+    car: {
+      ...baseCar,
+      title: "BMW X5 xDrive45e M Sport / Pano / Camera",
+      version: null,
+    },
+    references,
+    imageIds: ["image-1"],
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.payload?.modelVersion, "xDrive45e M Sport / Pano / Camera");
+});
+
+test("uses the full internal title when it does not start with make and model", () => {
+  const result = buildAutoScoutListingPayload({
+    car: {
+      ...baseCar,
+      title: "xDrive45e M Sport / Pano / Camera",
+      version: null,
+    },
+    references,
+    imageIds: ["image-1"],
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.payload?.modelVersion, "xDrive45e M Sport / Pano / Camera");
 });
 
 test("normalizes production year to the AutoScout yyyy format", () => {
@@ -129,21 +162,40 @@ test("normalizes production year to the AutoScout yyyy format", () => {
   assert.equal(result.payload?.productionYear, "2021");
 });
 
-test("derives required AutoScout fuel type from fuel category when code is missing", () => {
+test("keeps optional primary fuel type empty when category is available", () => {
   const result = buildAutoScoutListingPayload({
     car: {
       ...baseCar,
-      fuel_type: "Plug-in Hybride",
       fuelTypeCode: null,
-      fuelCategory: "Elektrisch/Benzine",
+      fuelCategory: "B",
     },
     references,
     imageIds: ["image-1"],
   });
 
   assert.deepEqual(result.errors, []);
-  assert.equal(result.payload?.primaryFuelType, 2);
+  assert.equal(result.payload?.primaryFuelType, undefined);
+  assert.equal(result.payload?.fuelCategory, "B");
+});
+
+test("preserves plug-in hybrid fuel fields", () => {
+  const result = buildAutoScoutListingPayload({
+    car: {
+      ...baseCar,
+      fuelTypeCode: "12",
+      fuelCategory: "2",
+      additionalFuelTypeCodes: ["2"],
+      isPluginHybrid: true,
+    },
+    references,
+    imageIds: ["image-1"],
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.payload?.primaryFuelType, 12);
+  assert.deepEqual(result.payload?.additionalFuelTypes, [2]);
   assert.equal(result.payload?.fuelCategory, "2");
+  assert.equal(result.payload?.isPluginHybrid, true);
 });
 
 test("marks reserved website cars inactive on AutoScout", () => {

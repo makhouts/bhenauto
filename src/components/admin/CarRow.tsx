@@ -1,13 +1,14 @@
 "use client";
 
 import { differenceInCalendarDays } from "date-fns";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { toggleFeatured, deleteCar, retryCarAutoscoutSync, updateCarStatus } from "@/app/actions/cars";
-import { Star, Edit, Trash2, Loader2, ChevronDown, CheckCircle, Clock, XCircle, X, RefreshCcw } from "lucide-react";
+import { Star, Edit, Trash2, Loader2, ChevronDown, CheckCircle, Clock, XCircle, X, RefreshCcw, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { getImageUrl, getThumbnailImageUrl } from "@/lib/image-url";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
@@ -92,16 +93,21 @@ export default function CarRow({
     onAutoscoutChange?: (id: string, patch: Partial<AdminCarRow>) => void;
 }) {
     const { locale, dict } = useAdminI18n();
+    const router = useRouter();
     const initialStatus = getStatus(car);
     const [rowCar, setRowCar] = useState(car);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isRetryingAutoScout, setIsRetryingAutoScout] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [actionsOpen, setActionsOpen] = useState(false);
+    const [actionsMenuStyle, setActionsMenuStyle] = useState<CSSProperties | null>(null);
     const [thumbFailedFor, setThumbFailedFor] = useState<string | null>(null);
     // Optimistic status — updates immediately on user interaction
     const [optimisticStatus, setOptimisticStatus] = useState<Status>(initialStatus);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const actionsButtonRef = useRef<HTMLButtonElement>(null);
+    const actionsMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setRowCar(car);
@@ -161,13 +167,78 @@ export default function CarRow({
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [showDeleteConfirm, isUpdating]);
 
+    useEffect(() => {
+        if (!actionsOpen) return;
+
+        const updateMenuPosition = () => {
+            if (!actionsButtonRef.current) return;
+
+            const buttonRect = actionsButtonRef.current.getBoundingClientRect();
+            const menuWidth = 224;
+            const menuHeight = actionsMenuRef.current?.offsetHeight ?? 110;
+            const spaceBelow = window.innerHeight - buttonRect.bottom;
+            const spaceAbove = buttonRect.top;
+            const shouldOpenUp = spaceBelow < menuHeight + 12 && spaceAbove > spaceBelow;
+
+            const left = Math.max(12, Math.min(buttonRect.right - menuWidth, window.innerWidth - menuWidth - 12));
+            const top = shouldOpenUp
+                ? Math.max(12, buttonRect.top - menuHeight - 8)
+                : Math.min(window.innerHeight - menuHeight - 12, buttonRect.bottom + 8);
+
+            setActionsMenuStyle({
+                position: "fixed",
+                top,
+                left,
+                width: menuWidth,
+                zIndex: 40,
+            });
+        };
+
+        const handlePointerDown = (event: PointerEvent) => {
+            const target = event.target as Node;
+            if (actionsButtonRef.current?.contains(target)) return;
+            if (actionsMenuRef.current?.contains(target)) return;
+            setActionsOpen(false);
+        };
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setActionsOpen(false);
+        };
+
+        updateMenuPosition();
+        const rafId = window.requestAnimationFrame(updateMenuPosition);
+        window.addEventListener("resize", updateMenuPosition);
+        window.addEventListener("scroll", updateMenuPosition, true);
+        window.addEventListener("pointerdown", handlePointerDown);
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.cancelAnimationFrame(rafId);
+            window.removeEventListener("resize", updateMenuPosition);
+            window.removeEventListener("scroll", updateMenuPosition, true);
+            window.removeEventListener("pointerdown", handlePointerDown);
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [actionsOpen]);
+
     const handleToggleFeatured = async () => {
         setIsUpdating(true);
-        const result = await toggleFeatured(car.id, !car.featured);
+        const nextFeatured = !rowCar.featured;
+        const result = await toggleFeatured(rowCar.id, nextFeatured);
         if (result?.error) {
-            toast.error(dict.carRow.featured.updateError);
+            toast.error(
+                result.code === "MAX_FEATURED_CARS_REACHED"
+                    ? dict.carRow.featured.maxReached
+                    : dict.carRow.featured.updateError
+            );
         } else {
-            toast.success(car.featured ? dict.carRow.featured.deactivated : dict.carRow.featured.activated);
+            const patch = { featured: nextFeatured };
+            setRowCar((current) => ({
+                ...current,
+                ...patch,
+            }));
+            onAutoscoutChange?.(rowCar.id, patch);
+            toast.success(nextFeatured ? dict.carRow.featured.activated : dict.carRow.featured.deactivated);
         }
         setIsUpdating(false);
     };
@@ -218,6 +289,12 @@ export default function CarRow({
         } else {
             toast.success(tpl(dict.carRow.deleted, { name: `${car.brand} ${car.model}` }));
         }
+    };
+
+    const handleRowClick = (event: MouseEvent<HTMLTableRowElement>) => {
+        const target = event.target as HTMLElement;
+        if (target.closest("button, a, input, select, textarea, label")) return;
+        router.push(`/admin/cars/${car.id}/edit`);
     };
 
     const handleRetryAutoScoutSync = async () => {
@@ -294,7 +371,10 @@ export default function CarRow({
         : autoscoutLabel;
 
     return (
-        <tr className="border-b border-slate-100 hover:bg-slate-50/60 transition-colors relative">
+        <tr
+            onClick={handleRowClick}
+            className="relative cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50/60"
+        >
             {/* Thumbnail + Car Info */}
             <td className="px-5 py-3 whitespace-nowrap">
                 <div className="flex items-center gap-3">
@@ -336,13 +416,13 @@ export default function CarRow({
                 <button
                     onClick={handleToggleFeatured}
                     disabled={isUpdating}
-                    className={`flex items-center text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full transition-colors border ${car.featured
+                    className={`flex items-center text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full transition-colors border ${rowCar.featured
                         ? "border-[#d91c1c] text-[#d91c1c] bg-[#d91c1c]/10 hover:bg-[#d91c1c]/20"
                         : "border-slate-300 text-slate-500 hover:text-slate-900 hover:border-slate-400"
                         } disabled:opacity-50`}
                 >
-                    <Star size={13} className="mr-1.5" fill={car.featured ? "currentColor" : "none"} />
-                    {car.featured ? dict.carRow.featured.active : dict.carRow.featured.inactive}
+                    <Star size={13} className="mr-1.5" fill={rowCar.featured ? "currentColor" : "none"} />
+                    {rowCar.featured ? dict.carRow.featured.active : dict.carRow.featured.inactive}
                 </button>
             </td>
 
@@ -430,26 +510,71 @@ export default function CarRow({
 
             {/* Actions */}
             <td className="px-5 py-3 whitespace-nowrap text-right text-sm">
-                <div className="flex items-center justify-end space-x-2">
-                    <Link
-                        href={`/admin/cars/${car.id}/edit`}
-                        className="text-slate-400 hover:text-[#d91c1c] transition-colors p-2 rounded-lg border border-transparent hover:border-[#d91c1c]/30 hover:bg-[#d91c1c]/10"
-                        title={dict.carRow.editTitle}
-                    >
-                        <Edit size={15} />
-                    </Link>
-
+                <div className="flex items-center justify-end">
                     <button
-                        onClick={() => setShowDeleteConfirm(!showDeleteConfirm)}
+                        ref={actionsButtonRef}
+                        type="button"
+                        onClick={() => {
+                            setDropdownOpen(false);
+                            setActionsOpen((current) => !current);
+                        }}
                         disabled={isUpdating}
-                        className="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg border border-transparent hover:border-red-500/30 hover:bg-red-500/10 disabled:opacity-50"
-                        title={dict.carRow.deleteTitle}
+                        className={`rounded-xl border p-2.5 transition-colors disabled:opacity-50 ${
+                            actionsOpen
+                                ? "border-slate-300 bg-white text-slate-800 shadow-sm"
+                                : "border-transparent text-slate-400 hover:border-slate-300 hover:bg-white hover:text-slate-700"
+                        }`}
+                        title={dict.carsTable.columns.actions}
+                        aria-label={dict.carsTable.columns.actions}
+                        aria-expanded={actionsOpen}
+                        aria-haspopup="menu"
                     >
-                        {isUpdating ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                        <MoreHorizontal size={16} />
                     </button>
                 </div>
-
             </td>
+
+            {actionsOpen && actionsMenuStyle && typeof document !== "undefined" && createPortal(
+                <div
+                    ref={actionsMenuRef}
+                    style={actionsMenuStyle}
+                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_18px_40px_rgba(15,23,42,0.14)]"
+                    role="menu"
+                >
+                    <Link
+                        href={`/admin/cars/${car.id}/edit`}
+                        onClick={() => setActionsOpen(false)}
+                        className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 hover:text-[#d91c1c]"
+                        title={dict.carRow.editTitle}
+                        role="menuitem"
+                    >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                            <Edit size={15} className="shrink-0" />
+                        </span>
+                        <span>{dict.carRow.editTitle}</span>
+                    </Link>
+
+                    <div className="my-1 border-t border-slate-100" />
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setActionsOpen(false);
+                            setShowDeleteConfirm(true);
+                        }}
+                        disabled={isUpdating}
+                        className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        title={dict.carRow.deleteTitle}
+                        role="menuitem"
+                    >
+                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-50 text-red-500">
+                            {isUpdating ? <Loader2 size={15} className="shrink-0 animate-spin" /> : <Trash2 size={15} className="shrink-0" />}
+                        </span>
+                        <span>{dict.carRow.deleteTitle}</span>
+                    </button>
+                </div>,
+                document.body,
+            )}
 
             {/* Delete Confirmation Modal — rendered in a portal to avoid table clipping */}
             {showDeleteConfirm && typeof document !== "undefined" && createPortal(

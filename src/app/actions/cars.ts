@@ -17,6 +17,13 @@ import {
     processAutoScoutSyncJobs,
     type AutoScoutSyncJobAction,
 } from "@/lib/autoscout24/sync-jobs";
+import {
+    getAutoScoutValidationMessage,
+    validateAutoScoutListingValues,
+} from "@/lib/autoscout24/listing-validation";
+
+const HP_TO_KW = 0.73549875;
+const MAX_FEATURED_CARS = 12;
 
 function isAllowedCarImage(value: string): boolean {
     if (isR2Key(value)) return /^[a-zA-Z0-9/_-]+\.webp$/.test(value);
@@ -131,6 +138,28 @@ export async function retryCarAutoscoutSync(id: string) {
 export async function toggleFeatured(id: string, featured: boolean) {
     await requireAdmin();
     try {
+        const currentCar = await prisma.car.findUnique({
+            where: { id },
+            select: { id: true, featured: true },
+        });
+
+        if (!currentCar) {
+            return { error: "Vehicle not found." };
+        }
+
+        if (featured && !currentCar.featured) {
+            const featuredCount = await prisma.car.count({
+                where: { featured: true },
+            });
+
+            if (featuredCount >= MAX_FEATURED_CARS) {
+                return {
+                    error: `Maximum ${MAX_FEATURED_CARS} featured cars allowed.`,
+                    code: "MAX_FEATURED_CARS_REACHED",
+                };
+            }
+        }
+
         await prisma.car.update({
             where: { id },
             data: { featured },
@@ -277,6 +306,8 @@ const CarInputSchema = z.object({
     vehicleTypeCode: optionalString(20),
     fuelTypeCode: optionalString(20),
     fuelCategory: optionalString(20),
+    additionalFuelTypeCodes: z.array(z.string().max(20)).optional().default([]),
+    isPluginHybrid: z.boolean().optional().default(false),
     transmissionCode: optionalString(20),
     drivetrainCode: optionalString(20),
     powerKw: optionalInt,
@@ -305,11 +336,160 @@ const CarInputSchema = z.object({
     images: z.array(z.string().min(1).refine(isAllowedCarImage, "Image must be a BhenAuto R2 key or approved CDN URL")).min(0).max(50),
 });
 
+function normalizeComparableServerString(value: unknown) {
+    if (typeof value !== "string") return "";
+    return value.trim();
+}
+
+function normalizeComparableServerOptionalString(value: unknown) {
+    const normalized = normalizeComparableServerString(value);
+    return normalized || null;
+}
+
+function normalizeComparableServerInt(value: unknown) {
+    if (value === "" || value === null || value === undefined) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
+}
+
+function normalizeComparableServerNumber(value: unknown) {
+    if (value === "" || value === null || value === undefined) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeComparableServerArray(values: unknown) {
+    if (!Array.isArray(values)) return [];
+    return values
+        .filter((value): value is string => typeof value === "string")
+        .map((value) => value.trim())
+        .filter(Boolean);
+}
+
+function buildComparableServerCarSnapshot(
+    record: {
+        title?: unknown;
+        brand?: unknown;
+        model?: unknown;
+        year?: unknown;
+        mileage?: unknown;
+        price?: unknown;
+        description?: unknown;
+        features?: unknown;
+        equipmentCodes?: unknown;
+        makeCode?: unknown;
+        modelCode?: unknown;
+        offerTypeCode?: unknown;
+        availabilityTypeCode?: unknown;
+        vin?: unknown;
+        referenceNumber?: unknown;
+        crossReferenceId?: unknown;
+        licencePlate?: unknown;
+        version?: unknown;
+        bodyTypeCode?: unknown;
+        vehicleTypeCode?: unknown;
+        fuelTypeCode?: unknown;
+        fuelCategory?: unknown;
+        additionalFuelTypeCodes?: unknown;
+        isPluginHybrid?: unknown;
+        transmissionCode?: unknown;
+        drivetrainCode?: unknown;
+        powerKw?: unknown;
+        engineSize?: unknown;
+        cylinderCount?: unknown;
+        firstRegistrationRaw?: unknown;
+        constructionYear?: unknown;
+        doors?: unknown;
+        seats?: unknown;
+        exteriorColorCode?: unknown;
+        manufacturerColorName?: unknown;
+        interiorColorCode?: unknown;
+        upholsteryCode?: unknown;
+        emissionClassCode?: unknown;
+        co2Emissions?: unknown;
+        consumptionCombined?: unknown;
+        netPrice?: unknown;
+        vatRate?: unknown;
+        vatDeductible?: unknown;
+        priceNegotiable?: unknown;
+        warrantyMonths?: unknown;
+        hasWarranty?: unknown;
+        carpass_url?: unknown;
+    },
+    images: string[],
+) {
+    return {
+        title: normalizeComparableServerString(record.title),
+        brand: normalizeComparableServerString(record.brand),
+        model: normalizeComparableServerString(record.model),
+        year: normalizeComparableServerInt(record.year),
+        mileage: normalizeComparableServerInt(record.mileage),
+        price: normalizeComparableServerNumber(record.price),
+        description: normalizeComparableServerString(record.description),
+        images,
+        features: normalizeComparableServerArray(record.features),
+        equipmentCodes: normalizeComparableServerArray(record.equipmentCodes),
+        makeCode: normalizeComparableServerOptionalString(record.makeCode),
+        modelCode: normalizeComparableServerOptionalString(record.modelCode),
+        offerTypeCode: normalizeComparableServerOptionalString(record.offerTypeCode),
+        availabilityTypeCode: normalizeComparableServerOptionalString(record.availabilityTypeCode),
+        vin: normalizeComparableServerOptionalString(record.vin),
+        referenceNumber: normalizeComparableServerOptionalString(record.referenceNumber),
+        crossReferenceId: normalizeComparableServerOptionalString(record.crossReferenceId),
+        licencePlate: normalizeComparableServerOptionalString(record.licencePlate),
+        version: normalizeComparableServerOptionalString(record.version),
+        bodyTypeCode: normalizeComparableServerOptionalString(record.bodyTypeCode),
+        vehicleTypeCode: normalizeComparableServerOptionalString(record.vehicleTypeCode),
+        fuelTypeCode: normalizeComparableServerOptionalString(record.fuelTypeCode),
+        fuelCategory: normalizeComparableServerOptionalString(record.fuelCategory),
+        additionalFuelTypeCodes: normalizeComparableServerArray(record.additionalFuelTypeCodes).sort(),
+        isPluginHybrid: Boolean(record.isPluginHybrid),
+        transmissionCode: normalizeComparableServerOptionalString(record.transmissionCode),
+        drivetrainCode: normalizeComparableServerOptionalString(record.drivetrainCode),
+        powerKw: normalizeComparableServerInt(record.powerKw),
+        engineSize: normalizeComparableServerInt(record.engineSize),
+        cylinderCount: normalizeComparableServerInt(record.cylinderCount),
+        firstRegistrationRaw: normalizeComparableServerOptionalString(record.firstRegistrationRaw),
+        constructionYear: normalizeComparableServerInt(record.constructionYear),
+        doors: normalizeComparableServerInt(record.doors),
+        seats: normalizeComparableServerInt(record.seats),
+        exteriorColorCode: normalizeComparableServerOptionalString(record.exteriorColorCode),
+        manufacturerColorName: normalizeComparableServerOptionalString(record.manufacturerColorName),
+        interiorColorCode: normalizeComparableServerOptionalString(record.interiorColorCode),
+        upholsteryCode: normalizeComparableServerOptionalString(record.upholsteryCode),
+        emissionClassCode: normalizeComparableServerOptionalString(record.emissionClassCode),
+        co2Emissions: normalizeComparableServerInt(record.co2Emissions),
+        consumptionCombined: normalizeComparableServerNumber(record.consumptionCombined),
+        netPrice: normalizeComparableServerInt(record.netPrice),
+        vatRate: normalizeComparableServerNumber(record.vatRate),
+        vatDeductible: Boolean(record.vatDeductible),
+        priceNegotiable: Boolean(record.priceNegotiable),
+        warrantyMonths: normalizeComparableServerInt(record.warrantyMonths),
+        hasWarranty: Boolean(record.hasWarranty),
+        carpass_url: normalizeComparableServerOptionalString(record.carpass_url),
+    };
+}
+
 export async function saveCar(data: unknown) {
     await requireAdmin();
     try {
         const parsed = CarInputSchema.parse(data);
         const { id, images, carpass_url, syncWithAutoscout, ...carData } = parsed;
+        const autoscoutValidationIssues = syncWithAutoscout
+            ? validateAutoScoutListingValues({
+                ...carData,
+                constructionYear: carData.constructionYear ?? carData.year,
+                powerKw: carData.powerKw ?? Math.max(1, Math.round(carData.horsepower * HP_TO_KW)),
+                imageCount: images.length,
+            })
+            : [];
+
+        if (autoscoutValidationIssues.length > 0) {
+            return {
+                error: `AutoScout24: ${getAutoScoutValidationMessage(autoscoutValidationIssues[0])}`,
+                autoscoutValidationIssues,
+            };
+        }
 
         const dbData = {
             ...carData,
@@ -324,12 +504,42 @@ export async function saveCar(data: unknown) {
         let savedCarId = id;
 
         if (id) {
+            const existingCar = await prisma.car.findUnique({
+                where: { id },
+            });
             const existingImages = await prisma.image.findMany({
                 where: { carId: id },
                 select: { id: true, url: true, sortOrder: true },
             });
+
+            if (!existingCar) {
+                return { error: "Vehicle not found." };
+            }
+
             const imagePlan = reconcileCarImages(existingImages, images);
             const removedR2Keys = imagePlan.removedUrls.filter(isR2Key);
+            const existingSnapshot = buildComparableServerCarSnapshot(
+                existingCar,
+                existingImages
+                    .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))
+                    .map((image) => image.url),
+            );
+            const incomingSnapshot = buildComparableServerCarSnapshot(
+                {
+                    ...carData,
+                    carpass_url: carpass_url || null,
+                },
+                images,
+            );
+
+            if (
+                JSON.stringify(existingSnapshot) === JSON.stringify(incomingSnapshot) &&
+                imagePlan.updates.length === 0 &&
+                imagePlan.deleteIds.length === 0 &&
+                imagePlan.creates.length === 0
+            ) {
+                return { success: true, autoscoutQueued: false, noChanges: true };
+            }
 
             await prisma.$transaction([
                 prisma.car.update({

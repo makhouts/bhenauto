@@ -78,6 +78,10 @@ function isCarMake(make: { vehicleTypes?: string[]; models?: Array<{ vehicleType
     || false;
 }
 
+function isCarReferenceOption(option: { vehicleTypes?: string[] }) {
+  return !option.vehicleTypes?.length || option.vehicleTypes.includes(CAR_VEHICLE_TYPE);
+}
+
 function toUniqueOptions<T extends { label: string; value: string }>(options: T[]) {
   const seen = new Set<string>();
   const unique: T[] = [];
@@ -125,7 +129,7 @@ export async function getAutoScoutFormOptions(locale: AdminLocale): Promise<Auto
     }
 
     for (const key of Object.keys(groupedReferences) as Array<keyof AutoScoutReferenceOptions>) {
-      groupedReferences[key] = sortOptions(groupedReferences[key]);
+      groupedReferences[key] = sortOptions(groupedReferences[key].filter(isCarReferenceOption));
     }
 
     const makeOptions: AutoScoutMakeOption[] = sortOptions(toUniqueOptions(

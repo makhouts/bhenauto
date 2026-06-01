@@ -1,21 +1,15 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { AutoScoutListingPayload, AutoScoutReferenceIndex } from "./types";
+import {
+  getAutoScoutValidationMessage,
+  validateAutoScoutListingValues,
+} from "./listing-validation";
 
 const HP_TO_KW = 0.73549875;
 const DEFAULT_VEHICLE_TYPE = "C";
 const DEFAULT_OFFER_TYPE = "U";
 const DEFAULT_AVAILABILITY_TYPE = 1;
 const DEFAULT_PUBLICATION_CHANNEL = "AS24" as const;
-const FUEL_TYPE_FALLBACK_IDS = {
-  gasoline: "2",
-  diesel: "7",
-  electric: "12",
-  cng: "10",
-  lpg: "9",
-  hydrogen: "13",
-  ethanol: "16",
-} as const;
-
 type JsonRecord = Record<string, unknown>;
 
 export type AutoScoutSyncImageInput = {
@@ -54,6 +48,8 @@ export type AutoScoutSyncCarInput = {
   vehicleTypeCode?: string | null;
   fuelTypeCode?: string | null;
   fuelCategory?: string | null;
+  additionalFuelTypeCodes: string[];
+  isPluginHybrid?: boolean | null;
   transmissionCode?: string | null;
   drivetrainCode?: string | null;
   powerKw?: number | null;
@@ -119,13 +115,6 @@ function intOrNull(value: unknown): number | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const parsed = Number(value.replace(/\s/g, ""));
   return Number.isFinite(parsed) ? Math.trunc(parsed) : null;
-}
-
-function numberOrNull(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string" || !value.trim()) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function boolOrUndefined(value: unknown): boolean | undefined {
@@ -196,6 +185,26 @@ function compactString(value: string | null | undefined, maxLength: number) {
   return trimmed.slice(0, maxLength);
 }
 
+function deriveModelVersionFromTitle(car: AutoScoutSyncCarInput) {
+  const internalTitle = trimOrNull(car.title);
+  const explicitVersion = compactString(car.version, 121);
+  if (!internalTitle) return explicitVersion;
+
+  const normalizedPrefix = normalizeSearchValue(`${car.brand} ${car.model}`);
+  const normalizedTitle = normalizeSearchValue(internalTitle);
+
+  if (!normalizedPrefix || !normalizedTitle.startsWith(normalizedPrefix)) {
+    return compactString(internalTitle, 121);
+  }
+
+  const titleWithoutPrefix = internalTitle
+    .replace(new RegExp(`^\\s*${car.brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+${car.model.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*`, "i"), "")
+    .replace(/^[-:/|]+/, "")
+    .trim();
+
+  return compactString(titleWithoutPrefix, 121) ?? explicitVersion ?? compactString(internalTitle, 121);
+}
+
 function resolveMakeCode(car: AutoScoutSyncCarInput, references: AutoScoutReferenceIndex) {
   return trimOrNull(car.makeCode)
     ?? trimOrNull(rawField(car.sourcePayload, "make"))
@@ -230,70 +239,14 @@ function resolveAvailabilityType(car: AutoScoutSyncCarInput) {
     ?? DEFAULT_AVAILABILITY_TYPE;
 }
 
-function resolveReferenceByLabels(
-  references: AutoScoutReferenceIndex,
-  referenceType: string,
-  labels: string[],
-  fallback?: string,
-) {
-  for (const label of labels) {
-    const id = references.getReferenceId(referenceType, label);
-    if (id) return id;
-  }
-  return fallback ?? null;
-}
-
-function inferFuelKind(car: AutoScoutSyncCarInput): keyof typeof FUEL_TYPE_FALLBACK_IDS | null {
-  const haystack = [
-    car.fuel_type,
-    car.fuelCategory,
-    rawField(car.sourcePayload, "fuelCategory"),
-    rawField(car.sourcePayload, "primaryFuelType"),
-  ].map(normalizeSearchValue).join(" ");
-
-  if (!haystack.trim()) return null;
-  if (/\bcng\b|aardgas|natural gas|gaz naturel/.test(haystack)) return "cng";
-  if (/\blpg\b|\bgpl\b|petroleum/.test(haystack)) return "lpg";
-  if (/waterstof|hydrogen|hydrogene|hydrogenium/.test(haystack)) return "hydrogen";
-  if (/ethanol|e85/.test(haystack)) return "ethanol";
-  if (/diesel|gasoil/.test(haystack)) return "diesel";
-  if (/elektrisch diesel|electric diesel|electrique diesel/.test(haystack)) return "diesel";
-  if (/elektr|electric|electrique|stroom/.test(haystack) && !/(benz|essence|gasoline|petrol|hybrid|hybride)/.test(haystack)) return "electric";
-  if (/benz|essence|gasoline|petrol|super|hybrid|hybride|plug/.test(haystack)) return "gasoline";
-
-  return null;
-}
-
 function resolvePrimaryFuelType(car: AutoScoutSyncCarInput, references: AutoScoutReferenceIndex) {
-  const explicit = intOrNull(resolveReferenceCode({
+  return intOrNull(resolveReferenceCode({
     explicit: car.fuelTypeCode,
     sourcePayload: car.sourcePayload,
     rawKey: "primaryFuelType",
     referenceType: "FuelType",
-    label: car.fuel_type,
     references,
   }));
-  if (explicit) return explicit;
-
-  const fuelKind = inferFuelKind(car);
-  if (!fuelKind) return null;
-
-  const labelsByKind: Record<keyof typeof FUEL_TYPE_FALLBACK_IDS, string[]> = {
-    gasoline: ["Super 95", "Benzine", "Essence", "Gasoline"],
-    diesel: ["Diesel"],
-    electric: ["Stroom", "Elektrisch", "Électrique", "Electricity", "Electric"],
-    cng: ["Aardgas H", "Gaz naturel H", "Domestic gas H", "CNG"],
-    lpg: ["Lpg", "GPL", "Liquid petroleum gas (LPG)", "LPG"],
-    hydrogen: ["Hydrogenium", "Hydrogène", "Hydrogen"],
-    ethanol: ["Ethanol"],
-  };
-
-  return intOrNull(resolveReferenceByLabels(
-    references,
-    "FuelType",
-    labelsByKind[fuelKind],
-    FUEL_TYPE_FALLBACK_IDS[fuelKind],
-  ));
 }
 
 function resolveFuelCategory(car: AutoScoutSyncCarInput, references: AutoScoutReferenceIndex) {
@@ -316,6 +269,17 @@ function resolveFuelCategory(car: AutoScoutSyncCarInput, references: AutoScoutRe
   if (/ethanol/.test(normalized)) return "M";
 
   return explicit;
+}
+
+function resolveAdditionalFuelTypes(car: AutoScoutSyncCarInput) {
+  const structured = car.additionalFuelTypeCodes
+    .map(intOrNull)
+    .filter((code): code is number => code !== null);
+  if (structured.length > 0) return [...new Set(structured)];
+
+  const raw = rawField(car.sourcePayload, "additionalFuelTypes");
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.map(intOrNull).filter((code): code is number => code !== null))];
 }
 
 function numericEquipmentCodes(car: AutoScoutSyncCarInput, references: AutoScoutReferenceIndex) {
@@ -397,8 +361,18 @@ export function buildAutoScoutListingPayload(input: {
   if (input.imageIds.length === 0) errors.push("Minstens één foto is nodig voor AutoScout24.");
 
   const primaryFuelType = resolvePrimaryFuelType(car, references);
-  if (!primaryFuelType) errors.push("AutoScout24 brandstoftype ontbreekt.");
   const fuelCategory = resolveFuelCategory(car, references);
+  if (!fuelCategory) errors.push("Brandstofcategorie ontbreekt.");
+  const additionalFuelTypes = resolveAdditionalFuelTypes(car);
+  const isPluginHybrid = car.isPluginHybrid ?? (
+    typeof rawField(car.sourcePayload, "isPluginHybrid") === "boolean"
+      ? rawField(car.sourcePayload, "isPluginHybrid") as boolean
+      : undefined
+  );
+  const fuelTypes = [primaryFuelType, ...additionalFuelTypes].filter((fuelType): fuelType is number => fuelType !== null);
+  if (isPluginHybrid && (!fuelTypes.includes(12) || !fuelTypes.some((fuelType) => fuelType !== 12))) {
+    errors.push("Plug-in hybride vereist elektriciteit en minstens één bijkomend brandstoftype.");
+  }
 
   const transmission = resolveReferenceCode({
     explicit: car.transmissionCode,
@@ -410,7 +384,26 @@ export function buildAutoScoutListingPayload(input: {
   });
   if (!transmission) errors.push("AutoScout24 transmissie ontbreekt.");
 
-  if (errors.length > 0 || !make) return { errors };
+  errors.push(...validateAutoScoutListingValues({
+    ...car,
+    makeCode,
+    modelCode,
+    vehicleTypeCode: vehicleType,
+    offerTypeCode: offerType,
+    availabilityTypeCode: String(resolveAvailabilityType(car)),
+    firstRegistrationRaw: firstRegistrationDate,
+    constructionYear: productionYearValue,
+    bodyTypeCode: bodyType,
+    fuelTypeCode: primaryFuelType,
+    fuelCategory,
+    additionalFuelTypeCodes: additionalFuelTypes.map(String),
+    transmissionCode: transmission,
+    powerKw: car.powerKw ?? Math.max(1, Math.round(car.horsepower * HP_TO_KW)),
+    imageCount: input.imageIds.length,
+  }).map((validationIssue) => getAutoScoutValidationMessage(validationIssue)));
+
+  const uniqueErrors = [...new Set(errors)];
+  if (uniqueErrors.length > 0 || !make) return { errors: uniqueErrors };
 
   const publicPrice = {
     price: car.price,
@@ -426,12 +419,13 @@ export function buildAutoScoutListingPayload(input: {
   );
   const technicalData = jsonObjectOrUndefined(car.technicalData);
   const condition = isRecord(technicalData?.condition) ? technicalData.condition : undefined;
+  const modelVersion = deriveModelVersionFromTitle(car);
 
   const payload: AutoScoutListingPayload = {
     availability: { availabilityType: resolveAvailabilityType(car) },
     make,
     ...(model ? { model } : { modelName: car.model.slice(0, 50) }),
-    ...(compactString(car.version, 121) ? { modelVersion: compactString(car.version, 121) } : {}),
+    ...(modelVersion ? { modelVersion } : {}),
     vehicleType,
     offerType,
     ...(compactString(car.referenceNumber, 50) ? { offerReferenceId: compactString(car.referenceNumber, 50) } : {}),
@@ -444,8 +438,10 @@ export function buildAutoScoutListingPayload(input: {
     power: car.powerKw ?? Math.max(1, Math.round(car.horsepower * HP_TO_KW)),
     ...(car.engineSize ? { cylinderCapacity: car.engineSize } : {}),
     ...(car.cylinderCount ? { cylinderCount: car.cylinderCount } : {}),
-    primaryFuelType: primaryFuelType!,
+    ...(primaryFuelType ? { primaryFuelType } : {}),
+    ...(additionalFuelTypes.length > 0 ? { additionalFuelTypes } : {}),
     ...(fuelCategory ? { fuelCategory } : {}),
+    ...(isPluginHybrid !== undefined && isPluginHybrid !== null ? { isPluginHybrid } : {}),
     transmission: transmission!,
     ...(trimOrNull(car.drivetrainCode ?? rawField(car.sourcePayload, "drivetrain")) ? { drivetrain: trimOrNull(car.drivetrainCode ?? rawField(car.sourcePayload, "drivetrain"))! } : {}),
     bodyType: bodyType!,
@@ -479,5 +475,5 @@ export function buildAutoScoutListingPayload(input: {
     },
   };
 
-  return { payload, errors };
+  return { payload, errors: uniqueErrors };
 }

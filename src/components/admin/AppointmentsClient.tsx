@@ -152,10 +152,10 @@ export default function AppointmentsClient({
     const totalCount = appointments.length;
 
     return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-5 py-5 sm:px-6 sm:py-6">
 
       {/* ── Stats bar ──────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div className={`rounded-2xl px-5 py-4 flex items-center gap-4 border ${pendingApts.length > 0 ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"}`}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${pendingApts.length > 0 ? "bg-amber-100" : "bg-slate-100"}`}>
             <Inbox size={18} className={pendingApts.length > 0 ? "text-amber-600" : "text-slate-400"} />
@@ -187,7 +187,7 @@ export default function AppointmentsClient({
       </div>
 
       {/* ── Main 2-col layout ─────────────────────────────────────────────────── */}
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
 
         {/* ── LEFT: Calendar (always visible) ──────────────────────────────── */}
         <div className="flex-1 min-w-0">
@@ -337,7 +337,7 @@ export default function AppointmentsClient({
         </div>
 
         {/* ── RIGHT: Pending sidebar ────────────────────────────────────────── */}
-        <div className="w-80 shrink-0 sticky top-6">
+        <div className="w-full shrink-0 xl:sticky xl:top-6 xl:w-80">
           <div className={`rounded-2xl px-4 py-3 mb-3 flex items-center gap-3 ${pendingApts.length > 0 ? "bg-amber-500" : "bg-slate-200"}`}>
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${pendingApts.length > 0 ? "bg-white/20" : "bg-white/60"}`}>
               <Inbox size={16} className={pendingApts.length > 0 ? "text-white" : "text-slate-500"} />

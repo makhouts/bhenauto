@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Mail, Phone, Calendar, CheckCheck, RotateCcw, Trash2, Car, Loader2, X } from "lucide-react";
+import { Mail, Phone, Calendar, CheckCheck, RotateCcw, Trash2, Car, Loader2, Search, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { markContactRead, deleteContact } from "@/app/actions/contacts";
 import { toast } from "sonner";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 import { getAdminDateFnsLocale, tpl } from "@/lib/admin-i18n";
+import { AdminBadge, AdminEmptyState, AdminInputWrap, AdminToolbar } from "@/components/admin/admin-ui";
 
 type Tab = "nieuw" | "behandeld" | "alle";
 
@@ -30,16 +31,29 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
     const { locale, dict } = useAdminI18n();
     const dateLocale = getAdminDateFnsLocale(locale);
     const [activeTab, setActiveTab] = useState<Tab>("nieuw");
+    const [query, setQuery] = useState("");
     const [isPending, startTransition] = useTransition();
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
     const nieuw = contacts.filter((c) => !c.read);
     const behandeld = contacts.filter((c) => c.read);
 
-    const visible =
+    const scoped =
         activeTab === "nieuw" ? nieuw :
         activeTab === "behandeld" ? behandeld :
         contacts;
+
+    const visible = scoped.filter((contact) => {
+        if (!query.trim()) return true;
+        const lower = query.toLowerCase();
+        return [
+            contact.name,
+            contact.email,
+            contact.phone,
+            contact.message,
+            contact.car_reference ?? "",
+        ].some((value) => value.toLowerCase().includes(lower));
+    });
 
     const tabs: { id: Tab; label: string; count: number; dot?: boolean }[] = [
         { id: "nieuw", label: dict.contacts.tabs.new, count: nieuw.length, dot: nieuw.length > 0 },
@@ -90,57 +104,79 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
 
     return (
         <div>
-            {/* Tab bar */}
-            <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit">
-                {tabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`relative flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${
-                            activeTab === tab.id
-                                ? "bg-white text-slate-900 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700"
-                        }`}
-                    >
-                        {tab.dot && (
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#d91c1c] rounded-full animate-pulse" />
-                        )}
-                        {tab.label}
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                            activeTab === tab.id
-                                ? tab.id === "nieuw" && nieuw.length > 0
-                                    ? "bg-[#d91c1c] text-white"
-                                    : "bg-slate-100 text-slate-600"
-                                : "bg-slate-200 text-slate-500"
-                        }`}>
-                            {tab.count}
-                        </span>
-                    </button>
-                ))}
+            <div className="px-5 py-5 sm:px-6">
+                <AdminToolbar className="gap-4">
+                    <div className="flex min-w-0 flex-1 flex-col gap-3">
+                        <div className="flex flex-wrap gap-2">
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`relative flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-bold transition-all ${
+                                        activeTab === tab.id
+                                            ? "border-slate-900 bg-slate-900 text-white shadow-sm"
+                                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                                    }`}
+                                >
+                                    {tab.dot ? (
+                                        <span className={`h-2 w-2 rounded-full ${activeTab === tab.id ? "bg-white" : "bg-[#d91c1c] animate-pulse"}`} />
+                                    ) : null}
+                                    {tab.label}
+                                    <span className={`rounded-full px-2 py-0.5 text-xs font-black ${
+                                        activeTab === tab.id
+                                            ? "bg-white/12 text-white"
+                                            : "bg-slate-100 text-slate-500"
+                                    }`}>
+                                        {tab.count}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <AdminBadge tone={nieuw.length > 0 ? "red" : "neutral"}>
+                                {tpl(nieuw.length === 1 ? dict.contactsPage.badgeSingular : dict.contactsPage.badgePlural, { count: nieuw.length })}
+                            </AdminBadge>
+                            <AdminBadge tone="green">
+                                {behandeld.length} {dict.contacts.tabs.handled.toLowerCase()}
+                            </AdminBadge>
+                        </div>
+                    </div>
+
+                    <AdminInputWrap className="w-full md:max-w-sm">
+                        <Search size={18} className="shrink-0 text-slate-400" />
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder={dict.contacts.searchPlaceholder}
+                            className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+                        />
+                    </AdminInputWrap>
+                </AdminToolbar>
             </div>
 
             {/* Content */}
             {visible.length === 0 ? (
-                <div className="text-center py-24 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                    <Mail size={48} className="mx-auto text-slate-300 mb-4" />
-                    <h3 className="text-xl font-headings text-slate-900 mb-2 font-bold">
-                        {activeTab === "nieuw" ? dict.contacts.empty.new :
-                         activeTab === "behandeld" ? dict.contacts.empty.handled :
-                         dict.contacts.empty.all}
-                    </h3>
-                    <p className="text-slate-500 font-medium">
-                        {activeTab === "nieuw" ? dict.contacts.empty.newSub : ""}
-                    </p>
+                <div className="px-5 pb-6 sm:px-6">
+                    <AdminEmptyState
+                        icon={<Mail size={24} />}
+                        title={
+                            activeTab === "nieuw" ? dict.contacts.empty.new :
+                            activeTab === "behandeld" ? dict.contacts.empty.handled :
+                            dict.contacts.empty.all
+                        }
+                        description={query ? tpl(dict.contacts.searchEmpty, { query }) : (activeTab === "nieuw" ? dict.contacts.empty.newSub : undefined)}
+                    />
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 px-5 pb-6 sm:px-6">
                     {visible.map((contact) => (
                         <div
                             key={contact.id}
                             className={`bg-white border rounded-2xl p-6 transition-all ${
                                 !contact.read
-                                    ? "border-[#d91c1c]/30 shadow-sm shadow-[#d91c1c]/5 ring-1 ring-[#d91c1c]/10"
-                                    : "border-slate-200 hover:border-slate-300"
+                                    ? "border-[#d91c1c]/20 shadow-[0_14px_30px_rgba(217,28,28,0.08)] ring-1 ring-[#d91c1c]/8"
+                                    : "border-slate-200 shadow-[0_10px_24px_rgba(15,23,42,0.04)] hover:border-slate-300"
                             }`}
                         >
                             {/* Header */}
@@ -212,7 +248,7 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
                             </div>
 
                             {/* Message */}
-                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                                 <p className="text-slate-700 font-medium whitespace-pre-wrap leading-relaxed text-sm">{contact.message}</p>
                             </div>
                         </div>

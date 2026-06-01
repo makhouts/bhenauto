@@ -127,5 +127,6 @@ test("falls back to fuel category and cleans imported descriptions", () => {
   });
 
   assert.equal(mapped.data.fuel_type, "Plug-in Hybride");
+  assert.equal(mapped.data.fuelCategory, "plugin_hybrid");
   assert.equal(mapped.data.description, "Véhicule livré.\nWij spreken Nederlands\nService après-vente");
 });

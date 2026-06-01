@@ -152,9 +152,10 @@ export function mapAutoScoutListingToCar(input: {
   const powerKw = intOrNull(listing.power);
   const horsepower = powerKw === null ? 0 : Math.round(powerKw * KW_TO_HP);
   const primaryFuelLabel = references.getReferenceName("FuelType", listing.primaryFuelType);
-  const fuelCategory = references.getReferenceName("FuelCategory", listing.fuelCategory)
-    ?? stringOrNull(listing.fuelCategory);
-  const fuelType = normalizeFuelLabel(primaryFuelLabel, listing.primaryFuelType, fuelCategory);
+  const fuelCategoryCode = stringOrNull(listing.fuelCategory);
+  const fuelCategoryLabel = references.getReferenceName("FuelCategory", listing.fuelCategory)
+    ?? fuelCategoryCode;
+  const fuelType = normalizeFuelLabel(primaryFuelLabel, listing.primaryFuelType, fuelCategoryLabel);
   const transmissionLabel = references.getReferenceName("Transmission", listing.transmission);
   const transmission = normalizeTransmissionLabel(transmissionLabel, listing.transmission);
   const exteriorColor = references.getReferenceName("BodyColor", listing.bodyColor);
@@ -237,7 +238,9 @@ export function mapAutoScoutListingToCar(input: {
         ? String(listing.availability.availabilityType)
         : null,
       fuelTypeCode: listing.primaryFuelType === undefined ? null : String(listing.primaryFuelType),
-      fuelCategory,
+      fuelCategory: fuelCategoryCode,
+      additionalFuelTypeCodes: (listing.additionalFuelTypes ?? []).map(String),
+      isPluginHybrid: boolOrNull(listing.isPluginHybrid),
       transmissionCode: stringOrNull(listing.transmission),
       drivetrain,
       drivetrainCode: stringOrNull(listing.drivetrain),

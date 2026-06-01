@@ -35,6 +35,7 @@ interface CarCardProps {
     listView?: boolean;
     commonDict: CommonDict;
     locale: string;
+    priorityImage?: boolean;
 }
 
 function SpecPill({ icon, label }: { icon: React.ReactNode; label: string }) {
@@ -88,7 +89,7 @@ function ReservedBadge({ label }: { label: string }) {
     );
 }
 
-export default function CarCard({ car, listView = false, commonDict, locale }: CarCardProps) {
+export default function CarCard({ car, listView = false, commonDict, locale, priorityImage = false }: CarCardProps) {
     const [hovered, setHovered] = useState(false);
     const [imgError, setImgError] = useState(false);
     const [failedVariantUrls, setFailedVariantUrls] = useState<Set<string>>(() => new Set());
@@ -133,14 +134,17 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                     style={{ background: hovered ? "#d91c1c" : "transparent" }}
                 />
 
-                {/* Image — 40% width, bleeds into content via gradient */}
-                <div className="relative shrink-0 overflow-hidden" style={{ width: "40%" }}>
+                {/* Image — more visual weight in list view */}
+                <div className="relative shrink-0 overflow-hidden" style={{ width: "46%" }}>
                     {(!img1 || imgError) && <ImageFallback />}
                     {img1 && !imgError && (
                         <Image
                             src={img1} alt={car.title} fill
-                            sizes="(max-width: 768px) 100vw, 40vw"
+                            sizes="(max-width: 768px) 100vw, 46vw"
                             quality={75}
+                            priority={priorityImage}
+                            fetchPriority={priorityImage ? "high" : "auto"}
+                            loading={priorityImage ? "eager" : "lazy"}
                             onError={() => handleImageError(img1Variant, img1Source, true)}
                             className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.05]" : "scale-100"} ${hovered && img2 ? "opacity-0" : "opacity-100"}`}
                         />
@@ -148,7 +152,7 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                     {img1 && img2 && (
                         <Image
                             src={img2} alt={`${car.title} – 2`} fill
-                            sizes="(max-width: 768px) 100vw, 40vw"
+                            sizes="(max-width: 768px) 100vw, 46vw"
                             quality={75}
                             loading="lazy"
                             onError={() => handleImageError(img2Variant, img2Source)}
@@ -179,7 +183,7 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                 </div>
 
                 {/* Content */}
-                <div className="flex flex-col flex-1 pl-2 pr-8 py-6 min-w-0">
+                <div className="flex flex-col flex-1 pl-2 pr-6 py-5 min-w-0">
                     {/* Brand + Price row */}
                     <div className="flex items-center justify-between gap-4 mb-2">
                         <span
@@ -188,7 +192,7 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                         >
                             {car.brand}
                         </span>
-                        <span className="text-[1.6rem] font-black shrink-0 leading-none tabular-nums" style={{ color: "#d91c1c" }}>
+                        <span className="text-[1.45rem] font-black shrink-0 leading-none tabular-nums" style={{ color: "#d91c1c" }}>
                             €{car.price.toLocaleString("nl-BE")}
                         </span>
                     </div>
@@ -202,13 +206,13 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                     </h3>
 
                     {/* Subtitle */}
-                    <p className="text-[12px] font-medium mb-4 truncate" style={{ color: "var(--theme-text-muted)" }} title={car.title}>
+                    <p className="text-[12px] font-medium mb-3 truncate" style={{ color: "var(--theme-text-muted)" }} title={car.title}>
                         {car.title}
                     </p>
 
                     {/* Description */}
                     {car.description && (
-                        <p className="text-[13px] leading-relaxed line-clamp-2 mb-5" style={{ color: "var(--theme-text-muted)" }}>
+                        <p className="text-[13px] leading-relaxed line-clamp-2 mb-4" style={{ color: "var(--theme-text-muted)" }}>
                             {car.description}
                         </p>
                     )}
@@ -223,7 +227,7 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                         ].map(({ icon, label }, i) => (
                             <div
                                 key={i}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-semibold"
                                 style={{
                                     background: "var(--theme-bg, #f4f4f6)",
                                     border: "1px solid var(--theme-border-subtle)",
@@ -267,7 +271,7 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
             {/* Image */}
             <div
                 className="relative overflow-hidden"
-                style={{ height: "clamp(200px, 22vw, 260px)", background: "var(--theme-skeleton)", borderRadius: "18px 18px 0 0" }}
+                style={{ height: "clamp(220px, 23vw, 300px)", background: "var(--theme-skeleton)", borderRadius: "18px 18px 0 0" }}
             >
                 {(!img1 || imgError) && <ImageFallback />}
 
@@ -276,8 +280,11 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                         src={img1}
                         alt={car.title}
                         fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 420px"
                         quality={80}
+                        priority={priorityImage}
+                        fetchPriority={priorityImage ? "high" : "auto"}
+                        loading={priorityImage ? "eager" : "lazy"}
                         onError={() => handleImageError(img1Variant, img1Source, true)}
                         className={`object-cover transition-all duration-700 ${hovered && img2 ? "opacity-0" : "opacity-100"} ${hovered ? "scale-[1.04]" : "scale-100"}`}
                     />
@@ -288,7 +295,7 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                         src={img2}
                         alt={`${car.title} – 2`}
                         fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 420px"
                         quality={75}
                         loading="lazy"
                         onError={() => handleImageError(img2Variant, img2Source)}
@@ -331,24 +338,24 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
             </div>
 
             {/* Content */}
-            <div className="flex flex-col flex-1 px-6 pt-5 pb-6">
+            <div className="flex flex-col flex-1 px-5 pt-4 pb-4">
                 <div className="flex items-start justify-between gap-3 mb-1">
                     <h3 className="text-[1.2rem] font-headings font-bold leading-tight group-hover:text-[#d91c1c] transition-colors duration-200 truncate flex-1 min-w-0"
                         style={{ color: "var(--theme-text)" }}>
                         {car.brand} {car.model}
                     </h3>
-                    <div className="text-base font-black shrink-0 leading-none pt-0.5" style={{ color: "var(--theme-text)" }}>
+                    <div className="text-[0.95rem] font-black shrink-0 leading-none pt-0.5" style={{ color: "var(--theme-text)" }}>
                         €{car.price.toLocaleString("nl-BE")}
                     </div>
                 </div>
 
-                <div className="mb-4">
+                <div className="mb-3">
                     <p className="text-[12px] font-medium truncate" style={{ color: "var(--theme-text-muted)" }} title={car.title}>
                         {car.title}
                     </p>
                 </div>
 
-                <div className="flex justify-between py-4"
+                <div className="flex justify-between py-3"
                     style={{ borderTop: "1px solid var(--theme-border-subtle)", borderBottom: "1px solid var(--theme-border-subtle)" }}>
                     <SpecPill icon={CalIcon} label={`${car.year}`} />
                     <SpecPill icon={OdoIcon} label={`${car.mileage.toLocaleString("nl-BE")} km`} />
@@ -356,8 +363,8 @@ export default function CarCard({ car, listView = false, commonDict, locale }: C
                     <SpecPill icon={GearIcon} label={car.transmission || "–"} />
                 </div>
 
-                <div className="mt-5">
-                    <div className="flex items-center justify-between w-full px-5 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 group-hover:bg-[#d91c1c] group-hover:text-white group-hover:border-[#d91c1c]"
+                <div className="mt-4">
+                    <div className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group-hover:bg-[#d91c1c] group-hover:text-white group-hover:border-[#d91c1c]"
                         style={{ background: "#ffffff", color: "var(--theme-text)", border: "1px solid #b3b3b3" }}>
                         <span>{commonDict.viewDetails}</span>
                         <span className={`transition-transform duration-200 ${hovered ? "translate-x-0.5" : ""}`}>

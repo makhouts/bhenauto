@@ -14,6 +14,7 @@ import {
     tpl,
 } from "@/lib/admin-i18n";
 import { getAdminLocale } from "@/lib/admin-i18n.server";
+import { AdminMetricCard, AdminMetricGrid, AdminPage, AdminPageHeader } from "@/components/admin/admin-ui";
 
 export const metadata = { title: "Admin Dashboard | bhenauto" };
 
@@ -76,64 +77,53 @@ export default async function AdminDashboardPage() {
         {
             label: dict.dashboard.kpis.available.label, value: availableCars,
             sub: dict.dashboard.kpis.available.sub, icon: Car,
-            accent: "#3b82f6", bg: "#eff6ff", iconBg: "#dbeafe", trend: false,
+            tone: "blue" as const, trend: false,
         },
         {
             label: dict.dashboard.kpis.sold.label, value: soldCars,
             sub: dict.dashboard.kpis.sold.sub, icon: CheckCircle,
-            accent: "#10b981", bg: "#f0fdf4", iconBg: "#d1fae5", trend: false,
+            tone: "green" as const, trend: false,
         },
         {
             label: dict.dashboard.kpis.reserved.label, value: reservedCars,
             sub: dict.dashboard.kpis.reserved.sub, icon: Lock,
-            accent: "#f59e0b", bg: "#fffbeb", iconBg: "#fef3c7", trend: false,
+            tone: "amber" as const, trend: false,
         },
         {
             label: dict.dashboard.kpis.contacts.label, value: unreadContacts,
             sub: `${totalContacts} ${dict.dashboard.kpis.contacts.total} · ${unreadContacts} ${dict.dashboard.kpis.contacts.unread}`, icon: MessageSquare,
-            accent: "#8b5cf6", bg: "#f5f3ff", iconBg: "#ede9fe", trend: unreadContacts > 0,
+            tone: "violet" as const, trend: unreadContacts > 0,
         },
         {
             label: dict.dashboard.kpis.appointments.label, value: pendingAppointments + confirmedAppointments,
             sub: `${pendingAppointments} ${dict.dashboard.kpis.appointments.pending} · ${confirmedAppointments} ${dict.dashboard.kpis.appointments.confirmed}`, icon: CalendarCheck,
-            accent: "#d91c1c", bg: "#fff1f2", iconBg: "#ffe4e6", trend: pendingAppointments > 0,
+            tone: "red" as const, trend: pendingAppointments > 0,
         },
     ];
 
     return (
-        <div className="space-y-8 max-w-[1400px] mx-auto">
+        <AdminPage className="max-w-[1400px] space-y-8">
 
             {/* ── Header ── */}
-            <div className="pb-2">
-                <p className="text-[13px] font-bold uppercase tracking-[0.18em] mb-2" style={{ color: "#94a3b8" }}>
-                    {format(now, "EEEE d MMMM yyyy", { locale: dateLocale })}
-                </p>
-                <h1 className="text-[2rem] font-headings font-black text-slate-900 tracking-tight">{dict.dashboard.title}</h1>
-            </div>
+            <AdminPageHeader
+                eyebrow={format(now, "EEEE d MMMM yyyy", { locale: dateLocale })}
+                title={dict.dashboard.title}
+            />
 
             {/* ── KPI Cards ── */}
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-5">
+            <AdminMetricGrid className="grid-cols-1 md:grid-cols-2 xl:grid-cols-5">
                 {kpis.map((k) => (
-                    <div
+                    <AdminMetricCard
                         key={k.label}
-                        className="relative rounded-2xl p-6 transition-shadow hover:shadow-lg"
-                        style={{ background: "#ffffff", border: "1px solid #e8edf4", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}
-                    >
-                        {k.trend && (
-                            <span className="absolute top-4 right-4 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                        )}
-                        <div
-                            className="w-12 h-12 rounded-xl flex items-center justify-center mb-5"
-                            style={{ background: k.iconBg }}
-                        >
-                            <k.icon size={22} style={{ color: k.accent }} />
-                        </div>
-                        <p className="text-[2.4rem] font-black leading-none text-slate-900 mb-2">{k.value}</p>
-                        <p className="text-[13px] font-black text-slate-800 uppercase tracking-wide mb-1">{k.label}</p>
-                        <p className="text-[12px] text-slate-400 font-medium leading-snug">{k.sub}</p>
-                    </div>
+                        label={k.label}
+                        value={k.value}
+                        hint={k.sub}
+                        tone={k.tone}
+                        icon={<k.icon size={22} />}
+                        trend={k.trend ? <span className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-400 animate-pulse" /> : null}
+                    />
                 ))}
-            </div>
+            </AdminMetricGrid>
 
             {/* ── Week Calendar + Upcoming ── */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -382,6 +372,6 @@ export default async function AdminDashboardPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </AdminPage>
     );
 }

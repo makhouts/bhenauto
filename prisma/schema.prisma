@@ -58,6 +58,8 @@ model Car {
   availabilityTypeCode     String?
   fuelTypeCode             String?
   fuelCategory             String?
+  additionalFuelTypeCodes  String[]  @default([])
+  isPluginHybrid           Boolean?
   transmissionCode         String?
   drivetrain               String?
   drivetrainCode           String?

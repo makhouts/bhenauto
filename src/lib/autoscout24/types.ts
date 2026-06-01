@@ -78,7 +78,9 @@ export type AutoScoutListingPayload = {
   cylinderCapacity?: number;
   cylinderCount?: number;
   primaryFuelType?: number;
+  additionalFuelTypes?: number[];
   fuelCategory?: string;
+  isPluginHybrid?: boolean;
   transmission?: string;
   drivetrain?: string;
   bodyType?: number;
@@ -129,6 +131,7 @@ export type AutoScoutListing = {
   primaryFuelType?: number;
   additionalFuelTypes?: number[];
   fuelCategory?: string;
+  isPluginHybrid?: boolean;
   transmission?: string;
   drivetrain?: string;
   bodyType?: number;
@@ -243,6 +246,8 @@ export type AutoScoutMappedCar = {
     availabilityTypeCode: string | null;
     fuelTypeCode: string | null;
     fuelCategory: string | null;
+    additionalFuelTypeCodes: string[];
+    isPluginHybrid: boolean | null;
     transmissionCode: string | null;
     drivetrain: string | null;
     drivetrainCode: string | null;

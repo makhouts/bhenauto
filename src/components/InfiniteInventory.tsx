@@ -283,8 +283,15 @@ export default function InfiniteInventory({
                 ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'
                 : 'flex flex-col gap-4'
             }>
-                {cars.map((car) => (
-                    <CarCard key={car.id} car={car} listView={viewMode === 'list'} commonDict={commonDict} locale={locale} />
+                {cars.map((car, index) => (
+                    <CarCard
+                        key={car.id}
+                        car={car}
+                        listView={viewMode === 'list'}
+                        commonDict={commonDict}
+                        locale={locale}
+                        priorityImage={index === 0}
+                    />
                 ))}
 
                 {/* Skeleton cards while loading */}
