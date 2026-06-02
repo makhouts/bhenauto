@@ -181,7 +181,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
             <div className="px-5 py-5 sm:px-6">
                 <AdminToolbar>
                     <div className="min-w-0">
-                        <AdminInputWrap className="max-w-xl">
+                        <AdminInputWrap className="w-full md:w-[480px]">
                             <Search size={18} className="shrink-0 text-slate-400" />
                             <input
                                 type="text"

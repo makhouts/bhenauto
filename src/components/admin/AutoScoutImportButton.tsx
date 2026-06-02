@@ -15,10 +15,18 @@ export default function AutoScoutImportButton() {
     const [isConfigured, setIsConfigured] = useState(true);
     const [lastCompletedAt, setLastCompletedAt] = useState<string | null>(null);
     const importWasRunning = useRef(false);
+    const pollNowRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
         let cancelled = false;
         let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        const scheduleNextPoll = (delayMs: number) => {
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                void pollImportStatus();
+            }, delayMs);
+        };
+
         const pollImportStatus = async () => {
             try {
                 const response = await fetch("/api/admin/autoscout-import/status", {
@@ -54,17 +62,23 @@ export default function AutoScoutImportButton() {
                     }
 
                     importWasRunning.current = running;
-                    timeoutId = setTimeout(pollImportStatus, running ? 3000 : 60000);
+                    scheduleNextPoll(running ? 3000 : 60000);
                 }
             } catch {
-                if (!cancelled) timeoutId = setTimeout(pollImportStatus, 10000);
+                if (!cancelled) scheduleNextPoll(10000);
             }
+        };
+
+        pollNowRef.current = () => {
+            if (timeoutId) clearTimeout(timeoutId);
+            void pollImportStatus();
         };
 
         void pollImportStatus();
 
         return () => {
             cancelled = true;
+            pollNowRef.current = null;
             if (timeoutId) clearTimeout(timeoutId);
         };
     }, [dict.carsTable.manualSyncCompleted, dict.carsTable.manualSyncFailed, router]);
@@ -81,6 +95,7 @@ export default function AutoScoutImportButton() {
             setIsRunning(true);
             importWasRunning.current = true;
             toast.info(result.started ? dict.carsTable.manualSyncQueued : dict.carsTable.manualSyncAlreadyRunning);
+            pollNowRef.current?.();
         });
     };
 

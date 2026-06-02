@@ -19,6 +19,7 @@ const IMPORT_DETAIL_FETCH_CONCURRENCY = 4;
 const IMPORT_LOCK_ID = "autoscout24-import";
 const IMPORT_LOCK_LEASE_MS = 5 * 60 * 1000;
 const IMPORT_HEARTBEAT_INTERVAL_MS = 60 * 1000;
+const IMPORT_QUEUE_GRACE_MS = 30 * 1000;
 
 type ExistingImportedCar = Awaited<ReturnType<typeof getImportedCars>>[number];
 
@@ -121,7 +122,7 @@ export async function getAutoScoutImportStatus() {
 
     const running = Boolean(
       state &&
-      state.status === "running" &&
+      (state.status === "queued" || state.status === "running") &&
       state.lockedUntil &&
       state.lockedUntil.getTime() > Date.now()
     );
@@ -150,6 +151,40 @@ export async function isAutoScoutImportRunning() {
   return status.running;
 }
 
+export async function queueAutoScoutImport(now: Date = new Date()) {
+  await prisma.autoScoutImportState.upsert({
+    where: { id: IMPORT_LOCK_ID },
+    update: {},
+    create: {
+      id: IMPORT_LOCK_ID,
+      status: "idle",
+    },
+  });
+
+  const result = await prisma.autoScoutImportState.updateMany({
+    where: {
+      id: IMPORT_LOCK_ID,
+      OR: [
+        { status: "idle" },
+        { lockedUntil: null },
+        { lockedUntil: { lt: now } },
+      ],
+    },
+    data: {
+      ownerId: null,
+      status: "queued",
+      startedAt: now,
+      heartbeatAt: now,
+      lockedUntil: new Date(now.getTime() + IMPORT_QUEUE_GRACE_MS),
+      lastError: null,
+    },
+  });
+
+  if (result.count === 0) {
+    throw new AutoScoutImportLockError();
+  }
+}
+
 async function acquireAutoScoutImportLease(now: Date) {
   await prisma.autoScoutImportState.upsert({
     where: { id: IMPORT_LOCK_ID },
@@ -167,6 +202,7 @@ async function acquireAutoScoutImportLease(now: Date) {
     where: {
       id: IMPORT_LOCK_ID,
       OR: [
+        { status: "queued", ownerId: null },
         { status: "idle" },
         { lockedUntil: null },
         { lockedUntil: { lt: now } },

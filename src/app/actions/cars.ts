@@ -24,6 +24,7 @@ import {
 import {
     AutoScoutImportLockError,
     getAutoScoutImportStatus,
+    queueAutoScoutImport,
     runAutoScoutImport,
 } from "@/lib/autoscout24/importer";
 import { isAutoScoutSourceOfTruth } from "@/lib/autoscout24/source-of-truth";
@@ -170,6 +171,8 @@ export async function runManualAutoScoutImport() {
         if (importStatus.running) {
             return { success: true, started: false, running: true };
         }
+
+        await queueAutoScoutImport();
 
         runAfterResponse("AutoScout24 manual import", async () => {
             await runAutoScoutImport({
