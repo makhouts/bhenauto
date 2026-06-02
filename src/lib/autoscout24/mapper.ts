@@ -4,6 +4,7 @@ import type {
   AutoScoutReferenceIndex,
 } from "./types";
 import { normalizeVehicleDescription } from "./presentation-format";
+import { AUTOSCOUT_SOURCE_OF_TRUTH } from "./source-of-truth";
 
 const KW_TO_HP = 1.3596216173;
 
@@ -215,7 +216,7 @@ export function mapAutoScoutListingToCar(input: {
       externalSource: "autoscout24",
       externalListingId: listing.id,
       importSource: "autoscout24",
-      sourceOfTruth: "website",
+      sourceOfTruth: AUTOSCOUT_SOURCE_OF_TRUTH,
       autoscoutListingId: listing.id,
       autoscoutCustomerId: customerId,
       autoscoutUrl: getAutoscoutUrl(listing),

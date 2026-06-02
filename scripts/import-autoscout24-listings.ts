@@ -1,12 +1,16 @@
 import "dotenv/config";
-import { runAutoScoutImport, type AutoScoutImportOptions } from "../src/lib/autoscout24/importer";
+import {
+  AutoScoutImportPartialFailureError,
+  runAutoScoutImport,
+  type AutoScoutImportOptions,
+} from "../src/lib/autoscout24/importer";
 
 type ParsedArgs = AutoScoutImportOptions & {
   help: boolean;
 };
 
 function printHelp() {
-  console.log(`AutoScout24 legacy import / status cleanup
+  console.log(`AutoScout24 inventory import / status cleanup
 
 Usage:
   npm run import:autoscout24 -- [options]
@@ -16,6 +20,7 @@ Options:
   --apply                   Write changes to the database and R2
   --reset-test-inventory    Delete all existing website cars/images before import
   --overwrite-from-autoscout Update/create website cars from AutoScout24 again
+  --create-only-from-autoscout Create only missing website cars from AutoScout24
   --skip-cleanup-sold       Do not delete imported sold cars older than 2 days
   --customer-id <id>        Override AUTOSCOUT24_CUSTOMER_ID
   --help                    Show this help
@@ -23,10 +28,11 @@ Options:
 Examples:
   npm run import:autoscout24
   npm run import:autoscout24 -- --apply --overwrite-from-autoscout
+  npm run import:autoscout24 -- --apply --create-only-from-autoscout
   npm run import:autoscout24 -- --apply --reset-test-inventory
 
-After Phase 2, BhenAuto is the source of truth. Without --overwrite-from-autoscout
-this command will not overwrite website inventory from AutoScout24.
+AutoScout24 is the source of truth for inventory. By default this command
+will update website inventory from AutoScout24.
 `);
 }
 
@@ -57,6 +63,8 @@ function parseArgs(args: string[]): ParsedArgs {
       parsed.resetTestInventory = true;
     } else if (arg === "--overwrite-from-autoscout") {
       parsed.overwriteFromAutoscout = true;
+    } else if (arg === "--create-only-from-autoscout") {
+      parsed.createOnlyFromAutoscout = true;
     } else if (arg === "--skip-cleanup-sold") {
       parsed.cleanupSold = false;
     } else if (arg === "--customer-id" || arg.startsWith("--customer-id=")) {
@@ -78,10 +86,12 @@ function printSummary(summary: Awaited<ReturnType<typeof runAutoScoutImport>>) {
   console.log(`Customer ID: ${summary.customerId}`);
   console.log(`Listings fetched: ${summary.fetchedListings}`);
   console.log(`Listing details fetched: ${summary.fetchedDetails}`);
+  console.log(`Listings reused without detail fetch: ${summary.reusedExisting}`);
   console.log(`Cars created: ${summary.created}`);
   console.log(`Cars updated: ${summary.updated}`);
   console.log(`Cars skipped: ${summary.skipped}`);
   console.log(`Cars marked sold: ${summary.markedSold}`);
+  console.log(`Inactive cars deleted: ${summary.deletedInactive}`);
   console.log(`Reset deleted cars: ${summary.resetDeletedCars}`);
   console.log(`Sold cars deleted after retention: ${summary.deletedSoldCars}`);
   console.log(`Images uploaded to R2: ${summary.uploadedImages}`);
@@ -120,8 +130,13 @@ async function main() {
   if (options.mode === "apply" && options.resetTestInventory) {
     console.log("Apply mode with --reset-test-inventory will delete all existing website cars and their R2 images before importing AutoScout24 listings.");
   }
-  if (!options.resetTestInventory && !options.overwriteFromAutoscout) {
-    console.log("BhenAuto is source of truth after Phase 2. Fetched AutoScout24 listings will be skipped unless --overwrite-from-autoscout is passed.");
+  if (options.overwriteFromAutoscout && options.createOnlyFromAutoscout) {
+    throw new Error("Use either --overwrite-from-autoscout or --create-only-from-autoscout, not both.");
+  }
+  if (options.createOnlyFromAutoscout) {
+    console.log("Create-only mode: only missing AutoScout24 listings will be created. Existing website cars will be left unchanged.");
+  } else if (!options.resetTestInventory && options.overwriteFromAutoscout === false) {
+    console.log("Fetched AutoScout24 listings will be skipped because overwrite mode was disabled.");
   }
 
   const summary = await runAutoScoutImport(options);
@@ -133,6 +148,9 @@ async function main() {
 }
 
 main().catch((error) => {
+  if (error instanceof AutoScoutImportPartialFailureError) {
+    printSummary(error.summary);
+  }
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });

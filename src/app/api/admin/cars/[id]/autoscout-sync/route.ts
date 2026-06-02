@@ -19,6 +19,7 @@ export async function GET(
                 id: true,
                 sold: true,
                 reserved: true,
+                sourceOfTruth: true,
                 autoscoutListingId: true,
                 autoscoutSyncStatus: true,
                 autoscoutSyncError: true,

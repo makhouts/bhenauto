@@ -3,6 +3,7 @@ import type { ImageVariant } from "@/lib/image-url";
 
 const SOURCE_MAX_WIDTH = 2000;
 const SOURCE_WEBP_QUALITY = 85;
+const MAX_INPUT_PIXELS = 50_000_000;
 
 const VARIANT_CONFIG: Record<ImageVariant, { width: number; quality: number }> = {
     // Large enough for side previews on high-DPR displays, still much smaller than gallery images.
@@ -12,7 +13,7 @@ const VARIANT_CONFIG: Record<ImageVariant, { width: number; quality: number }> =
 };
 
 async function optimizeWebp(buffer: Buffer, width: number, quality: number): Promise<Buffer> {
-    return sharp(buffer)
+    return sharp(buffer, { limitInputPixels: MAX_INPUT_PIXELS })
         .rotate()             // Auto-rotate based on EXIF orientation
         .resize({
             width,

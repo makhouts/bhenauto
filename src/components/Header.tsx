@@ -61,8 +61,12 @@ export default function Header({ dict }: HeaderProps) {
     }, []);
 
     const isHome = strippedPath === "/";
+    const isInventory = strippedPath === "/inventory";
     const isWerkplaats = strippedPath === "/werkplaats";
     const isTransparent = (isHome || isWerkplaats) && !scrolled;
+    const opaqueHeaderClass = isInventory
+        ? "bg-[#0d0d1f] md:shadow-[0_4px_30px_-10px_rgba(0,0,0,0.8)]"
+        : "bg-[#0d0d1f] md:bg-[#020214]/65 md:backdrop-blur-2xl md:shadow-[0_4px_30px_-10px_rgba(0,0,0,0.8)]";
 
     const getNavLinkColor = (isActive: boolean) => {
         if (isTransparent) return isActive ? "text-white font-bold drop-shadow-md" : "text-white font-bold drop-shadow-md hover:text-white/90";
@@ -98,11 +102,11 @@ export default function Header({ dict }: HeaderProps) {
 
     return (
         <>
-            <header className={`relative md:fixed w-full z-50 transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] ${isOpen
+            <header className={`relative md:fixed w-full z-50 transition-[background-color,box-shadow,padding] duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] ${isOpen
                 ? 'bg-transparent py-2'
                 : isTransparent
                     ? 'bg-[#0d0d1f] md:bg-transparent py-2 md:py-6'
-                    : 'bg-[#0d0d1f] md:bg-[#020214]/65 md:backdrop-blur-2xl md:shadow-[0_4px_30px_-10px_rgba(0,0,0,0.8)] py-2'
+                    : `${opaqueHeaderClass} py-2`
                 }`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">

@@ -1,8 +1,7 @@
 import prisma from "@/lib/prisma";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Plus } from "lucide-react";
 import CarsTableClient from "@/components/admin/CarsTableClient";
+import AutoScoutImportButton from "@/components/admin/AutoScoutImportButton";
 import { requireAdmin } from "@/lib/auth-guard";
 import { getAdminDictionary } from "@/lib/admin-i18n";
 import { getAdminLocale } from "@/lib/admin-i18n.server";
@@ -35,13 +34,12 @@ export default async function AdminCarsPage() {
                 title={dict.carsPage.title}
                 description={dict.carsPage.description}
                 actions={(
-                    <Link
-                        href="/admin/cars/new"
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#d91c1c] px-5 py-3 text-sm font-bold text-white shadow-[0_12px_24px_rgba(217,28,28,0.18)] transition-colors hover:bg-[#b91515]"
-                    >
-                        <Plus size={18} />
-                        {dict.carsPage.add}
-                    </Link>
+                    <div className="flex flex-wrap items-center justify-end gap-3">
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 shadow-sm">
+                            {dict.carsPage.autoscoutHint}
+                        </div>
+                        <AutoScoutImportButton />
+                    </div>
                 )}
             />
 

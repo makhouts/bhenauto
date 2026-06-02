@@ -4,8 +4,10 @@ import { AutoScoutClient, createAutoScoutClientFromEnv } from "./client";
 import { importAutoScoutImageToR2, deleteR2ObjectsForImageUrls } from "./images";
 import { mapAutoScoutListingToCar, slugify } from "./mapper";
 import { buildReferenceIndex, IMPORT_REFERENCE_TYPES } from "./references";
+import { AUTOSCOUT_SOURCE_OF_TRUTH, isAutoScoutSourceOfTruth } from "./source-of-truth";
 import type {
   AutoScoutListing,
+  AutoScoutListingSummary,
   AutoScoutMappedCar,
   AutoScoutMappedImage,
   AutoScoutReferenceIndex,
@@ -13,6 +15,10 @@ import type {
 
 const SOURCE = "autoscout24";
 const SOLD_RETENTION_MS = 2 * 24 * 60 * 60 * 1000;
+const IMPORT_DETAIL_FETCH_CONCURRENCY = 4;
+const IMPORT_LOCK_ID = "autoscout24-import";
+const IMPORT_LOCK_LEASE_MS = 5 * 60 * 1000;
+const IMPORT_HEARTBEAT_INTERVAL_MS = 60 * 1000;
 
 type ExistingImportedCar = Awaited<ReturnType<typeof getImportedCars>>[number];
 
@@ -22,6 +28,7 @@ export type AutoScoutImportOptions = {
   resetTestInventory?: boolean;
   cleanupSold?: boolean;
   overwriteFromAutoscout?: boolean;
+  createOnlyFromAutoscout?: boolean;
   now?: Date;
 };
 
@@ -30,10 +37,12 @@ export type AutoScoutImportSummary = {
   customerId: string;
   fetchedListings: number;
   fetchedDetails: number;
+  reusedExisting: number;
   created: number;
   updated: number;
   skipped: number;
   markedSold: number;
+  deletedInactive: number;
   resetDeletedCars: number;
   deletedSoldCars: number;
   uploadedImages: number;
@@ -42,16 +51,32 @@ export type AutoScoutImportSummary = {
   actions: string[];
 };
 
+export class AutoScoutImportLockError extends Error {
+  constructor() {
+    super("An AutoScout24 import is already running.");
+    this.name = "AutoScoutImportLockError";
+  }
+}
+
+export class AutoScoutImportPartialFailureError extends Error {
+  constructor(public readonly summary: AutoScoutImportSummary) {
+    super(`AutoScout24 import completed with ${summary.failures.length} failed listing(s).`);
+    this.name = "AutoScoutImportPartialFailureError";
+  }
+}
+
 function emptySummary(mode: "dry-run" | "apply", customerId: string): AutoScoutImportSummary {
   return {
     mode,
     customerId,
     fetchedListings: 0,
     fetchedDetails: 0,
+    reusedExisting: 0,
     created: 0,
     updated: 0,
     skipped: 0,
     markedSold: 0,
+    deletedInactive: 0,
     resetDeletedCars: 0,
     deletedSoldCars: 0,
     uploadedImages: 0,
@@ -63,6 +88,208 @@ function emptySummary(mode: "dry-run" | "apply", customerId: string): AutoScoutI
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isMissingImportStateTableError(error: unknown) {
+  return Boolean(
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2021"
+  );
+}
+
+async function getLastImportedCarSyncAt() {
+  const aggregate = await prisma.car.aggregate({
+    where: { externalSource: SOURCE },
+    _max: { lastSyncedAt: true },
+  });
+  return aggregate._max.lastSyncedAt ?? null;
+}
+
+export async function getAutoScoutImportStatus() {
+  try {
+    const state = await prisma.autoScoutImportState.findUnique({
+      where: { id: IMPORT_LOCK_ID },
+      select: {
+        status: true,
+        lockedUntil: true,
+        lastCompletedAt: true,
+        lastError: true,
+      },
+    });
+
+    const running = Boolean(
+      state &&
+      state.status === "running" &&
+      state.lockedUntil &&
+      state.lockedUntil.getTime() > Date.now()
+    );
+
+    return {
+      running,
+      configured: true,
+      lastCompletedAt: state?.lastCompletedAt ?? await getLastImportedCarSyncAt(),
+      lastError: state?.lastError ?? null,
+    };
+  } catch (error) {
+    if (!isMissingImportStateTableError(error)) {
+      throw error;
+    }
+    return {
+      running: false,
+      configured: false,
+      lastCompletedAt: await getLastImportedCarSyncAt(),
+      lastError: "AutoScout24 import state table is missing. Run prisma migrate deploy.",
+    };
+  }
+}
+
+export async function isAutoScoutImportRunning() {
+  const status = await getAutoScoutImportStatus();
+  return status.running;
+}
+
+async function acquireAutoScoutImportLease(now: Date) {
+  await prisma.autoScoutImportState.upsert({
+    where: { id: IMPORT_LOCK_ID },
+    update: {},
+    create: {
+      id: IMPORT_LOCK_ID,
+      status: "idle",
+    },
+  });
+
+  const ownerId = crypto.randomUUID();
+  const lockedUntil = new Date(now.getTime() + IMPORT_LOCK_LEASE_MS);
+
+  const result = await prisma.autoScoutImportState.updateMany({
+    where: {
+      id: IMPORT_LOCK_ID,
+      OR: [
+        { status: "idle" },
+        { lockedUntil: null },
+        { lockedUntil: { lt: now } },
+      ],
+    },
+    data: {
+      ownerId,
+      status: "running",
+      startedAt: now,
+      heartbeatAt: now,
+      lockedUntil,
+      lastError: null,
+    },
+  });
+
+  if (result.count === 0) {
+    throw new AutoScoutImportLockError();
+  }
+
+  return ownerId;
+}
+
+async function heartbeatAutoScoutImportLease(ownerId: string) {
+  const now = new Date();
+  const result = await prisma.autoScoutImportState.updateMany({
+    where: {
+      id: IMPORT_LOCK_ID,
+      ownerId,
+      status: "running",
+    },
+    data: {
+      heartbeatAt: now,
+      lockedUntil: new Date(now.getTime() + IMPORT_LOCK_LEASE_MS),
+    },
+  });
+
+  if (result.count === 0) {
+    throw new AutoScoutImportLockError();
+  }
+}
+
+async function releaseAutoScoutImportLease(input: {
+  ownerId: string;
+  error?: unknown;
+}) {
+  const now = new Date();
+  await prisma.autoScoutImportState.updateMany({
+    where: {
+      id: IMPORT_LOCK_ID,
+      ownerId: input.ownerId,
+    },
+    data: {
+      ownerId: null,
+      status: "idle",
+      lockedUntil: null,
+      heartbeatAt: now,
+      lastCompletedAt: input.error ? undefined : now,
+      lastError: input.error ? errorMessage(input.error) : null,
+    },
+  });
+}
+
+async function withAutoScoutImportLock<T>(fn: () => Promise<T>) {
+  const ownerId = await acquireAutoScoutImportLease(new Date());
+  const heartbeat = setInterval(() => {
+    void heartbeatAutoScoutImportLease(ownerId).catch((error) => {
+      console.error("Failed to heartbeat AutoScout24 import lease:", error);
+    });
+  }, IMPORT_HEARTBEAT_INTERVAL_MS);
+  heartbeat.unref?.();
+  let failure: unknown;
+
+  try {
+    return await fn();
+  } catch (error) {
+    failure = error;
+    throw error;
+  } finally {
+    clearInterval(heartbeat);
+    await releaseAutoScoutImportLease({
+      ownerId,
+      error: failure,
+    });
+  }
+}
+
+function parseSummaryTimestamp(value: string | undefined) {
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function shouldFetchListingDetail(summary: AutoScoutListingSummary, existingCar?: ExistingImportedCar) {
+  if (!existingCar) return true;
+  if (!isAutoScoutSourceOfTruth(existingCar.sourceOfTruth)) return true;
+
+  const summaryTimestamp = parseSummaryTimestamp(summary.lastUpdatedAt);
+  if (summaryTimestamp === null) return true;
+  if (!existingCar.sourcePayloadUpdatedAt) return true;
+
+  return existingCar.sourcePayloadUpdatedAt.getTime() < summaryTimestamp;
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+) {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function runWorker() {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      if (currentIndex >= items.length) return;
+      results[currentIndex] = await worker(items[currentIndex], currentIndex);
+    }
+  }
+
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+  return results;
 }
 
 async function getImportedCars() {
@@ -174,6 +401,20 @@ async function cleanupUploadedImages(uploadedKeys: string[], summary: AutoScoutI
   summary.deletedImages += await deleteR2ObjectsForImageUrls(uploadedKeys);
 }
 
+async function deleteInactiveImportedCar(input: {
+  existingCar: ExistingImportedCar;
+  mapped: AutoScoutMappedCar;
+  summary: AutoScoutImportSummary;
+  dryRun: boolean;
+}) {
+  input.summary.deletedInactive += 1;
+  input.summary.actions.push(`deleted inactive AutoScout24 listing ${input.mapped.autoscoutListingId} (${input.mapped.data.title})`);
+
+  if (input.dryRun) return;
+
+  input.summary.deletedImages += await deleteCarsAndR2Images([input.existingCar]);
+}
+
 async function upsertMappedCar(input: {
   mapped: AutoScoutMappedCar;
   existingCar?: ExistingImportedCar;
@@ -193,6 +434,8 @@ async function upsertMappedCar(input: {
         where: { id: existingCar.id },
         data: {
           ...carData,
+          autoscoutSyncStatus: "synced",
+          autoscoutSyncError: null,
           images: {
             deleteMany: {},
             create: imageResult.nextImages,
@@ -211,6 +454,8 @@ async function upsertMappedCar(input: {
       await prisma.car.create({
         data: {
           ...carData,
+          autoscoutSyncStatus: "synced",
+          autoscoutSyncError: null,
           images: {
             create: imageResult.nextImages,
           },
@@ -235,28 +480,40 @@ async function fetchAndMapListings(input: {
 }) {
   const summaries = await input.client.listListings(input.customerId);
   input.summary.fetchedListings = summaries.length;
-  const mappedListings: AutoScoutMappedCar[] = [];
+  const mappedListings = await mapWithConcurrency(
+    summaries,
+    IMPORT_DETAIL_FETCH_CONCURRENCY,
+    async (listingSummary) => {
+      const existingCar = input.existingByListingId.get(listingSummary.id);
+      if (!shouldFetchListingDetail(listingSummary, existingCar)) {
+        input.summary.reusedExisting += 1;
+        return null;
+      }
 
-  for (const listingSummary of summaries) {
-    try {
-      const listing = await input.client.getListing(input.customerId, listingSummary.id);
-      input.summary.fetchedDetails += 1;
-      mappedListings.push(mapAutoScoutListingToCar({
-        listing: listing as AutoScoutListing,
-        customerId: input.customerId,
-        references: input.references,
-        now: input.now,
-        existingSoldAt: input.existingByListingId.get(listingSummary.id)?.soldAt ?? null,
-      }));
-    } catch (error) {
-      input.summary.failures.push({
-        listingId: listingSummary.id,
-        message: errorMessage(error),
-      });
-    }
-  }
+      try {
+        const listing = await input.client.getListing(input.customerId, listingSummary.id);
+        input.summary.fetchedDetails += 1;
+        return mapAutoScoutListingToCar({
+          listing: listing as AutoScoutListing,
+          customerId: input.customerId,
+          references: input.references,
+          now: input.now,
+          existingSoldAt: existingCar?.soldAt ?? null,
+        });
+      } catch (error) {
+        input.summary.failures.push({
+          listingId: listingSummary.id,
+          message: errorMessage(error),
+        });
+        return null;
+      }
+    },
+  );
 
-  return mappedListings;
+  return {
+    fetchedListingIds: new Set(summaries.map((listing) => listing.id)),
+    mappedListings: mappedListings.filter((listing): listing is AutoScoutMappedCar => Boolean(listing)),
+  };
 }
 
 async function markMissingListingsSold(input: {
@@ -291,12 +548,15 @@ async function markMissingListingsSold(input: {
     await prisma.car.update({
       where: { id: car.id },
       data: {
+        sourceOfTruth: AUTOSCOUT_SOURCE_OF_TRUTH,
         sold: true,
         reserved: false,
         soldAt: car.soldAt ?? input.now,
         publicationStatus: "Missing from AutoScout24",
         availabilityStatus: "Missing from AutoScout24",
         lastSyncedAt: input.now,
+        autoscoutSyncStatus: "synced",
+        autoscoutSyncError: null,
       },
     });
   }
@@ -328,54 +588,79 @@ async function cleanupSoldCars(input: {
 }
 
 export async function runAutoScoutImport(options: AutoScoutImportOptions): Promise<AutoScoutImportSummary> {
-  const client = createAutoScoutClientFromEnv();
-  const customerId = await client.resolveCustomerId(options.customerId ?? process.env.AUTOSCOUT24_CUSTOMER_ID);
-  const now = options.now ?? new Date();
-  const dryRun = options.mode === "dry-run";
-  const summary = emptySummary(options.mode, customerId);
+  return withAutoScoutImportLock(async () => {
+    const client = createAutoScoutClientFromEnv();
+    const customerId = await client.resolveCustomerId(options.customerId ?? process.env.AUTOSCOUT24_CUSTOMER_ID);
+    const now = options.now ?? new Date();
+    const dryRun = options.mode === "dry-run";
+    const summary = emptySummary(options.mode, customerId);
 
-  const [references, makes] = await Promise.all([
-    client.getReferences([...IMPORT_REFERENCE_TYPES]),
-    client.getMakes(),
-  ]);
-  const referenceIndex = buildReferenceIndex(references, makes);
+    const [references, makes] = await Promise.all([
+      client.getReferences([...IMPORT_REFERENCE_TYPES]),
+      client.getMakes(),
+    ]);
+    const referenceIndex = buildReferenceIndex(references, makes);
 
-  if (options.resetTestInventory) {
-    const cars = await getAllCarsForReset();
-    summary.resetDeletedCars = cars.length;
-    summary.actions.push(`reset inventory: ${cars.length} cars would be deleted`);
-    if (!dryRun && cars.length > 0) {
-      summary.deletedImages += await deleteCarsAndR2Images(cars);
+    if (options.resetTestInventory) {
+      const cars = await getAllCarsForReset();
+      summary.resetDeletedCars = cars.length;
+      summary.actions.push(`reset inventory: ${cars.length} cars would be deleted`);
+      if (!dryRun && cars.length > 0) {
+        summary.deletedImages += await deleteCarsAndR2Images(cars);
+      }
     }
-  }
 
-  const importedCars = options.resetTestInventory ? [] : await getImportedCars();
-  const existingByListingId = new Map(
-    importedCars
-      .filter((car) => car.autoscoutListingId)
-      .map((car) => [car.autoscoutListingId!, car]),
-  );
-  const mappedListings = await fetchAndMapListings({
-    client,
-    customerId,
-    references: referenceIndex,
-    existingByListingId,
-    summary,
-    now,
-  });
-  const fetchedListingIds = new Set(mappedListings.map((listing) => listing.autoscoutListingId));
+    const importedCars = options.resetTestInventory ? [] : await getImportedCars();
+    const existingByListingId = new Map(
+      importedCars
+        .filter((car) => car.autoscoutListingId)
+        .map((car) => [car.autoscoutListingId!, car]),
+    );
+    const { mappedListings, fetchedListingIds } = await fetchAndMapListings({
+      client,
+      customerId,
+      references: referenceIndex,
+      existingByListingId,
+      summary,
+      now,
+    });
 
-  const shouldWriteFetchedListings = options.resetTestInventory || options.overwriteFromAutoscout;
+    const shouldWriteFetchedListings =
+      options.resetTestInventory ||
+      options.createOnlyFromAutoscout ||
+      options.overwriteFromAutoscout !== false;
 
-  if (!shouldWriteFetchedListings) {
-    summary.skipped += mappedListings.length;
-    if (mappedListings.length > 0) {
-      summary.actions.push(`skipped ${mappedListings.length} fetched AutoScout24 listings because website is source of truth`);
-    }
-  } else {
     for (const mapped of mappedListings) {
       const existingCar = existingByListingId.get(mapped.autoscoutListingId);
       try {
+        if (!mapped.isActive) {
+          if (!existingCar) {
+            summary.skipped += 1;
+            summary.actions.push(`skipped inactive AutoScout24 listing ${mapped.autoscoutListingId} (${mapped.data.title})`);
+            continue;
+          }
+
+          await deleteInactiveImportedCar({
+            existingCar,
+            mapped,
+            summary,
+            dryRun,
+          });
+          continue;
+        }
+
+        if (options.createOnlyFromAutoscout && existingCar) {
+          summary.skipped += 1;
+          summary.actions.push(`skipped existing ${mapped.autoscoutListingId} (${mapped.data.title})`);
+          continue;
+        }
+
+        if (!shouldWriteFetchedListings) {
+          summary.skipped += 1;
+          summary.actions.push(`skipped ${mapped.autoscoutListingId} (${mapped.data.title})`);
+          continue;
+        }
+
         if (dryRun) {
           if (existingCar) {
             summary.updated += 1;
@@ -395,20 +680,28 @@ export async function runAutoScoutImport(options: AutoScoutImportOptions): Promi
         });
       }
     }
-  }
 
-  if (!options.resetTestInventory && options.overwriteFromAutoscout) {
-    await markMissingListingsSold({
-      summary,
-      fetchedListingIds,
-      now,
-      dryRun,
-    });
-  }
+    if (summary.reusedExisting > 0) {
+      summary.actions.push(`reused ${summary.reusedExisting} unchanged AutoScout24 listings without refetching details`);
+    }
 
-  if (options.cleanupSold !== false) {
-    await cleanupSoldCars({ summary, now, dryRun });
-  }
+    if (!options.resetTestInventory && !options.createOnlyFromAutoscout && shouldWriteFetchedListings) {
+      await markMissingListingsSold({
+        summary,
+        fetchedListingIds,
+        now,
+        dryRun,
+      });
+    }
 
-  return summary;
+    if (options.cleanupSold !== false) {
+      await cleanupSoldCars({ summary, now, dryRun });
+    }
+
+    if (summary.failures.length > 0) {
+      throw new AutoScoutImportPartialFailureError(summary);
+    }
+
+    return summary;
+  });
 }

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { getImageUrl, getThumbnailImageUrl } from "@/lib/image-url";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 import { tpl } from "@/lib/admin-i18n";
+import { isAutoScoutSourceOfTruth } from "@/lib/autoscout24/source-of-truth";
 
 type Status = "beschikbaar" | "gereserveerd" | "verkocht";
 
@@ -30,6 +31,7 @@ export type AdminCarRow = {
     featured: boolean;
     sold: boolean;
     reserved: boolean;
+    sourceOfTruth?: string | null;
     autoscoutListingId?: string | null;
     autoscoutSyncStatus?: string | null;
     autoscoutSyncError?: string | null;
@@ -250,7 +252,7 @@ export default function CarRow({
         const result = await updateCarStatus(car.id, newStatus);
         if (result?.error) {
             setOptimisticStatus(initialStatus);
-            toast.error(dict.carRow.statusUpdateError);
+            toast.error(result.error);
         } else {
             const patch = {
                 sold: newStatus === "verkocht",
@@ -283,7 +285,7 @@ export default function CarRow({
         setIsUpdating(true);
         const result = await deleteCar(car.id);
         if (result?.error) {
-            toast.error(dict.carRow.deleteError);
+            toast.error(result.error);
             setIsUpdating(false);
             setShowDeleteConfirm(false);
         } else {
@@ -325,7 +327,7 @@ export default function CarRow({
                 ...patch,
             }));
             onAutoscoutChange?.(rowCar.id, patch);
-            toast.error(dict.carRow.autoscoutSync.retryError);
+            toast.error(result.error);
         } else {
             const patch = {
                 autoscoutSyncStatus: result.autoscoutSyncStatus ?? nextStatus,
@@ -363,6 +365,7 @@ export default function CarRow({
     const autoscoutState = getAutoScoutSyncState(rowCar);
     const autoscoutSynced = autoscoutState === "synced";
     const autoscoutPending = autoscoutState === "pending";
+    const autoScoutManaged = isAutoScoutSourceOfTruth(rowCar.sourceOfTruth);
     const autoscoutLabel = autoscoutPending ? dict.carRow.autoscoutSync.pending : (
         autoscoutSynced ? dict.carRow.autoscoutSync.synced : dict.carRow.autoscoutSync.notSynced
     );
@@ -431,7 +434,7 @@ export default function CarRow({
                 <div className="relative" ref={dropdownRef}>
                     <button
                         onClick={() => setDropdownOpen(!dropdownOpen)}
-                        disabled={isUpdating}
+                        disabled={isUpdating || autoScoutManaged}
                         className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-all disabled:opacity-50 ${statusConfig.className}`}
                     >
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusConfig.dotClass}`} />
@@ -493,7 +496,7 @@ export default function CarRow({
                     <button
                         type="button"
                         onClick={handleRetryAutoScoutSync}
-                        disabled={isRetryingAutoScout}
+                        disabled={isRetryingAutoScout || autoScoutManaged}
                         title={autoscoutTitle}
                         aria-label={dict.carRow.autoscoutSync.retry}
                         className="inline-flex items-center gap-2 rounded-full border border-red-500 bg-red-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-red-700 transition-colors hover:bg-red-100 hover:text-red-800 disabled:cursor-wait disabled:opacity-70"
@@ -562,7 +565,7 @@ export default function CarRow({
                             setActionsOpen(false);
                             setShowDeleteConfirm(true);
                         }}
-                        disabled={isUpdating}
+                        disabled={isUpdating || autoScoutManaged}
                         className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                         title={dict.carRow.deleteTitle}
                         role="menuitem"

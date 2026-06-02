@@ -8,6 +8,7 @@ import type { AutoScoutMappedImage } from "./types";
 const IMPORT_CLIENT_ID = "bhenauto";
 const IMAGE_TIMEOUT_MS = 15_000;
 const IMAGE_RETRY_DELAYS_MS = [150, 350, 800];
+const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -28,7 +29,44 @@ function imageKey(listingId: string, image: AutoScoutMappedImage) {
   return `${prefix}/${order}-${sanitizeSegment(imageId)}.webp`;
 }
 
+function validateAutoScoutImageUrl(value: string) {
+  const url = new URL(value);
+  if (url.protocol !== "https:") {
+    throw new Error("AutoScout24 image URL must use HTTPS");
+  }
+  if (url.hostname !== "prod.pictures.autoscout24.net" && !url.hostname.endsWith(".pictures.autoscout24.net")) {
+    throw new Error(`AutoScout24 image URL has unsupported host: ${url.hostname}`);
+  }
+  return url.toString();
+}
+
+async function readImageBody(response: Response) {
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_IMAGE_BYTES) {
+    throw new Error(`Image download exceeds ${MAX_IMAGE_BYTES} bytes`);
+  }
+  if (!response.body) {
+    throw new Error("Image download returned an empty body");
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_IMAGE_BYTES) {
+      await reader.cancel();
+      throw new Error(`Image download exceeds ${MAX_IMAGE_BYTES} bytes`);
+    }
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks, totalBytes);
+}
+
 async function downloadImage(url: string): Promise<Buffer> {
+  const validatedUrl = validateAutoScoutImageUrl(url);
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= IMAGE_RETRY_DELAYS_MS.length; attempt += 1) {
@@ -36,8 +74,9 @@ async function downloadImage(url: string): Promise<Buffer> {
     const timeout = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS);
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(validatedUrl, {
         headers: { Accept: "image/avif,image/webp,image/jpeg,image/png,*/*" },
+        redirect: "error",
         signal: controller.signal,
       });
       clearTimeout(timeout);
@@ -51,7 +90,7 @@ async function downloadImage(url: string): Promise<Buffer> {
         throw new Error(`Image URL returned unsupported content type: ${contentType}`);
       }
 
-      return Buffer.from(await response.arrayBuffer());
+      return readImageBody(response);
     } catch (error) {
       clearTimeout(timeout);
       lastError = error;

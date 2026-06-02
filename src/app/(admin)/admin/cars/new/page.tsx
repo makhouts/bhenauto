@@ -1,11 +1,9 @@
-import CarForm from "@/components/admin/CarForm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { getAdminDictionary } from "@/lib/admin-i18n";
 import { getAdminLocale } from "@/lib/admin-i18n.server";
-import { getAutoScoutFormOptions } from "@/lib/autoscout24/form-options";
-import { AdminPage, AdminPageHeader } from "@/components/admin/admin-ui";
+import { AdminPage, AdminPageHeader, AdminSurface } from "@/components/admin/admin-ui";
 
 export async function generateMetadata(): Promise<Metadata> {
     const dict = getAdminDictionary(await getAdminLocale());
@@ -17,7 +15,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function NewCarPage() {
     const locale = await getAdminLocale();
     const dict = getAdminDictionary(locale);
-    const autoscoutOptions = await getAutoScoutFormOptions(locale);
     return (
         <AdminPage>
             <AdminPageHeader
@@ -35,7 +32,16 @@ export default async function NewCarPage() {
                 )}
             />
 
-            <CarForm autoscoutOptions={autoscoutOptions} />
+            <AdminSurface className="max-w-3xl">
+                <div className="space-y-4">
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#d91c1c]">
+                        {dict.carEditPage.newAutoscoutTitle}
+                    </p>
+                    <p className="text-sm font-medium text-slate-700">
+                        {dict.carEditPage.newAutoscoutDescription}
+                    </p>
+                </div>
+            </AdminSurface>
         </AdminPage>
     );
 }

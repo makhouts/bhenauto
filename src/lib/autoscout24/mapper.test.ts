@@ -91,6 +91,7 @@ test("maps active AutoScout listing to available website car", () => {
   assert.equal(mapped.data.color, "Groen");
   assert.equal(mapped.data.sold, false);
   assert.equal(mapped.data.soldAt, null);
+  assert.equal(mapped.data.sourceOfTruth, "autoscout24");
   assert.deepEqual(mapped.data.features, ["Navigatiesysteem", "Lederen bekleding"]);
   assert.equal(mapped.images[0].sortOrder, 0);
 });

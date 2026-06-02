@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, CarFront, CheckCircle2, Clock3, Search, ShieldAlert, Star } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, CarFront, CheckCircle2, Search, ShieldAlert, Star } from "lucide-react";
 import CarRow, { getAutoScoutSyncState, type AdminCarRow } from "@/components/admin/CarRow";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 import { tpl } from "@/lib/admin-i18n";
@@ -9,7 +9,7 @@ import { AdminBadge, AdminInputWrap, AdminToolbar } from "@/components/admin/adm
 
 type SortKey = "vehicle" | "price" | "visibility" | "status" | "online" | "autoscout";
 type SortDirection = "asc" | "desc";
-type QuickFilter = "all" | "available" | "reserved" | "sold" | "featured" | "autoscout-problem";
+type QuickFilter = "all" | "available" | "sold" | "featured" | "autoscout-problem";
 
 function getStatusPriority(car: AdminCarRow) {
     if (car.sold) return 2;
@@ -113,8 +113,6 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
             switch (quickFilter) {
                 case "available":
                     return !car.sold && !car.reserved;
-                case "reserved":
-                    return car.reserved;
                 case "sold":
                     return car.sold;
                 case "featured":
@@ -137,7 +135,6 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
         });
 
     const availableCount = rows.filter((car) => !car.sold && !car.reserved).length;
-    const reservedCount = rows.filter((car) => car.reserved).length;
     const soldCount = rows.filter((car) => car.sold).length;
     const featuredCount = rows.filter((car) => car.featured).length;
     const autoscoutProblemCount = rows.filter((car) => getAutoScoutSyncState(car) === "not-synced").length;
@@ -183,7 +180,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
         <>
             <div className="px-5 py-5 sm:px-6">
                 <AdminToolbar>
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0">
                         <AdminInputWrap className="max-w-xl">
                             <Search size={18} className="shrink-0 text-slate-400" />
                             <input
@@ -195,7 +192,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                             />
                         </AdminInputWrap>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
                         <button type="button" onClick={() => setQuickFilter("all")} aria-pressed={quickFilter === "all"} className={filterButtonClass("all")}>
                             <AdminBadge tone="blue" className={filterBadgeClass("all")}>
                                 <CarFront size={13} />
@@ -206,12 +203,6 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                             <AdminBadge tone="green" className={filterBadgeClass("available")}>
                                 <CheckCircle2 size={13} />
                                 {availableCount} {dict.carRow.statuses.available.toLowerCase()}
-                            </AdminBadge>
-                        </button>
-                        <button type="button" onClick={() => toggleQuickFilter("reserved")} aria-pressed={quickFilter === "reserved"} className={filterButtonClass("reserved")}>
-                            <AdminBadge tone="amber" className={filterBadgeClass("reserved")}>
-                                <Clock3 size={13} />
-                                {reservedCount} {dict.carRow.statuses.reserved.toLowerCase()}
                             </AdminBadge>
                         </button>
                         <button type="button" onClick={() => toggleQuickFilter("sold")} aria-pressed={quickFilter === "sold"} className={filterButtonClass("sold")}>

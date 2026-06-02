@@ -209,6 +209,21 @@ model AutoScoutSyncLog {
   @@index([createdAt])
 }
 
+model AutoScoutImportState {
+  id              String   @id
+  ownerId         String?
+  status          String   @default("idle")
+  startedAt       DateTime?
+  heartbeatAt     DateTime?
+  lockedUntil     DateTime?
+  lastCompletedAt DateTime?
+  lastError       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, lockedUntil])
+}
+
 model Contact {
   id            String   @id @default(cuid())
   name          String

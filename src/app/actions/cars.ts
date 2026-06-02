@@ -21,9 +21,17 @@ import {
     getAutoScoutValidationMessage,
     validateAutoScoutListingValues,
 } from "@/lib/autoscout24/listing-validation";
+import {
+    AutoScoutImportLockError,
+    getAutoScoutImportStatus,
+    runAutoScoutImport,
+} from "@/lib/autoscout24/importer";
+import { isAutoScoutSourceOfTruth } from "@/lib/autoscout24/source-of-truth";
 
 const HP_TO_KW = 0.73549875;
 const MAX_FEATURED_CARS = 12;
+const AUTOSCOUT_MANAGED_ERROR = "This vehicle is managed in AutoScout24. Update it there and let the website import run.";
+const AUTOSCOUT_CREATE_ERROR = "Create new inventory in AutoScout24. The website imports vehicles automatically.";
 
 function isAllowedCarImage(value: string): boolean {
     if (isR2Key(value)) return /^[a-zA-Z0-9/_-]+\.webp$/.test(value);
@@ -88,6 +96,16 @@ function scheduleR2Deletion(keys: string[]) {
     });
 }
 
+function revalidateInventoryViews() {
+    revalidatePath("/admin/cars");
+    revalidateLocalizedPath("");
+    revalidateLocalizedPath("/inventory");
+}
+
+function isAutoScoutManagedCar(car: { sourceOfTruth?: string | null } | null | undefined) {
+    return isAutoScoutSourceOfTruth(car?.sourceOfTruth);
+}
+
 export async function retryCarAutoscoutSync(id: string) {
     await requireAdmin();
     try {
@@ -97,11 +115,16 @@ export async function retryCarAutoscoutSync(id: string) {
                 id: true,
                 sold: true,
                 autoscoutListingId: true,
+                sourceOfTruth: true,
             },
         });
 
         if (!car) {
             return { error: "Vehicle not found." };
+        }
+
+        if (isAutoScoutManagedCar(car)) {
+            return { error: AUTOSCOUT_MANAGED_ERROR };
         }
 
         if (car.sold && !car.autoscoutListingId) {
@@ -135,6 +158,38 @@ export async function retryCarAutoscoutSync(id: string) {
     }
 }
 
+export async function runManualAutoScoutImport() {
+    await requireAdmin();
+
+    try {
+        const importStatus = await getAutoScoutImportStatus();
+        if (!importStatus.configured) {
+            return { error: "AutoScout24 import is not configured yet. Run prisma migrate deploy." };
+        }
+
+        if (importStatus.running) {
+            return { success: true, started: false, running: true };
+        }
+
+        runAfterResponse("AutoScout24 manual import", async () => {
+            await runAutoScoutImport({
+                mode: "apply",
+                overwriteFromAutoscout: true,
+                cleanupSold: true,
+            });
+        });
+
+        return { success: true, started: true, running: true };
+    } catch (error) {
+        if (error instanceof AutoScoutImportLockError) {
+            return { success: true, started: false, running: true };
+        }
+
+        console.error("Failed to run AutoScout24 import:", error);
+        return { error: "Failed to import AutoScout24 inventory." };
+    }
+}
+
 export async function toggleFeatured(id: string, featured: boolean) {
     await requireAdmin();
     try {
@@ -164,9 +219,7 @@ export async function toggleFeatured(id: string, featured: boolean) {
             where: { id },
             data: { featured },
         });
-        revalidatePath("/admin/cars");
-        revalidateLocalizedPath("");
-        revalidateLocalizedPath("/inventory");
+        revalidateInventoryViews();
         return { success: true };
     } catch (error) {
         console.error("Failed to toggle featured status:", error);
@@ -177,6 +230,19 @@ export async function toggleFeatured(id: string, featured: boolean) {
 export async function updateCarStatus(id: string, status: "beschikbaar" | "gereserveerd" | "verkocht") {
     await requireAdmin();
     try {
+        const existingCar = await prisma.car.findUnique({
+            where: { id },
+            select: { sourceOfTruth: true },
+        });
+
+        if (!existingCar) {
+            return { error: "Vehicle not found." };
+        }
+
+        if (isAutoScoutManagedCar(existingCar)) {
+            return { error: AUTOSCOUT_MANAGED_ERROR };
+        }
+
         await prisma.car.update({
             where: { id },
             data: {
@@ -197,9 +263,7 @@ export async function updateCarStatus(id: string, status: "beschikbaar" | "geres
         });
         scheduleAutoScoutQueueProcessing();
 
-        revalidatePath("/admin/cars");
-        revalidateLocalizedPath("/inventory");
-        revalidateLocalizedPath("");
+        revalidateInventoryViews();
         return { success: true, autoscoutQueued: true };
     } catch (error) {
         console.error("Failed to update car status:", error);
@@ -215,8 +279,16 @@ export async function deleteCar(id: string) {
             include: { images: true },
         });
 
+        if (!car) {
+            return { error: "Vehicle not found." };
+        }
+
+        if (isAutoScoutManagedCar(car)) {
+            return { error: AUTOSCOUT_MANAGED_ERROR };
+        }
+
         // Delete all images from R2
-        const r2Keys = car?.images
+        const r2Keys = car.images
             ?.map((img) => img.url)
             .filter(isR2Key) ?? [];
         const keysToDelete = expandImageKeysForDeletion(r2Keys);
@@ -230,24 +302,20 @@ export async function deleteCar(id: string) {
             where: { id },
         });
 
-        if (car?.images?.length) {
+        if (car.images.length) {
             scheduleR2Deletion(keysToDelete);
         }
-        if (car) {
-            await enqueueAutoScoutSyncJob({
-                carId: id,
-                action: "delete",
-                customerId: car.autoscoutCustomerId,
-                listingId: car.autoscoutListingId,
-                crossReferenceId: car.crossReferenceId ?? car.id.slice(0, 50),
-                resetAttempts: true,
-            });
-            scheduleAutoScoutQueueProcessing();
-        }
+        await enqueueAutoScoutSyncJob({
+            carId: id,
+            action: "delete",
+            customerId: car.autoscoutCustomerId,
+            listingId: car.autoscoutListingId,
+            crossReferenceId: car.crossReferenceId ?? car.id.slice(0, 50),
+            resetAttempts: true,
+        });
+        scheduleAutoScoutQueueProcessing();
 
-        revalidatePath("/admin/cars");
-        revalidateLocalizedPath("");
-        revalidateLocalizedPath("/inventory");
+        revalidateInventoryViews();
         return { success: true };
     } catch (error) {
         console.error("Failed to delete car:", error);
@@ -475,6 +543,23 @@ export async function saveCar(data: unknown) {
     try {
         const parsed = CarInputSchema.parse(data);
         const { id, images, carpass_url, syncWithAutoscout, ...carData } = parsed;
+
+        if (!id) {
+            return { error: AUTOSCOUT_CREATE_ERROR };
+        }
+
+        const existingCar = await prisma.car.findUnique({
+            where: { id },
+        });
+
+        if (!existingCar) {
+            return { error: "Vehicle not found." };
+        }
+
+        if (isAutoScoutManagedCar(existingCar)) {
+            return { error: AUTOSCOUT_MANAGED_ERROR };
+        }
+
         const autoscoutValidationIssues = syncWithAutoscout
             ? validateAutoScoutListingValues({
                 ...carData,
@@ -504,17 +589,10 @@ export async function saveCar(data: unknown) {
         let savedCarId = id;
 
         if (id) {
-            const existingCar = await prisma.car.findUnique({
-                where: { id },
-            });
             const existingImages = await prisma.image.findMany({
                 where: { carId: id },
                 select: { id: true, url: true, sortOrder: true },
             });
-
-            if (!existingCar) {
-                return { error: "Vehicle not found." };
-            }
 
             const imagePlan = reconcileCarImages(existingImages, images);
             const removedR2Keys = imagePlan.removedUrls.filter(isR2Key);
@@ -601,9 +679,7 @@ export async function saveCar(data: unknown) {
             await cancelPendingAutoScoutSyncJobsForCar(savedCarId);
         }
 
-        revalidatePath("/admin/cars");
-        revalidateLocalizedPath("/inventory");
-        revalidateLocalizedPath("");
+        revalidateInventoryViews();
 
         return { success: true, autoscoutQueued: Boolean(savedCarId && syncWithAutoscout) };
     } catch (error) {
