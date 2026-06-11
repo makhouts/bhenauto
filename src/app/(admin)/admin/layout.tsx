@@ -72,6 +72,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
     const navItems = [
         { href: "/admin", label: dict.layout.nav.dashboard, badge: null },
+        { href: "/admin/analytics", label: dict.layout.nav.analytics, badge: null },
         { href: "/admin/cars", label: dict.layout.nav.cars, badge: carCount },
         { href: "/admin/contacts", label: dict.layout.nav.contacts, badge: nieuweAanvragen || null },
         { href: "/admin/appointments", label: dict.layout.nav.appointments, badge: pendingAppointments || null, badgeWarn: true },

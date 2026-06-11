@@ -100,6 +100,7 @@ model Car {
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   images                   Image[]
+  analyticsEvents          AnalyticsEvent[]
 
   @@unique([externalSource, externalListingId])
   @@index([brand])
@@ -244,6 +245,14 @@ enum AppointmentStatus {
   cancelled
 }
 
+enum AnalyticsEventType {
+  page_view
+  car_detail_view
+  car_card_click
+  appointment_submitted
+  contact_submitted
+}
+
 model Appointment {
   id            String            @id @default(cuid())
   date          DateTime // UTC midnight of the chosen day
@@ -265,6 +274,23 @@ model Appointment {
   @@index([status])
 }
 
+model AnalyticsEvent {
+  id           String             @id @default(cuid())
+  type         AnalyticsEventType
+  path         String
+  locale       String?
+  visitorHash  String
+  referrerHost String?
+  carId        String?
+  meta         Json?
+  createdAt    DateTime           @default(now())
+  car          Car?               @relation(fields: [carId], references: [id], onDelete: SetNull)
+
+  @@index([type, createdAt])
+  @@index([visitorHash, createdAt])
+  @@index([carId, type, createdAt])
+  @@index([path, type, createdAt])
+}
 model BlockedDate {
   id        String   @id @default(cuid())
   date      DateTime // UTC midnight of the blocked day

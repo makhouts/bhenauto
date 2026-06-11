@@ -7,7 +7,7 @@ import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 import { tpl } from "@/lib/admin-i18n";
 import { AdminBadge, AdminInputWrap, AdminToolbar } from "@/components/admin/admin-ui";
 
-type SortKey = "vehicle" | "price" | "visibility" | "status" | "online" | "autoscout";
+type SortKey = "vehicle" | "price" | "visibility" | "status" | "online" | "views" | "autoscout";
 type SortDirection = "asc" | "desc";
 type QuickFilter = "all" | "available" | "sold" | "featured" | "autoscout-problem";
 
@@ -90,6 +90,8 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                 return (getStatusPriority(a) - getStatusPriority(b)) * direction;
             case "online":
                 return (getCreatedAtTime(a.createdAt) - getCreatedAtTime(b.createdAt)) * direction;
+            case "views":
+                return (((a.detailViewsCount ?? 0) - (b.detailViewsCount ?? 0)) * direction);
             case "autoscout":
                 return (getAutoScoutPriority(a) - getAutoScoutPriority(b)) * direction;
             default:
@@ -238,6 +240,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                             {renderSortButton("visibility", dict.carsTable.columns.visibility)}
                             {renderSortButton("status", dict.carsTable.columns.status)}
                             {renderSortButton("online", dict.carsTable.columns.online)}
+                            {renderSortButton("views", dict.carsTable.columns.views)}
                             {renderSortButton("autoscout", dict.carsTable.columns.autoscout)}
                             <th className="px-5 py-4 font-semibold text-right" scope="col">{dict.carsTable.columns.actions}</th>
                         </tr>
@@ -245,7 +248,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                     <tbody key={`${quickFilter}:${query}`} className="motion-safe:animate-[fadeIn_220ms_ease-out]">
                         {filtered.length === 0 ? (
                             <tr>
-                                <td colSpan={7} className="px-6 py-16 text-center text-slate-500 font-medium">
+                                <td colSpan={8} className="px-6 py-16 text-center text-slate-500 font-medium">
                                     {query ? (
                                         <p>{tpl(dict.carsTable.noMatch, { query })}</p>
                                     ) : (

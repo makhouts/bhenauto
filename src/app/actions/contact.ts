@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { getDictionary } from "@/lib/dictionaries";
 import type { Locale } from "@/lib/i18n";
@@ -68,6 +69,15 @@ export async function submitContact(formData: FormData) {
     // ── Store in database ─────────────────────────────────────────────────────
     await prisma.contact.create({
       data: { name, email, phone, message, car_reference },
+    });
+
+    await trackAnalyticsEvent(headerStore, {
+      type: "contact_submitted",
+      path: `/${safeLocale}/contact`,
+      locale: safeLocale,
+      meta: {
+        hasCarReference: Boolean(car_reference),
+      },
     });
 
     revalidatePath("/admin/contacts");

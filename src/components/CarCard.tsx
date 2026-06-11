@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { trackClientAnalyticsEvent } from "@/lib/analytics-client";
 import type { CommonDict } from "@/lib/dictionaries";
 import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
 
@@ -101,6 +102,17 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
     const img1 = img1Variant && failedVariantUrls.has(img1Variant) ? img1Source : img1Variant;
     const img2 = img2Variant && failedVariantUrls.has(img2Variant) ? img2Source : img2Variant;
     const href = `/${locale}/cars/${car.slug}`;
+    const handleCardClick = () => {
+        trackClientAnalyticsEvent({
+            type: "car_card_click",
+            path: href,
+            locale,
+            carId: car.id,
+            meta: {
+                layout: listView ? "list" : "grid",
+            },
+        });
+    };
     const handleImageError = (variantUrl: string | null, sourceUrl: string | null, isPrimary = false) => {
         if (variantUrl && sourceUrl && variantUrl !== sourceUrl && !failedVariantUrls.has(variantUrl)) {
             setFailedVariantUrls((current) => {
@@ -127,6 +139,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                 }}
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
+                onClick={handleCardClick}
             >
                 {/* Red hover accent bar */}
                 <div
@@ -267,6 +280,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
+            onClick={handleCardClick}
         >
             {/* Image */}
             <div

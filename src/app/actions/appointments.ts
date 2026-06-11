@@ -9,6 +9,7 @@ import { APPOINTMENT_CONFIG, generateDaySlots } from "@/lib/appointmentConfig";
 import { startOfDay, isBefore, format } from "date-fns";
 import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import { sendBookingReceived } from "@/lib/appointment-emails";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { getDictionary } from "@/lib/dictionaries";
 import type { Locale } from "@/lib/i18n";
@@ -304,6 +305,15 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
     revalidatePath("/admin/appointments");
     revalidateLocalizedPath("/werkplaats");
 
+    await trackAnalyticsEvent(headerStore, {
+      type: "appointment_submitted",
+      path: `/${safeLocale}/werkplaats`,
+      locale: safeLocale,
+      meta: {
+        service: appointment.service,
+      },
+    });
+
     const mailResult = await sendBookingReceived({
       name: appointment.name,
       email: appointment.email,
@@ -313,6 +323,7 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
       notes: appointment.notes,
       locale: appointment.locale,
     });
+
     if (!mailResult.success) {
       console.error("Booking saved, but confirmation email failed", {
         appointmentId: appointment.id,

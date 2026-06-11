@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarCheck, Car, LayoutDashboard, MessageSquare } from "lucide-react";
+import { BarChart3, CalendarCheck, Car, LayoutDashboard, MessageSquare } from "lucide-react";
 
 type NavItem = {
     href: string;
@@ -13,6 +13,7 @@ type NavItem = {
 
 const NAV_ICONS = {
     "/admin": LayoutDashboard,
+    "/admin/analytics": BarChart3,
     "/admin/cars": Car,
     "/admin/contacts": MessageSquare,
     "/admin/appointments": CalendarCheck,

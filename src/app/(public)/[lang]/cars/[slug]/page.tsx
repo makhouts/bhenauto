@@ -13,6 +13,7 @@ import { ShieldCheck } from 'lucide-react';
 import CarContactPanel from '@/components/CarContactPanel';
 import CarWhatsAppButton from '@/components/CarWhatsAppButton';
 import DeferredMap from '@/components/DeferredMap';
+import CarDetailAnalyticsTracker from '@/components/analytics/CarDetailAnalyticsTracker';
 import carpassImg from '@/assets/carpass.webp';
 import { getDictionary } from '@/lib/dictionaries';
 import { isValidLocale, type Locale } from '@/lib/i18n';
@@ -169,6 +170,7 @@ export default async function CarDetailPage(
 
     return (
         <div className="min-h-screen theme-bg">
+            <CarDetailAnalyticsTracker carId={car.id} locale={locale} path={`/${locale}/cars/${car.slug}`} />
             <script
                 type="application/ld+json"
                 suppressHydrationWarning

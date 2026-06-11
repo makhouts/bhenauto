@@ -8,7 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toggleFeatured, deleteCar, retryCarAutoscoutSync, updateCarStatus } from "@/app/actions/cars";
-import { Star, Edit, Trash2, Loader2, ChevronDown, CheckCircle, Clock, XCircle, X, RefreshCcw, MoreHorizontal } from "lucide-react";
+import { Star, Edit, Trash2, Loader2, ChevronDown, CheckCircle, Clock, XCircle, X, RefreshCcw, MoreHorizontal, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { getImageUrl, getThumbnailImageUrl } from "@/lib/image-url";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
@@ -35,6 +35,9 @@ export type AdminCarRow = {
     autoscoutListingId?: string | null;
     autoscoutSyncStatus?: string | null;
     autoscoutSyncError?: string | null;
+    detailViewsCount?: number;
+    detailViewsLast30dCount?: number;
+    uniqueViewersLast30dCount?: number;
     images?: { url: string }[];
 };
 
@@ -471,6 +474,38 @@ export default function CarRow({
                     : tpl(daysOnline === 1 ? dict.carRow.onlineDays.one : dict.carRow.onlineDays.other, {
                         count: daysOnline.toLocaleString(locale === "fr" ? "fr-BE" : "nl-BE"),
                     })}
+            </td>
+
+            {/* Views */}
+            <td className="px-5 py-3 whitespace-nowrap">
+                <div className="relative inline-flex group/views">
+                    <span
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700"
+                        aria-label={`${dict.carsTable.columns.views}: ${rowCar.detailViewsCount ?? 0}`}
+                    >
+                        <Eye size={13} className="text-slate-400" />
+                        {(rowCar.detailViewsCount ?? 0).toLocaleString(locale === "fr" ? "fr-BE" : "nl-BE")}
+                    </span>
+                    <div className="pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-max min-w-[170px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left opacity-0 shadow-xl shadow-slate-900/10 transition-all duration-150 group-hover/views:translate-y-0 group-hover/views:opacity-100 group-focus-within/views:translate-y-0 group-focus-within/views:opacity-100">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                            {dict.carsTable.columns.views}
+                        </p>
+                        <div className="mt-2 space-y-1.5">
+                            <div className="flex items-center justify-between gap-3 text-[11px]">
+                                <span className="font-medium text-slate-500">{dict.analytics.periods.last30d}</span>
+                                <span className="font-black text-slate-900">
+                                    {(rowCar.detailViewsLast30dCount ?? 0).toLocaleString(locale === "fr" ? "fr-BE" : "nl-BE")}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3 text-[11px]">
+                                <span className="font-medium text-slate-500">{dict.analytics.labels.unique}</span>
+                                <span className="font-black text-slate-900">
+                                    {(rowCar.uniqueViewersLast30dCount ?? 0).toLocaleString(locale === "fr" ? "fr-BE" : "nl-BE")}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </td>
 
             {/* AutoScout sync */}

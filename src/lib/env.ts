@@ -22,6 +22,7 @@ const EnvSchema = z.object({
     SMTP_PASS: z.string().min(1).optional(),
     TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+    ANALYTICS_HASH_SALT: z.string().min(16).optional(),
     GEMINI_API_KEY: z.string().optional(),
     CRON_SECRET: z.string().min(16).optional(),
     AUTOSCOUT24_USERNAME: z.string().min(1).optional(),
