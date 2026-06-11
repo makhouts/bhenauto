@@ -33,6 +33,7 @@ const htmlLimitedBots =
 
 const nextConfig: NextConfig = {
   htmlLimitedBots,
+  poweredByHeader: false,
   serverExternalPackages: ["@prisma/adapter-pg", "pg"],
   experimental: {
     globalNotFound: true,
@@ -51,6 +52,24 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/admin",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow",
+          },
+        ],
+      },
+      {
+        source: "/admin/:path*",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "noindex, nofollow",
+          },
+        ],
+      },
       {
         source: "/:all*(svg|jpg|jpeg|png|webp|avif|ico|mp4|webmanifest)",
         headers: [

@@ -7,11 +7,11 @@ import CarCardSkeleton from "@/components/CarCardSkeleton";
 import { fetchCarsPaginated } from "@/app/actions/fetchCars";
 import prisma from "@/lib/prisma";
 import { getDictionary } from "@/lib/dictionaries";
-import { isValidLocale, locales, type Locale } from "@/lib/i18n";
+import { isValidLocale, type Locale } from "@/lib/i18n";
 import { translateFuelLabel, translateTransmissionLabel } from "@/lib/autoscout24/presentation-format";
 import { getLocalizedReferenceLabels } from "@/lib/autoscout24/public-presentation";
+import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 const PAGE_SIZE = 9;
 
 type FilterOption = {
@@ -40,19 +40,15 @@ export async function generateMetadata({
   const dict = await getDictionary(locale);
   const inv = dict.inventory;
 
-  const alternateLanguages: Record<string, string> = {};
-  for (const l of locales) {
-    alternateLanguages[l] = `${BASE_URL}/${l}/inventory`;
-  }
-
   return {
     title: inv.pageTitle,
     description: inv.pageSubtitle,
     alternates: {
-      canonical: `${BASE_URL}/${locale}/inventory`,
-      languages: alternateLanguages,
+      canonical: localizedUrl(locale, "/inventory"),
+      languages: localizedAlternates("/inventory"),
     },
     openGraph: {
+      url: localizedUrl(locale, "/inventory"),
       title: inv.pageTitle,
       description: inv.pageSubtitle,
     },

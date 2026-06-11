@@ -4,9 +4,8 @@ import AppointmentBooking from "@/components/AppointmentBooking";
 import WerkplaatsHero from "@/components/WerkplaatsHero";
 import WerkplaatsServices from "@/components/WerkplaatsServices";
 import { getDictionary } from "@/lib/dictionaries";
-import { isValidLocale, locales, type Locale } from "@/lib/i18n";
-
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
+import { isValidLocale, type Locale } from "@/lib/i18n";
+import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 // Static content — revalidate once per hour
 export const revalidate = 3600;
@@ -21,19 +20,15 @@ export async function generateMetadata({
   const dict = await getDictionary(locale);
   const w = dict.werkplaats;
 
-  const alternateLanguages: Record<string, string> = {};
-  for (const l of locales) {
-    alternateLanguages[l] = `${BASE_URL}/${l}/werkplaats`;
-  }
-
   return {
     title: w.heroTitle,
     description: w.heroSubtitle,
     alternates: {
-      canonical: `${BASE_URL}/${locale}/werkplaats`,
-      languages: alternateLanguages,
+      canonical: localizedUrl(locale, "/werkplaats"),
+      languages: localizedAlternates("/werkplaats"),
     },
     openGraph: {
+      url: localizedUrl(locale, "/werkplaats"),
       title: w.heroTitle,
       description: w.heroSubtitle,
     },

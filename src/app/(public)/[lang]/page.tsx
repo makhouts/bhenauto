@@ -9,13 +9,20 @@ import prisma from "@/lib/prisma";
 import heroBg from "@/assets/wallpaper.webp";
 import { getDictionary, type Dictionary } from "@/lib/dictionaries";
 import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
-import { isValidLocale, locales, type Locale } from "@/lib/i18n";
+import { isValidLocale, type Locale } from "@/lib/i18n";
 import { localizeCarsForPublic } from "@/lib/autoscout24/public-presentation";
+import { businessJsonLd, jsonLdScriptContent } from "@/lib/business-schema";
+import { localizedAlternates, localizedUrl, ogLocales, SITE_URL } from "@/lib/site-seo";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 const HOMEPAGE_CAROUSEL_LIMIT = 12;
 
 export const revalidate = 60;
+
+const homepageTitles: Record<Locale, string> = {
+  nl: "BhenAuto Asse | Premium Tweedehandswagens & Garage",
+  fr: "BhenAuto Asse | Voitures d'occasion premium & Garage",
+  en: "BhenAuto Asse | Premium Used Cars & Garage",
+};
 
 export async function generateMetadata({
   params,
@@ -25,36 +32,27 @@ export async function generateMetadata({
   const { lang } = await params;
   const locale: Locale = isValidLocale(lang) ? lang : "fr";
   const dict = await getDictionary(locale);
-
-  const alternateLanguages: Record<string, string> = {};
-  for (const l of locales) {
-    alternateLanguages[l] = `${BASE_URL}/${l}`;
-  }
-
-  const ogLocales: Record<Locale, string> = {
-    nl: "nl_BE",
-    fr: "fr_BE",
-    en: "en_GB",
-  };
+  const homepageTitle = homepageTitles[locale];
 
   return {
-    title: dict.home.heroLabel,
+    title: { absolute: homepageTitle },
     description: dict.home.heroSubtitle,
-    metadataBase: new URL(BASE_URL),
+    metadataBase: new URL(SITE_URL),
     alternates: {
-      canonical: `${BASE_URL}/${locale}`,
-      languages: alternateLanguages,
+      canonical: localizedUrl(locale),
+      languages: localizedAlternates(),
     },
     openGraph: {
       type: "website",
+      url: localizedUrl(locale),
       locale: ogLocales[locale],
       siteName: "BhenAuto",
-      title: `BhenAuto | ${dict.home.heroLabel}`,
+      title: homepageTitle,
       description: dict.home.heroSubtitle,
     },
     twitter: {
       card: "summary_large_image",
-      title: `BhenAuto | ${dict.home.heroLabel}`,
+      title: homepageTitle,
       description: dict.home.heroSubtitle,
     },
   };
@@ -136,34 +134,6 @@ function CarouselSkeleton() {
   );
 }
 
-const localBusinessJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "AutoDealer",
-  "name": "BhenAuto",
-  "url": "https://bhenauto.com",
-  "telephone": "+32 2 582 83 53",
-  "address": {
-    "@type": "PostalAddress",
-    "addressLocality": "Asse",
-    "addressRegion": "Vlaams-Brabant",
-    "postalCode": "1730",
-    "addressCountry": "BE",
-  },
-  "geo": {
-    "@type": "GeoCoordinates",
-    "latitude": 50.898611,
-    "longitude": 4.225758,
-  },
-  "openingHoursSpecification": [
-    {
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-      "opens": "10:00",
-      "closes": "18:00",
-    },
-  ],
-};
-
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   const locale: Locale = isValidLocale(lang) ? lang : "fr";
@@ -175,7 +145,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       <script
         type="application/ld+json"
         suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd).replace(/<\//g, '<\\/') }}
+        dangerouslySetInnerHTML={jsonLdScriptContent(businessJsonLd)}
       />
 
       {/* Hero — renders immediately, no data dependency */}

@@ -119,8 +119,6 @@ export default function Header({ dict }: HeaderProps) {
                                     width={170}
                                     loading="eager"
                                     className="w-[170px] h-auto object-contain mix-blend-screen"
-                                    priority
-                                    fetchPriority="high"
                                 />
                             </Link>
                         </div>

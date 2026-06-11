@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { getDictionary } from "@/lib/dictionaries";
-import { locales, isValidLocale, type Locale } from "@/lib/i18n";
+import { isValidLocale, type Locale } from "@/lib/i18n";
 import { MapPin, Car, Wrench, Phone, Globe, ChevronRight } from "lucide-react";
-
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
+import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 // Car list changes when admin manages inventory
 export const revalidate = 60;
@@ -16,6 +15,7 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const locale: Locale = isValidLocale(lang) ? lang : "fr";
   const titles: Record<string, string> = {
     nl: "Sitemap",
     fr: "Plan du site",
@@ -27,15 +27,16 @@ export async function generateMetadata({
     en: "View all important BhenAuto pages and available vehicles in a clear website sitemap.",
   };
   return {
-    title: titles[lang] ?? "Sitemap",
-    description: descriptions[lang] ?? descriptions.fr,
+    title: titles[locale],
+    description: descriptions[locale],
     alternates: {
-      canonical: `${BASE_URL}/${lang}/site-map`,
-      languages: Object.fromEntries(locales.map((l) => [l, `${BASE_URL}/${l}/site-map`])),
+      canonical: localizedUrl(locale, "/site-map"),
+      languages: localizedAlternates("/site-map"),
     },
     openGraph: {
-      title: titles[lang] ?? titles.fr,
-      description: descriptions[lang] ?? descriptions.fr,
+      url: localizedUrl(locale, "/site-map"),
+      title: titles[locale],
+      description: descriptions[locale],
       type: "website",
       siteName: "BhenAuto",
     },

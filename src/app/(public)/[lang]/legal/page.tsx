@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { locales, isValidLocale, type Locale } from "@/lib/i18n";
 import LegalClient from "./LegalClient";
-
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
+import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 export const revalidate = 86400; // once per day
 
@@ -33,12 +32,11 @@ export async function generateMetadata({
     title: titles[locale],
     description: descriptions[locale],
     alternates: {
-      canonical: `${BASE_URL}/${locale}/legal`,
-      languages: Object.fromEntries(
-        locales.map((l) => [l, `${BASE_URL}/${l}/legal`])
-      ),
+      canonical: localizedUrl(locale, "/legal"),
+      languages: localizedAlternates("/legal"),
     },
     openGraph: {
+      url: localizedUrl(locale, "/legal"),
       title: titles[locale],
       description: descriptions[locale],
     },

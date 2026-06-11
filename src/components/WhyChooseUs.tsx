@@ -258,7 +258,6 @@ export default function WhyChooseUs({ lang, dict }: { lang: string; dict: WhyCho
           src={whyUsBg}
           alt=""
           fill
-          priority
           sizes="100vw"
           quality={65}
           className="object-cover object-center"

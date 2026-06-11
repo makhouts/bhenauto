@@ -91,7 +91,7 @@ function printSummary(summary: Awaited<ReturnType<typeof runAutoScoutImport>>) {
   console.log(`Cars updated: ${summary.updated}`);
   console.log(`Cars skipped: ${summary.skipped}`);
   console.log(`Cars marked sold: ${summary.markedSold}`);
-  console.log(`Inactive cars deleted: ${summary.deletedInactive}`);
+  console.log(`Inactive cars marked sold: ${summary.inactiveMarkedSold}`);
   console.log(`Reset deleted cars: ${summary.resetDeletedCars}`);
   console.log(`Sold cars deleted after retention: ${summary.deletedSoldCars}`);
   console.log(`Images uploaded to R2: ${summary.uploadedImages}`);

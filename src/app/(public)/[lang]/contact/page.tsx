@@ -3,11 +3,11 @@ import { Suspense } from "react";
 import ContactForm from "@/components/ContactForm";
 import { Mail, MapPin, Phone, Clock, ArrowRight, CheckCircle2 } from "lucide-react";
 import { getDictionary } from "@/lib/dictionaries";
-import { isValidLocale, locales, type Locale } from "@/lib/i18n";
+import { isValidLocale, type Locale } from "@/lib/i18n";
 import { PublicEmail, PublicEmailLink } from "@/components/PublicEmail";
 import OpeningStatus from "@/components/OpeningStatus";
-
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
+import { businessJsonLd, jsonLdScriptContent } from "@/lib/business-schema";
+import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 // Static content — revalidate once per hour
 export const revalidate = 3600;
@@ -22,19 +22,15 @@ export async function generateMetadata({
   const dict = await getDictionary(locale);
   const c = dict.contact;
 
-  const alternateLanguages: Record<string, string> = {};
-  for (const l of locales) {
-    alternateLanguages[l] = `${BASE_URL}/${l}/contact`;
-  }
-
   return {
     title: "Contact",
     description: c.pageSubtitle,
     alternates: {
-      canonical: `${BASE_URL}/${locale}/contact`,
-      languages: alternateLanguages,
+      canonical: localizedUrl(locale, "/contact"),
+      languages: localizedAlternates("/contact"),
     },
     openGraph: {
+      url: localizedUrl(locale, "/contact"),
       title: "Contact",
       description: c.pageSubtitle,
     },
@@ -60,6 +56,12 @@ export default async function ContactPage({
 
   return (
     <main className="min-h-screen theme-bg relative overflow-hidden">
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={jsonLdScriptContent(businessJsonLd)}
+      />
+
       {/* ── Subtle background accent ─────────────────────────────── */}
       <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#d91c1c]/4 rounded-full blur-[140px] pointer-events-none" />
 

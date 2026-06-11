@@ -43,7 +43,7 @@ export type AutoScoutImportSummary = {
   updated: number;
   skipped: number;
   markedSold: number;
-  deletedInactive: number;
+  inactiveMarkedSold: number;
   resetDeletedCars: number;
   deletedSoldCars: number;
   uploadedImages: number;
@@ -77,7 +77,7 @@ function emptySummary(mode: "dry-run" | "apply", customerId: string): AutoScoutI
     updated: 0,
     skipped: 0,
     markedSold: 0,
-    deletedInactive: 0,
+    inactiveMarkedSold: 0,
     resetDeletedCars: 0,
     deletedSoldCars: 0,
     uploadedImages: 0,
@@ -437,18 +437,41 @@ async function cleanupUploadedImages(uploadedKeys: string[], summary: AutoScoutI
   summary.deletedImages += await deleteR2ObjectsForImageUrls(uploadedKeys);
 }
 
-async function deleteInactiveImportedCar(input: {
+async function markInactiveImportedCarSold(input: {
   existingCar: ExistingImportedCar;
   mapped: AutoScoutMappedCar;
   summary: AutoScoutImportSummary;
   dryRun: boolean;
+  now: Date;
 }) {
-  input.summary.deletedInactive += 1;
-  input.summary.actions.push(`deleted inactive AutoScout24 listing ${input.mapped.autoscoutListingId} (${input.mapped.data.title})`);
+  if (!input.existingCar.sold) {
+    input.summary.markedSold += 1;
+    input.summary.inactiveMarkedSold += 1;
+  }
+  input.summary.actions.push(
+    `${input.existingCar.sold ? "kept sold" : "marked sold"} inactive AutoScout24 listing ${input.mapped.autoscoutListingId} (${input.mapped.data.title})`,
+  );
 
   if (input.dryRun) return;
 
-  input.summary.deletedImages += await deleteCarsAndR2Images([input.existingCar]);
+  await prisma.car.update({
+    where: { id: input.existingCar.id },
+    data: {
+      sourceOfTruth: AUTOSCOUT_SOURCE_OF_TRUTH,
+      sold: true,
+      reserved: false,
+      soldAt: input.existingCar.soldAt ?? input.now,
+      publicationStatus: input.mapped.data.publicationStatus ?? "Inactive",
+      availabilityStatus: input.mapped.data.availabilityStatus,
+      autoscoutCustomerId: input.mapped.autoscoutCustomerId,
+      autoscoutUrl: input.mapped.data.autoscoutUrl,
+      lastSyncedAt: input.now,
+      sourcePayload: jsonValue(input.mapped.data.sourcePayload),
+      sourcePayloadUpdatedAt: input.now,
+      autoscoutSyncStatus: "synced",
+      autoscoutSyncError: null,
+    },
+  });
 }
 
 async function upsertMappedCar(input: {
@@ -676,11 +699,12 @@ export async function runAutoScoutImport(options: AutoScoutImportOptions): Promi
             continue;
           }
 
-          await deleteInactiveImportedCar({
+          await markInactiveImportedCarSold({
             existingCar,
             mapped,
             summary,
             dryRun,
+            now,
           });
           continue;
         }

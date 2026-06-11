@@ -18,6 +18,8 @@ import { getDictionary } from '@/lib/dictionaries';
 import { isValidLocale, type Locale } from '@/lib/i18n';
 import { getTranslatedEquipmentOptions } from '@/lib/autoscout24/translated-options';
 import { localizeCarForPublic } from '@/lib/autoscout24/public-presentation';
+import { businessJsonLd, jsonLdScriptContent } from '@/lib/business-schema';
+import { localizedAlternates, localizedUrl, ogLocales, SITE_URL } from '@/lib/site-seo';
 
 // Deduplicate the car query between generateMetadata and the page component
 const getCar = cache(async (slug: string) => {
@@ -40,31 +42,27 @@ export async function generateMetadata(
         return { title: 'Voertuig Niet Gevonden' };
     }
 
+    const locale: Locale = isValidLocale(params.lang) ? params.lang : 'fr';
     const imageUrl = car.images.length > 0 ? getImageVariantUrl(car.images[0].url, 'gallery') : '';
     const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
     const ogDescription = `${car.brand} ${car.model} · ${car.year} · ${car.mileage.toLocaleString('nl-BE')} km · ${priceFormatted}`;
-
-    const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bhenauto.com';
-    const ogLocales: Record<string, string> = { nl: 'nl_BE', fr: 'fr_BE', en: 'en_GB' };
+    const carUrl = localizedUrl(locale, `/cars/${car.slug}`);
 
     return {
         title: car.title,
         description: ogDescription,
-        metadataBase: new URL(BASE_URL),
+        metadataBase: new URL(SITE_URL),
         alternates: {
-            canonical: `${BASE_URL}/${params.lang}/cars/${car.slug}`,
-            languages: {
-                nl: `${BASE_URL}/nl/cars/${car.slug}`,
-                fr: `${BASE_URL}/fr/cars/${car.slug}`,
-                en: `${BASE_URL}/en/cars/${car.slug}`,
-            },
+            canonical: carUrl,
+            languages: localizedAlternates(`/cars/${car.slug}`),
         },
         openGraph: {
+            url: carUrl,
             title: `${car.title} – ${priceFormatted}`,
             description: ogDescription,
             images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630, alt: car.title }] : [],
             type: 'website',
-            locale: ogLocales[params.lang] || 'fr_BE',
+            locale: ogLocales[locale],
             siteName: 'BhenAuto',
         },
         twitter: {
@@ -92,12 +90,18 @@ export default async function CarDetailPage(
     const car = await localizeCarForPublic(dbCar, locale);
     const t = dict.carDetail;
     const translatedFeatures = await getTranslatedEquipmentOptions(car.equipmentCodes, locale, car.features);
+    const carUrl = localizedUrl(locale, `/cars/${car.slug}`);
+    const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
+    const businessSchemaNode = Object.fromEntries(
+        Object.entries(businessJsonLd).filter(([key]) => key !== '@context')
+    );
 
-    // JSON-LD Structured Data
-    const jsonLd = {
-        '@context': 'https://schema.org',
+    const carJsonLd = {
         '@type': 'Car',
+        '@id': `${carUrl}#vehicle`,
         name: car.title,
+        url: carUrl,
+        mainEntityOfPage: carUrl,
         brand: { '@type': 'Brand', name: car.brand },
         model: car.model,
         vehicleConfiguration: car.transmission,
@@ -115,19 +119,50 @@ export default async function CarDetailPage(
         color: car.color,
         offers: {
             '@type': 'Offer',
+            url: carUrl,
             price: car.price,
             priceCurrency: 'EUR',
             availability: car.sold ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
+            itemCondition: 'https://schema.org/UsedCondition',
+            seller: { '@id': businessJsonLd['@id'] },
         },
         image: car.images.map((img: { url: string }) => getImageVariantUrl(img.url, 'gallery')),
-        description: car.description
+        description: car.description || `${car.brand} ${car.model} · ${car.year} · ${car.mileage.toLocaleString('nl-BE')} km · ${priceFormatted}`,
+    };
+
+    const breadcrumbJsonLd = {
+        '@type': 'BreadcrumbList',
+        '@id': `${carUrl}#breadcrumb`,
+        itemListElement: [
+            {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Home',
+                item: localizedUrl(locale),
+            },
+            {
+                '@type': 'ListItem',
+                position: 2,
+                name: t.breadcrumbStock,
+                item: localizedUrl(locale, '/inventory'),
+            },
+            {
+                '@type': 'ListItem',
+                position: 3,
+                name: `${car.brand} ${car.model}`,
+                item: carUrl,
+            },
+        ],
+    };
+
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@graph': [businessSchemaNode, carJsonLd, breadcrumbJsonLd],
     };
 
     const transmissionLabel = car.transmission;
 
     // WhatsApp — include lang in the shared URL so the link resolves correctly
-    const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bhenauto.com';
-    const carUrl = `${BASE_URL}/${lang}/cars/${car.slug}`;
     const whatsappText = t.whatsappMessage.replace('{title}', car.title);
     const whatsappMsg = encodeURIComponent(`${whatsappText}\n${carUrl}`);
     const whatsappUrl = `https://wa.me/32477544294?text=${whatsappMsg}`;
@@ -137,7 +172,7 @@ export default async function CarDetailPage(
             <script
                 type="application/ld+json"
                 suppressHydrationWarning
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/<\//g, '<\\/') }}
+                dangerouslySetInnerHTML={jsonLdScriptContent(jsonLd)}
             />
 
             {/* ── PAGE WRAPPER with top padding for fixed header ── */}
@@ -356,8 +391,14 @@ export default async function CarDetailPage(
                 <Suspense fallback={null}>
                     <RelatedVehicles
                         currentCarId={car.id}
-                        brand={car.brand}
-                        priceRange={car.price}
+                        brand={dbCar.brand}
+                        priceRange={dbCar.price}
+                        bodyType={dbCar.bodyType}
+                        vehicleType={dbCar.vehicleType}
+                        fuelType={dbCar.fuel_type}
+                        transmission={dbCar.transmission}
+                        year={dbCar.year}
+                        mileage={dbCar.mileage}
                         lang={lang}
                         dict={dict.carDetail}
                     />

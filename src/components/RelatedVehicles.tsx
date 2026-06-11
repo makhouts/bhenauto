@@ -3,46 +3,116 @@ import Link from "next/link";
 import prisma from "@/lib/prisma";
 import { getImageVariantUrl } from "@/lib/image-url";
 import type { CarDetailDict } from "@/lib/dictionaries";
+import type { Prisma } from "@/generated/prisma/client";
 
 interface RelatedVehiclesProps {
     currentCarId: string;
     brand: string;
     priceRange: number;
+    bodyType?: string | null;
+    vehicleType?: string | null;
+    fuelType: string;
+    transmission: string;
+    year: number;
+    mileage: number;
     lang: string;
     dict: CarDetailDict;
 }
 
-export default async function RelatedVehicles({ currentCarId, brand, priceRange, lang, dict }: RelatedVehiclesProps) {
-    // Find cars from the same brand first, then fill with similar price range
-    const sameBrand = await prisma.car.findMany({
+const RELATED_LIMIT = 4;
+const CANDIDATE_LIMIT = 48;
+const PRICE_MIN_FACTOR = 0.6;
+const PRICE_MAX_FACTOR = 1.5;
+
+function sameText(a: string | null | undefined, b: string | null | undefined) {
+    return Boolean(a?.trim() && b?.trim() && a.trim().toLowerCase() === b.trim().toLowerCase());
+}
+
+function closenessScore(value: number, target: number, maxScore: number, fullPenaltyDelta: number) {
+    if (!Number.isFinite(value) || !Number.isFinite(target) || fullPenaltyDelta <= 0) return 0;
+    return Math.max(0, maxScore * (1 - Math.abs(value - target) / fullPenaltyDelta));
+}
+
+function scoreRelatedCar(car: {
+    brand: string;
+    price: number;
+    bodyType: string | null;
+    vehicleType: string | null;
+    fuel_type: string;
+    transmission: string;
+    year: number;
+    mileage: number;
+}, current: Omit<RelatedVehiclesProps, "currentCarId" | "lang" | "dict">) {
+    let score = 0;
+
+    if (sameText(car.brand, current.brand)) score += 45;
+    if (sameText(car.vehicleType, current.vehicleType)) score += 30;
+    if (sameText(car.bodyType, current.bodyType)) score += 25;
+    if (sameText(car.fuel_type, current.fuelType)) score += 12;
+    if (sameText(car.transmission, current.transmission)) score += 10;
+
+    score += closenessScore(car.price, current.priceRange, 24, Math.max(current.priceRange, 1));
+    score += closenessScore(car.year, current.year, 8, 5);
+    score += closenessScore(car.mileage, current.mileage, 6, 80000);
+
+    return score;
+}
+
+export default async function RelatedVehicles({
+    currentCarId,
+    brand,
+    priceRange,
+    bodyType,
+    vehicleType,
+    fuelType,
+    transmission,
+    year,
+    mileage,
+    lang,
+    dict,
+}: RelatedVehiclesProps) {
+    const priceMin = Math.max(0, priceRange * PRICE_MIN_FACTOR);
+    const priceMax = Math.max(priceMin, priceRange * PRICE_MAX_FACTOR);
+    const similarityFilters: Prisma.CarWhereInput[] = [
+        { brand },
+        { price: { gte: priceMin, lte: priceMax } },
+        ...(bodyType ? [{ bodyType }] : []),
+        ...(vehicleType ? [{ vehicleType }] : []),
+        { fuel_type: fuelType },
+        { transmission },
+    ];
+
+    const candidates = await prisma.car.findMany({
         where: {
             id: { not: currentCarId },
-            brand: brand,
             sold: false,
+            OR: similarityFilters,
         },
-        take: 4,
+        take: CANDIDATE_LIMIT,
         orderBy: { createdAt: "desc" },
         include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
     });
 
-    let related = [...sameBrand];
+    let related = candidates
+        .map((car) => ({
+            car,
+            score: scoreRelatedCar(car, { brand, priceRange, bodyType, vehicleType, fuelType, transmission, year, mileage }),
+        }))
+        .sort((a, b) => b.score - a.score || b.car.createdAt.getTime() - a.car.createdAt.getTime())
+        .slice(0, RELATED_LIMIT)
+        .map(({ car }) => car);
 
-    // If not enough from same brand, fill with similar price range
-    if (related.length < 4) {
-        const similarPrice = await prisma.car.findMany({
+    if (related.length < RELATED_LIMIT) {
+        const fallback = await prisma.car.findMany({
             where: {
                 id: { notIn: [currentCarId, ...related.map(c => c.id)] },
                 sold: false,
-                price: {
-                    gte: priceRange * 0.6,
-                    lte: priceRange * 1.5,
-                },
             },
-            take: 4 - related.length,
+            take: RELATED_LIMIT - related.length,
             orderBy: { createdAt: "desc" },
             include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
         });
-        related = [...related, ...similarPrice];
+        related = [...related, ...fallback];
     }
 
     if (related.length === 0) return null;

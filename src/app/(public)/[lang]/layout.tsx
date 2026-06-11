@@ -4,9 +4,9 @@ import { locales, isValidLocale, type Locale } from "@/lib/i18n";
 import { LocaleProvider } from "@/components/LocaleContext";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import { manrope } from "@/app/fonts";
+import { absoluteUrl, localizedAlternates, localizedUrl, ogLocales, SITE_URL } from "@/lib/site-seo";
 import "../../globals.css";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://bhenauto.com";
 const imageHosts = (() => {
   const hosts = new Set<string>(["https://images.bhenauto.com"]);
   const configured = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
@@ -30,6 +30,7 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const locale: Locale = isValidLocale(lang) ? lang : "fr";
 
   const titles: Record<string, string> = {
     nl: "BhenAuto | Premium Tweedehands Voertuigen & Carrosserie",
@@ -43,38 +44,27 @@ export async function generateMetadata({
     en: "Discover our carefully curated collection of premium and luxury pre-owned vehicles. Professional bodywork and damage repair in Asse, Belgium.",
   };
 
-  const ogLocales: Record<string, string> = {
-    nl: "nl_BE",
-    fr: "fr_BE",
-    en: "en_GB",
-  };
-
-  // Build hreflang alternates
-  const alternateLanguages: Record<string, string> = {};
-  for (const locale of locales) {
-    alternateLanguages[locale] = `${BASE_URL}/${locale}`;
-  }
-
   return {
     title: {
-      default: titles[lang] || titles.fr,
+      default: titles[locale],
       template: `%s | BhenAuto`,
     },
-    description: descriptions[lang] || descriptions.fr,
-    metadataBase: new URL(BASE_URL),
+    description: descriptions[locale],
+    metadataBase: new URL(SITE_URL),
     alternates: {
-      canonical: `${BASE_URL}/${lang}`,
-      languages: alternateLanguages,
+      canonical: localizedUrl(locale),
+      languages: localizedAlternates(),
     },
     openGraph: {
       type: "website",
-      locale: ogLocales[lang] || "fr_BE",
+      url: localizedUrl(locale),
+      locale: ogLocales[locale],
       siteName: "BhenAuto",
-      title: titles[lang] || titles.fr,
-      description: descriptions[lang] || descriptions.fr,
+      title: titles[locale],
+      description: descriptions[locale],
       images: [
         {
-          url: `${BASE_URL}/og-image.png`,
+          url: absoluteUrl("/og-image.png"),
           width: 1024,
           height: 1024,
           alt: "BhenAuto — Véhicules d'Occasion Premium",
@@ -83,9 +73,9 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: titles[lang] || titles.fr,
-      description: descriptions[lang] || descriptions.fr,
-      images: [`${BASE_URL}/og-image.png`],
+      title: titles[locale],
+      description: descriptions[locale],
+      images: [absoluteUrl("/og-image.png")],
     },
   };
 }
