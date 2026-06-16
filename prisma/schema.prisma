@@ -1,10 +1,53 @@
 generator client {
   provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  output   = "../packages/core/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Tenant {
+  id               String          @id @default(cuid())
+  slug             String          @unique
+  name             String
+  displayName      String?
+  adminDisplayName String?
+  status           String          @default("active")
+  primaryDomain    String?         @unique
+  domains          String[]        @default([])
+  siteUrl          String?
+  legalName        String?
+  supportEmail     String?
+  phone            String?
+  whatsappNumber   String?
+  addressLine      String?
+  postalCode       String?
+  city             String?
+  region           String?
+  countryCode      String?         @default("BE")
+  timeZone         String          @default("Europe/Brussels")
+  currency         String          @default("EUR")
+  r2KeyPrefix      String?
+  features         TenantFeature[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([status])
+}
+
+model TenantFeature {
+  id        String   @id @default(cuid())
+  tenantId  String
+  key       String
+  enabled   Boolean  @default(true)
+  config    Json?
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, key])
+  @@index([key])
 }
 
 model Car {
@@ -100,6 +143,7 @@ model Car {
   createdAt                DateTime  @default(now())
   updatedAt                DateTime  @updatedAt
   images                   Image[]
+  analyticsEvents          AnalyticsEvent[]
 
   @@unique([externalSource, externalListingId])
   @@index([brand])
@@ -209,6 +253,21 @@ model AutoScoutSyncLog {
   @@index([createdAt])
 }
 
+model AutoScoutImportState {
+  id              String   @id
+  ownerId         String?
+  status          String   @default("idle")
+  startedAt       DateTime?
+  heartbeatAt     DateTime?
+  lockedUntil     DateTime?
+  lastCompletedAt DateTime?
+  lastError       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, lockedUntil])
+}
+
 model Contact {
   id            String   @id @default(cuid())
   name          String
@@ -227,6 +286,14 @@ enum AppointmentStatus {
   pending
   confirmed
   cancelled
+}
+
+enum AnalyticsEventType {
+  page_view
+  car_detail_view
+  car_card_click
+  appointment_submitted
+  contact_submitted
 }
 
 model Appointment {
@@ -248,6 +315,24 @@ model Appointment {
   @@index([date, timeSlot, status])
   @@index([email, createdAt])
   @@index([status])
+}
+
+model AnalyticsEvent {
+  id           String             @id @default(cuid())
+  type         AnalyticsEventType
+  path         String
+  locale       String?
+  visitorHash  String
+  referrerHost String?
+  carId        String?
+  meta         Json?
+  createdAt    DateTime           @default(now())
+  car          Car?               @relation(fields: [carId], references: [id], onDelete: SetNull)
+
+  @@index([type, createdAt])
+  @@index([visitorHash, createdAt])
+  @@index([carId, type, createdAt])
+  @@index([path, type, createdAt])
 }
 
 model BlockedDate {

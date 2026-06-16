@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { cleanupSoldCars } from "../src/lib/cars/sold-cleanup";
+import { cleanupSoldCars } from "../apps/dealer-runtime/src/lib/cars/sold-cleanup";
 
 type ParsedArgs = {
   apply: boolean;

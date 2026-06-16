@@ -1,4 +1,4 @@
-import { processAutoScoutSyncJobs } from "../src/lib/autoscout24/sync-jobs";
+import { processAutoScoutSyncJobs } from "../apps/dealer-runtime/src/lib/autoscout24/sync-jobs";
 
 type Options = {
   limit: number;

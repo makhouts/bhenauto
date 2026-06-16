@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { syncAutoScoutReferences, type AutoScoutReferenceSyncMode } from "../src/lib/autoscout24/reference-sync";
+import { syncAutoScoutReferences, type AutoScoutReferenceSyncMode } from "../apps/dealer-runtime/src/lib/autoscout24/reference-sync";
 
 type ParsedArgs = {
   mode: AutoScoutReferenceSyncMode;

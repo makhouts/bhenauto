@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+}
+
+:root {
+  --page-bg: #efe8dc;
+  --page-bg-accent: #dbe8e4;
+  --surface: rgba(255, 250, 244, 0.88);
+  --surface-strong: #fffdf8;
+  --surface-muted: rgba(244, 237, 226, 0.92);
+  --border: rgba(113, 78, 39, 0.16);
+  --ink: #14202b;
+  --muted: #5a6675;
+  --accent: #b45309;
+  --accent-strong: #8a3b00;
+  --teal: #0f766e;
+  --danger: #b42318;
+  --ring: rgba(180, 83, 9, 0.16);
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 32%),
+    radial-gradient(circle at top right, rgba(180, 83, 9, 0.18), transparent 28%),
+    linear-gradient(180deg, var(--page-bg) 0%, #f7f2ea 42%, #fcfaf6 100%);
+}
+
+body {
+  min-height: 100dvh;
+  color: var(--ink);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 90%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+*,
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(180, 83, 9, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

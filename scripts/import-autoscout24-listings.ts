@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { runAutoScoutImport, type AutoScoutImportOptions } from "../src/lib/autoscout24/importer";
+import { runAutoScoutImport, type AutoScoutImportOptions } from "../apps/dealer-runtime/src/lib/autoscout24/importer";
 
 type ParsedArgs = AutoScoutImportOptions & {
   help: boolean;
@@ -25,7 +25,7 @@ Examples:
   npm run import:autoscout24 -- --apply --overwrite-from-autoscout
   npm run import:autoscout24 -- --apply --reset-test-inventory
 
-After Phase 2, BhenAuto is the source of truth. Without --overwrite-from-autoscout
+After Phase 2, runtime inventory is source of truth. Without --overwrite-from-autoscout
 this command will not overwrite website inventory from AutoScout24.
 `);
 }
@@ -121,7 +121,7 @@ async function main() {
     console.log("Apply mode with --reset-test-inventory will delete all existing website cars and their R2 images before importing AutoScout24 listings.");
   }
   if (!options.resetTestInventory && !options.overwriteFromAutoscout) {
-    console.log("BhenAuto is source of truth after Phase 2. Fetched AutoScout24 listings will be skipped unless --overwrite-from-autoscout is passed.");
+    console.log("Runtime inventory is source of truth after Phase 2. Fetched AutoScout24 listings will be skipped unless --overwrite-from-autoscout is passed.");
   }
 
   const summary = await runAutoScoutImport(options);
