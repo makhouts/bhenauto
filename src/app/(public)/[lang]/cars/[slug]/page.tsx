@@ -22,6 +22,19 @@ import { localizeCarForPublic } from '@/lib/autoscout24/public-presentation';
 import { businessJsonLd, jsonLdScriptContent } from '@/lib/business-schema';
 import { localizedAlternates, localizedUrl, ogLocales, SITE_URL } from '@/lib/site-seo';
 
+type SeoCarMetadataInput = {
+    brand: string;
+    model: string;
+    year: number;
+    mileage: number;
+    price: number;
+    fuel_type: string;
+    transmission: string;
+    color: string;
+};
+
+const SEO_DESCRIPTION_MAX_LENGTH = 160;
+
 // Deduplicate the car query between generateMetadata and the page component
 const getCar = cache(async (slug: string) => {
     return prisma.car.findUnique({
@@ -30,6 +43,35 @@ const getCar = cache(async (slug: string) => {
     });
 });
 
+const getLocalizedCar = cache(async (slug: string, locale: Locale) => {
+    const car = await getCar(slug);
+    if (!car) return null;
+
+    return localizeCarForPublic(car, locale);
+});
+
+function truncateMetaDescription(value: string, maxLength = SEO_DESCRIPTION_MAX_LENGTH) {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maxLength) return normalized;
+
+    const slice = normalized.slice(0, maxLength - 1).trimEnd();
+    const safeCutoff = slice.lastIndexOf(' ');
+    return `${(safeCutoff > 100 ? slice.slice(0, safeCutoff) : slice).trimEnd()}…`;
+}
+
+function buildCarMetaDescription(car: SeoCarMetadataInput, locale: Locale) {
+    const mileage = car.mileage.toLocaleString('nl-BE');
+    const price = `€${car.price.toLocaleString('nl-BE')}`;
+
+    const descriptions: Record<Locale, string> = {
+        nl: `${car.brand} ${car.model} uit ${car.year} met ${mileage} km, ${car.fuel_type}, ${car.transmission} en ${car.color}. Beschikbaar bij BhenAuto voor ${price}.`,
+        fr: `${car.brand} ${car.model} de ${car.year} avec ${mileage} km, ${car.fuel_type}, ${car.transmission} et ${car.color}. Disponible chez BhenAuto pour ${price}.`,
+        en: `${car.brand} ${car.model} from ${car.year} with ${mileage} km, ${car.fuel_type}, ${car.transmission}, and ${car.color}. Available at BhenAuto for ${price}.`,
+    };
+
+    return truncateMetaDescription(descriptions[locale]);
+}
+
 // ISR: car data changes when admin edits — revalidatePath is called on mutations
 export const revalidate = 60;
 
@@ -37,21 +79,21 @@ export async function generateMetadata(
     props: { params: Promise<{ lang: string; slug: string }> }
 ): Promise<Metadata> {
     const params = await props.params;
-    const car = await getCar(params.slug);
+    const locale: Locale = isValidLocale(params.lang) ? params.lang : 'fr';
+    const car = await getLocalizedCar(params.slug, locale);
 
     if (!car) {
         return { title: 'Voertuig Niet Gevonden' };
     }
 
-    const locale: Locale = isValidLocale(params.lang) ? params.lang : 'fr';
     const imageUrl = car.images.length > 0 ? getImageVariantUrl(car.images[0].url, 'gallery') : '';
     const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
-    const ogDescription = `${car.brand} ${car.model} · ${car.year} · ${car.mileage.toLocaleString('nl-BE')} km · ${priceFormatted}`;
+    const seoDescription = buildCarMetaDescription(car, locale);
     const carUrl = localizedUrl(locale, `/cars/${car.slug}`);
 
     return {
         title: car.title,
-        description: ogDescription,
+        description: seoDescription,
         metadataBase: new URL(SITE_URL),
         alternates: {
             canonical: carUrl,
@@ -60,7 +102,7 @@ export async function generateMetadata(
         openGraph: {
             url: carUrl,
             title: `${car.title} – ${priceFormatted}`,
-            description: ogDescription,
+            description: seoDescription,
             images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630, alt: car.title }] : [],
             type: 'website',
             locale: ogLocales[locale],
@@ -69,7 +111,7 @@ export async function generateMetadata(
         twitter: {
             card: 'summary_large_image',
             title: `${car.title} – ${priceFormatted}`,
-            description: ogDescription,
+            description: seoDescription,
             images: imageUrl ? [imageUrl] : [],
         },
     };
@@ -88,11 +130,15 @@ export default async function CarDetailPage(
 
     const locale: Locale = isValidLocale(lang) ? lang : 'nl';
     const dict = await getDictionary(locale);
-    const car = await localizeCarForPublic(dbCar, locale);
+    const car = await getLocalizedCar(params.slug, locale);
+    if (!car) {
+        notFound();
+    }
     const t = dict.carDetail;
     const translatedFeatures = await getTranslatedEquipmentOptions(car.equipmentCodes, locale, car.features);
     const carUrl = localizedUrl(locale, `/cars/${car.slug}`);
     const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
+    const seoDescription = buildCarMetaDescription(car, locale);
     const businessSchemaNode = Object.fromEntries(
         Object.entries(businessJsonLd).filter(([key]) => key !== '@context')
     );
@@ -128,7 +174,7 @@ export default async function CarDetailPage(
             seller: { '@id': businessJsonLd['@id'] },
         },
         image: car.images.map((img: { url: string }) => getImageVariantUrl(img.url, 'gallery')),
-        description: car.description || `${car.brand} ${car.model} · ${car.year} · ${car.mileage.toLocaleString('nl-BE')} km · ${priceFormatted}`,
+        description: seoDescription,
     };
 
     const breadcrumbJsonLd = {
