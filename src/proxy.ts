@@ -77,6 +77,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next(); // skip locale detection for all /admin/* paths
   }
 
+  if (pathname.startsWith("/workshop")) {
+    return NextResponse.next();
+  }
+
   // Skip static files, API routes, Next.js internals (no locale handling needed)
   if (
     pathname.startsWith("/_next") ||

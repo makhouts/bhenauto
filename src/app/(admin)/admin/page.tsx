@@ -27,6 +27,29 @@ const STATUS_COLOR: Record<string, string> = {
     cancelled: "bg-slate-300",
 };
 
+function isInternalBooking(apt: { kind: string | null }) {
+    return apt.kind === "internal";
+}
+
+function getAppointmentTitle(apt: { kind: string | null; name: string; internalCarLabel: string | null }) {
+    return isInternalBooking(apt) ? apt.internalCarLabel ?? apt.name : apt.name;
+}
+
+function getAppointmentSubtitle(apt: { kind: string | null; service: string; internalKeyNumber: string | null }, locale: "nl" | "fr", dict: ReturnType<typeof getAdminDictionary>) {
+    if (isInternalBooking(apt)) {
+        return apt.internalKeyNumber
+            ? `${dict.appointments.modals.internalBadge} · #${apt.internalKeyNumber}`
+            : dict.appointments.modals.internalBadge;
+    }
+    return getAdminServiceLabel(apt.service, locale);
+}
+
+function getAppointmentChipStyle(apt: { kind: string | null; status: string }) {
+    if (apt.status === "pending") return { background: "#fffbeb", borderColor: "#f59e0b" };
+    if (isInternalBooking(apt)) return { background: "#f0f9ff", borderColor: "#0ea5e9" };
+    return { background: "#f0fdf4", borderColor: "#10b981" };
+}
+
 export default async function AdminDashboardPage() {
     await requireAdmin();
     const locale = await getAdminLocale();
@@ -194,14 +217,10 @@ export default async function AdminDashboardPage() {
                                                 <div
                                                     key={apt.id}
                                                     className="rounded-lg px-2.5 py-2 border-l-[3px]"
-                                                    style={
-                                                        apt.status === "pending"
-                                                            ? { background: "#fffbeb", borderColor: "#f59e0b" }
-                                                            : { background: "#f0fdf4", borderColor: "#10b981" }
-                                                    }
+                                                    style={getAppointmentChipStyle(apt)}
                                                 >
-                                                    <p className="text-[12px] font-black text-slate-800 truncate leading-tight">{apt.timeSlot} {apt.name}</p>
-                                                    <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">{apt.service}</p>
+                                                    <p className="text-[12px] font-black text-slate-800 truncate leading-tight">{apt.timeSlot} {getAppointmentTitle(apt)}</p>
+                                                    <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">{getAppointmentSubtitle(apt, locale, dict)}</p>
                                                 </div>
                                             ))
                                         )}
@@ -223,6 +242,10 @@ export default async function AdminDashboardPage() {
                         <div className="flex items-center gap-2">
                             <span className="w-3 h-2 rounded-sm" style={{ background: "#10b981" }} />
                             <span className="text-[12px] text-slate-400 font-medium">{dict.dashboard.calendar.confirmed}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="w-3 h-2 rounded-sm" style={{ background: "#0ea5e9" }} />
+                            <span className="text-[12px] text-slate-400 font-medium">{dict.appointments.calendar.internalLegend}</span>
                         </div>
                     </div>
                 </div>
@@ -257,10 +280,10 @@ export default async function AdminDashboardPage() {
                                 </div>
                                 <div className="flex-1 min-w-0 pt-0.5">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLOR[apt.status]}`} />
-                                        <p className="font-black text-slate-900 text-[13px] truncate">{apt.name}</p>
+                                        <span className={`w-2 h-2 rounded-full shrink-0 ${isInternalBooking(apt) ? "bg-sky-500" : STATUS_COLOR[apt.status]}`} />
+                                        <p className="font-black text-slate-900 text-[13px] truncate">{getAppointmentTitle(apt)}</p>
                                     </div>
-                                    <p className="text-[12px] text-slate-400 font-medium">{apt.timeSlot} · {getAdminServiceLabel(apt.service, locale)}</p>
+                                    <p className="text-[12px] text-slate-400 font-medium">{apt.timeSlot} · {getAppointmentSubtitle(apt, locale, dict)}</p>
                                 </div>
                             </div>
                         ))}

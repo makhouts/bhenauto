@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import InventoryFilter from "@/components/InventoryFilter";
 import InfiniteInventory from "@/components/InfiniteInventory";
 import CarCardSkeleton from "@/components/CarCardSkeleton";
@@ -13,6 +14,27 @@ import { getLocalizedReferenceLabels } from "@/lib/autoscout24/public-presentati
 import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 const PAGE_SIZE = 9;
+
+const getInventoryReferenceData = unstable_cache(
+  async () => {
+    const [availableBrands, fuelCategoryRows, fuelTypeRows, transmissionRows] = await Promise.all([
+      prisma.car.findMany({ select: { brand: true }, distinct: ["brand"] })
+        .then(rows => rows.map(r => r.brand).filter(Boolean).sort() as string[]),
+      prisma.car.findMany({ select: { fuelCategory: true }, distinct: ["fuelCategory"] }),
+      prisma.car.findMany({ select: { fuel_type: true }, distinct: ["fuel_type"] }),
+      prisma.car.findMany({ select: { transmission: true }, distinct: ["transmission"] }),
+    ]);
+
+    return {
+      availableBrands,
+      fuelCategoryRows,
+      fuelTypeRows,
+      transmissionRows,
+    };
+  },
+  ["inventory-reference-data"],
+  { revalidate: 3600 }
+);
 
 type FilterOption = {
   value: string;
@@ -76,13 +98,9 @@ export default async function InventoryPage(props: {
   const transmission = searchParams.transmission as string | string[] | undefined;
 
   // Fetch both in parallel — single render pass, no Suspense flash on re-navigation
-  const [availableBrands, fuelCategoryRows, fuelTypeRows, transmissionRows, { cars: initialCars, hasMore: initialHasMore, total }] =
+  const [{ availableBrands, fuelCategoryRows, fuelTypeRows, transmissionRows }, { cars: initialCars, hasMore: initialHasMore, total }] =
     await Promise.all([
-      prisma.car.findMany({ select: { brand: true }, distinct: ["brand"] })
-        .then(rows => rows.map(r => r.brand).filter(Boolean).sort() as string[]),
-      prisma.car.findMany({ select: { fuelCategory: true }, distinct: ["fuelCategory"] }),
-      prisma.car.findMany({ select: { fuel_type: true }, distinct: ["fuel_type"] }),
-      prisma.car.findMany({ select: { transmission: true }, distinct: ["transmission"] }),
+      getInventoryReferenceData(),
       fetchCarsPaginated({ page: 1, pageSize: PAGE_SIZE, locale, brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel, transmission }),
     ]);
 

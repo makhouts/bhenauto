@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { trackClientAnalyticsEvent } from "@/lib/analytics-client";
 import type { CommonDict } from "@/lib/dictionaries";
-import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
+import { getImageUrl, getImageVariantUrl, shouldUseDirectImageDelivery } from "@/lib/image-url";
 
 interface CarImage { url: string; }
 
@@ -101,6 +101,8 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
     const img2Variant = car.images[1]?.url ? getImageVariantUrl(car.images[1].url, "thumb") : null;
     const img1 = img1Variant && failedVariantUrls.has(img1Variant) ? img1Source : img1Variant;
     const img2 = img2Variant && failedVariantUrls.has(img2Variant) ? img2Source : img2Variant;
+    const img1Unoptimized = img1 ? shouldUseDirectImageDelivery(img1) : false;
+    const img2Unoptimized = img2 ? shouldUseDirectImageDelivery(img2) : false;
     const href = `/${locale}/cars/${car.slug}`;
     const handleCardClick = () => {
         trackClientAnalyticsEvent({
@@ -129,6 +131,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
         return (
             <Link
                 href={href}
+                prefetch={false}
                 className="group relative flex flex-row overflow-hidden transition-all duration-300 hover:-translate-y-1"
                 style={{
                     background: "var(--theme-surface)",
@@ -156,6 +159,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                             sizes="(max-width: 768px) 100vw, 46vw"
                             quality={75}
                             priority={priorityImage}
+                            unoptimized={img1Unoptimized}
                             fetchPriority={priorityImage ? "high" : "auto"}
                             loading={priorityImage ? "eager" : "lazy"}
                             onError={() => handleImageError(img1Variant, img1Source, true)}
@@ -167,6 +171,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                             src={img2} alt={`${car.title} – 2`} fill
                             sizes="(max-width: 768px) 100vw, 46vw"
                             quality={75}
+                            unoptimized={img2Unoptimized}
                             loading="lazy"
                             onError={() => handleImageError(img2Variant, img2Source)}
                             className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
@@ -271,6 +276,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
     return (
         <Link
             href={href}
+            prefetch={false}
             className="group flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-[3px]"
             style={{
                 background: "var(--theme-surface)",
@@ -297,6 +303,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 420px"
                         quality={80}
                         priority={priorityImage}
+                        unoptimized={img1Unoptimized}
                         fetchPriority={priorityImage ? "high" : "auto"}
                         loading={priorityImage ? "eager" : "lazy"}
                         onError={() => handleImageError(img1Variant, img1Source, true)}
@@ -311,6 +318,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 420px"
                         quality={75}
+                        unoptimized={img2Unoptimized}
                         loading="lazy"
                         onError={() => handleImageError(img2Variant, img2Source)}
                         className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}

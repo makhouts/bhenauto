@@ -24,11 +24,15 @@ export interface Appointment {
     id: string;
     date: Date;
     timeSlot: string;
+    kind: "customer" | "internal";
     name: string;
     email: string;
     phone: string;
     service: string;
     notes: string | null;
+    internalCarId: string | null;
+    internalCarLabel: string | null;
+    internalKeyNumber: string | null;
     status: string;
     durationHours: number;
     createdAt: Date;
@@ -36,7 +40,9 @@ export interface Appointment {
 }
 
 export interface AptForm {
+    mode: "customer" | "internal";
     name: string; email: string; phone: string; service: string;
+    internalCarId: string; internalCarLabel: string; internalKeyNumber: string;
     notes: string; dateStr: string; slot: string;
     status: "pending" | "confirmed" | "cancelled";
     durationHours: number;
@@ -44,7 +50,23 @@ export interface AptForm {
     emailLocale: "nl" | "fr" | "en";
 }
 
-const EMPTY_FORM: AptForm = { name: "", email: "", phone: "", service: "", notes: "", dateStr: "", slot: "", status: "confirmed", durationHours: 1, sendConfirmation: true, emailLocale: "fr" };
+const EMPTY_FORM: AptForm = {
+    mode: "customer",
+    name: "",
+    email: "",
+    phone: "",
+    service: "",
+    internalCarId: "",
+    internalCarLabel: "",
+    internalKeyNumber: "",
+    notes: "",
+    dateStr: "",
+    slot: "",
+    status: "confirmed",
+    durationHours: 1,
+    sendConfirmation: true,
+    emailLocale: "fr",
+};
 
 interface BlockForm {
     dateStr: string;
@@ -320,6 +342,16 @@ export function useAppointmentsReducer(
         return map;
     }, [state.appointments]);
 
+    const appointmentsByDay = useMemo(() => {
+        const map: Record<string, Appointment[]> = {};
+        for (const [dateStr, slots] of Object.entries(calData)) {
+            map[dateStr] = Object.values(slots)
+                .flat()
+                .sort((a, b) => a.timeSlot.localeCompare(b.timeSlot));
+        }
+        return map;
+    }, [calData]);
+
     const { blockedDays, blockedSlots } = useMemo(() => {
         const days = new Set<string>();
         const slots: Record<string, Set<string>> = {};
@@ -368,11 +400,16 @@ export function useAppointmentsReducer(
 
     const validate = useCallback((f: AptForm, setErrors: (errors: Partial<AptForm>) => void): boolean => {
         const e: Partial<AptForm> = {};
-        if (!f.name.trim()) e.name = dict.appointments.validation.nameRequired;
-        if (!f.email.trim()) e.email = dict.appointments.validation.emailRequired;
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = dict.appointments.validation.invalidEmail;
-        if (!f.phone.trim()) e.phone = dict.appointments.validation.phoneRequired;
-        if (!f.service) e.service = dict.appointments.validation.serviceRequired;
+        if (f.mode === "customer") {
+            if (!f.name.trim()) e.name = dict.appointments.validation.nameRequired;
+            if (!f.email.trim()) e.email = dict.appointments.validation.emailRequired;
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) e.email = dict.appointments.validation.invalidEmail;
+            if (!f.phone.trim()) e.phone = dict.appointments.validation.phoneRequired;
+            if (!f.service) e.service = dict.appointments.validation.serviceRequired;
+        } else {
+            if (!f.internalCarId) e.internalCarId = dict.appointments.validation.internalCarRequired;
+            if (!f.internalKeyNumber.trim()) e.internalKeyNumber = dict.appointments.validation.internalKeyRequired;
+        }
         if (!f.dateStr) e.dateStr = dict.appointments.validation.dateRequired;
         if (!f.slot) e.slot = dict.appointments.validation.slotRequired;
         setErrors(e);
@@ -428,8 +465,15 @@ export function useAppointmentsReducer(
             type: "OPEN_EDIT",
             id: apt.id,
             form: {
-                name: apt.name, email: apt.email, phone: apt.phone,
-                service: apt.service, notes: apt.notes ?? "", dateStr: ds,
+                mode: apt.kind === "internal" ? "internal" : "customer",
+                name: apt.kind === "internal" ? "" : apt.name,
+                email: apt.kind === "internal" ? "" : apt.email,
+                phone: apt.kind === "internal" ? "" : apt.phone,
+                service: apt.kind === "internal" ? "" : apt.service,
+                internalCarId: apt.internalCarId ?? "",
+                internalCarLabel: apt.internalCarLabel ?? "",
+                internalKeyNumber: apt.internalKeyNumber ?? "",
+                notes: apt.notes ?? "", dateStr: ds,
                 slot: apt.timeSlot, status: apt.status as "pending" | "confirmed" | "cancelled",
                 durationHours: apt.durationHours ?? 1,
                 sendConfirmation: false, emailLocale: "fr",
@@ -450,9 +494,12 @@ export function useAppointmentsReducer(
         startCreate(async () => {
             const dur = state.createForm.durationHours ?? 1;
             const r = await createAdminAppointment({
+                kind: state.createForm.mode,
                 dateStr: state.createForm.dateStr, timeSlot: state.createForm.slot,
                 name: state.createForm.name, email: state.createForm.email,
                 phone: state.createForm.phone, service: state.createForm.service,
+                internalCarId: state.createForm.internalCarId,
+                internalKeyNumber: state.createForm.internalKeyNumber,
                 notes: state.createForm.notes, durationHours: dur,
                 sendConfirmation: state.createForm.sendConfirmation,
                 emailLocale: state.createForm.emailLocale,
@@ -466,7 +513,7 @@ export function useAppointmentsReducer(
                 const idx = slots.indexOf(state.createForm.slot);
                 const newBlocks = slots.slice(idx + 1, idx + dur).map((s, i) => ({
                     id: `tmp-${r.id}-${i}`, date: newDate, timeSlot: s,
-                    reason: `Gereserveerd · ${state.createForm.name}`,
+                    reason: `Gereserveerd · ${state.createForm.mode === "internal" ? state.createForm.internalCarLabel : state.createForm.name}`,
                 }));
                 dispatch({ type: "ADD_BLOCKS", blocks: newBlocks });
             }
@@ -474,10 +521,19 @@ export function useAppointmentsReducer(
                 type: "ADD_APPOINTMENT",
                 appointment: {
                     id: r.id, date: newDate, timeSlot: state.createForm.slot,
-                    name: state.createForm.name.trim(), email: state.createForm.email.trim().toLowerCase(),
-                    phone: state.createForm.phone.trim(), service: state.createForm.service,
-                    notes: state.createForm.notes.trim() || null, status: "confirmed",
-                    durationHours: dur, createdAt: new Date(), updatedAt: new Date(),
+                    kind: state.createForm.mode,
+                    name: state.createForm.mode === "internal" ? state.createForm.internalCarLabel.trim() : state.createForm.name.trim(),
+                    email: state.createForm.mode === "internal" ? "internal-booking@bhenauto.local" : state.createForm.email.trim().toLowerCase(),
+                    phone: state.createForm.mode === "internal" ? state.createForm.internalKeyNumber.trim() : state.createForm.phone.trim(),
+                    service: state.createForm.mode === "internal" ? "__internal_booking__" : state.createForm.service,
+                    notes: state.createForm.notes.trim() || null,
+                    internalCarId: state.createForm.mode === "internal" ? state.createForm.internalCarId : null,
+                    internalCarLabel: state.createForm.mode === "internal" ? state.createForm.internalCarLabel.trim() : null,
+                    internalKeyNumber: state.createForm.mode === "internal" ? state.createForm.internalKeyNumber.trim() : null,
+                    status: "confirmed",
+                    durationHours: dur,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
                 },
             });
             dispatch({ type: "CLOSE_CREATE" });
@@ -493,9 +549,14 @@ export function useAppointmentsReducer(
 
         startEdit(async () => {
             const r = await updateAppointment({
-                id: capturedEditId, dateStr: state.editForm.dateStr, timeSlot: state.editForm.slot,
+                id: capturedEditId,
+                kind: state.editForm.mode,
+                dateStr: state.editForm.dateStr,
+                timeSlot: state.editForm.slot,
                 status: state.editForm.status, name: state.editForm.name, email: state.editForm.email,
                 phone: state.editForm.phone, service: state.editForm.service, notes: state.editForm.notes,
+                internalCarId: state.editForm.internalCarId,
+                internalKeyNumber: state.editForm.internalKeyNumber,
                 durationHours: state.editForm.durationHours,
                 sendConfirmation: state.editForm.sendConfirmation,
                 emailLocale: state.editForm.emailLocale,
@@ -506,11 +567,20 @@ export function useAppointmentsReducer(
                 type: "UPDATE_APPOINTMENT",
                 id: capturedEditId,
                 updates: {
-                    date: new Date(y, m - 1, d), timeSlot: state.editForm.slot,
-                    status: state.editForm.status, name: state.editForm.name.trim(),
-                    email: state.editForm.email.trim().toLowerCase(), phone: state.editForm.phone.trim(),
-                    service: state.editForm.service, notes: state.editForm.notes.trim() || null,
-                    durationHours: state.editForm.durationHours, updatedAt: new Date(),
+                    date: new Date(y, m - 1, d),
+                    timeSlot: state.editForm.slot,
+                    kind: state.editForm.mode,
+                    status: state.editForm.mode === "internal" && state.editForm.status === "pending" ? "confirmed" : state.editForm.status,
+                    name: state.editForm.mode === "internal" ? state.editForm.internalCarLabel.trim() : state.editForm.name.trim(),
+                    email: state.editForm.mode === "internal" ? "internal-booking@bhenauto.local" : state.editForm.email.trim().toLowerCase(),
+                    phone: state.editForm.mode === "internal" ? state.editForm.internalKeyNumber.trim() : state.editForm.phone.trim(),
+                    service: state.editForm.mode === "internal" ? "__internal_booking__" : state.editForm.service,
+                    notes: state.editForm.notes.trim() || null,
+                    internalCarId: state.editForm.mode === "internal" ? state.editForm.internalCarId : null,
+                    internalCarLabel: state.editForm.mode === "internal" ? state.editForm.internalCarLabel.trim() : null,
+                    internalKeyNumber: state.editForm.mode === "internal" ? state.editForm.internalKeyNumber.trim() : null,
+                    durationHours: state.editForm.durationHours,
+                    updatedAt: new Date(),
                 },
             });
             dispatch({ type: "CLOSE_EDIT" });
@@ -581,6 +651,7 @@ export function useAppointmentsReducer(
             weekDays,
             pendingApts,
             calData,
+            appointmentsByDay,
             blockedDays,
             blockedSlots,
             weekTotal,

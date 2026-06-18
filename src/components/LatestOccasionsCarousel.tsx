@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, ArrowRight, CalendarDays, Gauge, Fuel } from "lucide-react";
 import { useLocale } from "@/components/LocaleContext";
 import type { CarouselDict, CommonDict, HomeDict } from "@/lib/dictionaries";
+import { shouldUseDirectImageDelivery } from "@/lib/image-url";
 
 interface CarouselCar {
   id: string;
@@ -223,6 +224,7 @@ export default function LatestOccasionsCarousel({
               >
                 <Link
                   href={`/${locale}/cars/${car.slug}`}
+                  prefetch={false}
                   draggable={false}
                   className="group block theme-surface rounded-2xl overflow-hidden transition-all duration-300"
                   style={{
@@ -252,6 +254,7 @@ export default function LatestOccasionsCarousel({
                       className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 25vw"
                       quality={75}
+                      unoptimized={shouldUseDirectImageDelivery(imageSrc)}
                       onError={() => {
                         if (!car.imageFallback || failedImages.has(car.image)) return;
                         setFailedImages((current) => {

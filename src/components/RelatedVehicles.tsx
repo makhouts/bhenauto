@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
-import { getImageVariantUrl } from "@/lib/image-url";
+import { getImageVariantUrl, shouldUseDirectImageDelivery } from "@/lib/image-url";
 import type { CarDetailDict } from "@/lib/dictionaries";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -142,6 +142,7 @@ export default async function RelatedVehicles({
                         <Link
                             key={car.id}
                             href={`/${lang}/cars/${car.slug}`}
+                            prefetch={false}
                             className="group theme-surface rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                             style={{ border: '1px solid var(--theme-border)' }}
                         >
@@ -154,6 +155,7 @@ export default async function RelatedVehicles({
                                     className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                                     quality={80}
+                                    unoptimized={shouldUseDirectImageDelivery(imgUrl)}
                                 />
                                 )}
                                 {car.reserved && (

@@ -8,6 +8,17 @@
  */
 
 const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_PUBLIC_URL ?? "";
+const IMAGE_HOSTS = (() => {
+    const hosts = new Set<string>(["images.bhenauto.com"]);
+
+    if (R2_PUBLIC_URL) {
+        try {
+            hosts.add(new URL(R2_PUBLIC_URL).hostname);
+        } catch {}
+    }
+
+    return hosts;
+})();
 const IMAGE_VARIANT_SUFFIXES = {
     thumb: "__thumb",
     gallery: "__gallery",
@@ -71,4 +82,16 @@ export function getThumbnailKey(urlOrKey: string): string | null {
 
 export function getThumbnailImageUrl(urlOrKey: string): string {
     return getImageVariantUrl(urlOrKey, "thumb");
+}
+
+export function shouldUseDirectImageDelivery(url: string): boolean {
+    if (!url) return false;
+    if (isR2Key(url)) return false;
+
+    try {
+        const parsed = new URL(url);
+        return IMAGE_HOSTS.has(parsed.hostname);
+    } catch {
+        return false;
+    }
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { cloneElement, isValidElement, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import {
     format, isToday, parseISO, addMonths, subMonths,
     startOfMonth, endOfMonth, eachDayOfInterval, getDay,
@@ -9,7 +10,7 @@ import {
 import {
     CheckCircle, XCircle, ChevronLeft, ChevronRight,
     Mail, Phone, MessageSquare, CalendarDays, Inbox,
-    Plus, X, Loader2, CalendarPlus, Pencil, Ban, Unlock, GripVertical, LayoutGrid,
+    Plus, X, Loader2, CalendarPlus, Pencil, Ban, Unlock, GripVertical, LayoutGrid, Car, Hash, ChevronDown,
 } from "lucide-react";
 import { addWeeks, subWeeks } from "date-fns";
 import { generateDaySlots } from "@/lib/appointmentConfig";
@@ -21,22 +22,68 @@ import {
 } from "@/hooks/useAppointmentsReducer";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 import { getAdminDateFnsLocale, getAdminServiceLabel, getAdminServiceOptions, tpl } from "@/lib/admin-i18n";
+import { getThumbnailImageUrl } from "@/lib/image-url";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CALENDAR_BORDER: Record<string, string> = {
-    pending: "border-l-amber-400", confirmed: "border-l-green-500", cancelled: "border-l-slate-300",
-};
-const CALENDAR_BG: Record<string, string> = {
-    pending: "bg-amber-50 hover:bg-amber-100", confirmed: "bg-green-50 hover:bg-green-100", cancelled: "bg-slate-50",
-};
-const STATUS_DOT: Record<string, string> = {
-    pending: "bg-amber-400 animate-pulse", confirmed: "bg-green-500", cancelled: "bg-slate-300",
-};
 const ALL_SLOTS = generateDaySlots();
 const ROW_H = 68; // px — must match the min-h-[68px] on slot rows
 
+type InventoryCarOption = {
+    id: string;
+    brand: string;
+    model: string;
+    year: number;
+    referenceNumber: string | null;
+    reserved: boolean;
+    images?: Array<{ url: string }>;
+};
+
 function mondayIndex(d: Date) { const n = getDay(d); return n === 0 ? 6 : n - 1; }
+
+function isInternalBooking(apt: Pick<Appointment, "kind">) {
+    return apt.kind === "internal";
+}
+
+function getInventoryCarLabel(car: InventoryCarOption, locale: "nl" | "fr"): string {
+    const reservedLabel = locale === "fr" ? "Réservé" : "Gereserveerd";
+    return [
+        `${car.year} ${car.brand} ${car.model}`,
+        car.referenceNumber,
+        car.reserved ? reservedLabel : null,
+    ].filter(Boolean).join(" · ");
+}
+
+function getAppointmentTitle(apt: Appointment): string {
+    return isInternalBooking(apt) ? apt.internalCarLabel ?? apt.name : apt.name;
+}
+
+function getAppointmentSubtitle(apt: Appointment, locale: "nl" | "fr", dict: ReturnType<typeof useAdminI18n>["dict"]): string {
+    if (isInternalBooking(apt)) {
+        return apt.internalKeyNumber
+            ? `${dict.appointments.modals.internalBadge} · #${apt.internalKeyNumber}`
+            : dict.appointments.modals.internalBadge;
+    }
+    return getAdminServiceLabel(apt.service, locale);
+}
+
+function getAppointmentBorderClass(apt: Appointment): string {
+    if (apt.status === "cancelled") return "border-l-slate-300";
+    if (isInternalBooking(apt)) return "border-l-sky-500";
+    return apt.status === "pending" ? "border-l-amber-400" : "border-l-green-500";
+}
+
+function getAppointmentBgClass(apt: Appointment): string {
+    if (apt.status === "cancelled") return "bg-slate-50";
+    if (isInternalBooking(apt)) return "bg-sky-50 hover:bg-sky-100";
+    return apt.status === "pending" ? "bg-amber-50 hover:bg-amber-100" : "bg-green-50 hover:bg-green-100";
+}
+
+function getAppointmentDotClass(apt: Appointment): string {
+    if (apt.status === "cancelled") return "bg-slate-300";
+    if (isInternalBooking(apt)) return "bg-sky-500";
+    return apt.status === "pending" ? "bg-amber-400 animate-pulse" : "bg-green-500";
+}
 
 /** Returns end time string for a slot + duration, e.g. ("09:00", 3) => "12:00" */
 function slotEndTime(startSlot: string, duration: number): string {
@@ -101,8 +148,8 @@ function DragHandle({ apt, maxExtra, onResize }: {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AppointmentsClient({
-    appointments: init, blocks: initBlocks,
-}: { appointments: Appointment[]; blocks: BlockedDateEntry[] }) {
+    appointments: init, blocks: initBlocks, inventoryCars,
+}: { appointments: Appointment[]; blocks: BlockedDateEntry[]; inventoryCars: InventoryCarOption[] }) {
     const { locale, dict } = useAdminI18n();
     const dateLocale = getAdminDateFnsLocale(locale);
     const serviceOptions = getAdminServiceOptions(locale);
@@ -121,7 +168,7 @@ export default function AppointmentsClient({
         confirmSub,
         derived: {
             today, weekStart, weekEnd, weekDays,
-            pendingApts, calData, blockedDays, blockedSlots,
+            pendingApts, calData, appointmentsByDay, blockedDays, blockedSlots,
             weekTotal, availCreate, availEdit,
             getBlockId,
         },
@@ -273,7 +320,7 @@ export default function AppointmentsClient({
                             </div>
                           )}
                           {!blocked&&!coveredBySpan&&apts.length===0&&(
-                            <div className="absolute inset-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
+                            <div className="absolute inset-1 opacity-100 transition-opacity flex gap-1 z-10 md:opacity-0 md:group-hover:opacity-100">
                               <button onClick={()=>openCreate(ds,slot)} title={dict.appointments.modals.createTitle}
                                 className="flex-1 flex items-center justify-center rounded-lg border-2 border-dashed border-slate-200 hover:border-[#d91c1c] hover:bg-[#d91c1c]/5 text-slate-300 hover:text-[#d91c1c] transition-all">
                                 <Plus size={14}/>
@@ -300,10 +347,13 @@ export default function AppointmentsClient({
                             return(
                               <div key={apt.id} className="relative">
                                 <div id={`apt-card-${apt.id}`} style={{height:cardH,zIndex:20}}
-                                  className={`absolute top-0.5 left-1 right-1 rounded-lg border-l-4 group/card shadow-sm ${CALENDAR_BORDER[apt.status]} ${apt.status==="pending"?"bg-amber-50":apt.status==="confirmed"?"bg-green-50":"bg-slate-50"}`}>
+                                  className={`absolute top-0.5 left-1 right-1 rounded-lg border-l-4 group/card shadow-sm ${getAppointmentBorderClass(apt)} ${getAppointmentBgClass(apt)}`}>
                                   <button onClick={()=>dispatch({type:"SET_POPOVER",id:popoverId===apt.id?null:apt.id})} className="absolute inset-0 text-left px-2 pt-1.5 pb-5">
-                                    <p className="font-black text-slate-900 truncate leading-tight text-xs">{apt.name}</p>
-                                    <p className="text-slate-500 truncate text-[10px] mt-0.5 leading-tight">{getAdminServiceLabel(apt.service, locale)}</p>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <p className="font-black text-slate-900 truncate leading-tight text-xs">{getAppointmentTitle(apt)}</p>
+                                      {isInternalBooking(apt)&&<span className="shrink-0 rounded-full bg-sky-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-sky-700">{dict.appointments.modals.internalBadge}</span>}
+                                    </div>
+                                    <p className="text-slate-500 truncate text-[10px] mt-0.5 leading-tight">{getAppointmentSubtitle(apt, locale, dict)}</p>
                                     {dur>1&&<p className="text-[10px] font-bold text-slate-400 mt-1">{tpl(dict.appointments.modals.appointmentDuration, { hours: dur })} · {apt.timeSlot}</p>}
                                   </button>
                                   <DragHandle apt={apt} maxExtra={maxExtra} onResize={handleResizeDrag}/>
@@ -322,12 +372,18 @@ export default function AppointmentsClient({
           </div>
 
           <div className="flex items-center gap-5 mt-3 px-1 flex-wrap">
-            {(["pending","confirmed"] as const).map(s=>(
-              <div key={s} className="flex items-center gap-1.5">
-                <span className={`w-2.5 h-2 rounded-sm border-l-4 ${CALENDAR_BORDER[s]} ${CALENDAR_BG[s]}`}/>
-                <span className="text-xs text-slate-400 font-medium">{statusLabels[s]}</span>
-              </div>
-            ))}
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2 rounded-sm border-l-4 border-l-amber-400 bg-amber-50"/>
+              <span className="text-xs text-slate-400 font-medium">{statusLabels.pending}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2 rounded-sm border-l-4 border-l-green-500 bg-green-50"/>
+              <span className="text-xs text-slate-400 font-medium">{statusLabels.confirmed}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2 rounded-sm border-l-4 border-l-sky-500 bg-sky-50"/>
+              <span className="text-xs text-slate-400 font-medium">{dict.appointments.calendar.internalLegend}</span>
+            </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2 rounded-sm bg-slate-200"/>
               <span className="text-xs text-slate-400 font-medium">{dict.appointments.calendar.blockedLegend}</span>
@@ -370,19 +426,23 @@ export default function AppointmentsClient({
                       <p className="text-[9px] font-bold text-slate-400 mt-0.5">{format(apt.date,"MMM",{locale:dateLocale})}</p>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-black text-slate-900 text-sm leading-tight truncate">{apt.name}</p>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">{getAdminServiceLabel(apt.service, locale)}</p>
+                      <div className="flex items-start gap-2">
+                        <p className="font-black text-slate-900 text-sm leading-tight truncate">{getAppointmentTitle(apt)}</p>
+                        {isInternalBooking(apt)&&<span className="shrink-0 rounded-full bg-sky-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-sky-700">{dict.appointments.modals.internalBadge}</span>}
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">{getAppointmentSubtitle(apt, locale, dict)}</p>
                       <span className="inline-block text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full mt-1.5">{apt.timeSlot}</span>
                     </div>
                   </div>
                   <div className="space-y-1 mb-3 pb-3 border-b border-slate-100">
-                    <a href={`mailto:${apt.email}`} className="flex items-center gap-2 text-xs text-[#d91c1c] font-medium hover:underline truncate"><Mail size={11} className="shrink-0"/>{apt.email}</a>
-                    <a href={`tel:${apt.phone}`} className="flex items-center gap-2 text-xs text-slate-500 font-medium hover:underline"><Phone size={11} className="shrink-0"/>{apt.phone}</a>
+                    {!isInternalBooking(apt)&&<a href={`mailto:${apt.email}`} className="flex items-center gap-2 text-xs text-[#d91c1c] font-medium hover:underline truncate"><Mail size={11} className="shrink-0"/>{apt.email}</a>}
+                    {!isInternalBooking(apt)&&<a href={`tel:${apt.phone}`} className="flex items-center gap-2 text-xs text-slate-500 font-medium hover:underline"><Phone size={11} className="shrink-0"/>{apt.phone}</a>}
+                    {isInternalBooking(apt)&&apt.internalKeyNumber&&<p className="flex items-center gap-2 text-xs text-slate-500 font-medium"><Hash size={11} className="shrink-0"/>#{apt.internalKeyNumber}</p>}
                     {apt.notes && <p className="flex items-start gap-2 text-xs text-slate-400"><MessageSquare size={11} className="shrink-0 mt-0.5"/><span className="line-clamp-2">{apt.notes}</span></p>}
                   </div>
                   <div className="grid grid-cols-3 gap-1.5">
                     <button onClick={()=>openEdit(apt)} className="flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-[11px] font-bold hover:bg-slate-200 transition-colors"><Pencil size={11}/>{dict.appointments.sidebar.edit}</button>
-                    <button onClick={()=>openConfirm(apt.id)} disabled={isPending} className="flex items-center justify-center gap-1 py-2 bg-green-600 text-white rounded-xl text-[11px] font-bold hover:bg-green-700 disabled:opacity-50 transition-colors"><CheckCircle size={12}/>OK</button>
+                    <button onClick={()=>openConfirm(apt.id)} disabled={isPending||isInternalBooking(apt)} className="flex items-center justify-center gap-1 py-2 bg-green-600 text-white rounded-xl text-[11px] font-bold hover:bg-green-700 disabled:opacity-50 transition-colors"><CheckCircle size={12}/>OK</button>
                     <button onClick={()=>handleCancel(apt.id)} disabled={isPending} className="flex items-center justify-center gap-1 py-2 bg-white text-red-500 border border-red-200 rounded-xl text-[11px] font-bold hover:bg-red-50 disabled:opacity-50 transition-colors"><XCircle size={12}/>{dict.appointments.sidebar.reject}</button>
                   </div>
                 </div>
@@ -414,6 +474,7 @@ export default function AppointmentsClient({
               <div className="ml-4 hidden xl:flex items-center gap-4 pl-4 border-l border-slate-200">
                 <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"/><span className="text-xs text-slate-500 font-medium">{dict.appointments.calendar.pendingLegend}</span></div>
                 <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500"/><span className="text-xs text-slate-500 font-medium">{dict.appointments.calendar.confirmedLegend}</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-sky-500"/><span className="text-xs text-slate-500 font-medium">{dict.appointments.calendar.internalLegend}</span></div>
                 <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-slate-200"/><span className="text-xs text-slate-500 font-medium">{dict.appointments.calendar.blockedLegend}</span></div>
               </div>
             </div>
@@ -472,7 +533,7 @@ export default function AppointmentsClient({
                             const ds=format(d,"yyyy-MM-dd");
                             const tod=isToday(d);
                             const isPast=d<new Date(new Date().setHours(0,0,0,0));
-                            const dayApts=appointments.filter(a=>format(a.date,"yyyy-MM-dd")===ds&&a.status!=="cancelled");
+                            const dayApts=appointmentsByDay[ds]??[];
                             const isDayBlocked=blockedDays.has(ds);
                             return(
                               <div key={ds}
@@ -486,9 +547,9 @@ export default function AppointmentsClient({
                                 </div>
                                 <div className="space-y-1 flex-1 min-h-0 overflow-hidden">
                                   {dayApts.slice(0,3).map(apt=>(
-                                    <div key={apt.id} className={`rounded-md px-1.5 py-1 border-l-2 ${apt.status==="pending"?"bg-amber-50 border-amber-400":"bg-green-50 border-green-500"}`}>
-                                      <p className="text-[10px] font-black text-slate-800 leading-tight truncate">{apt.name}</p>
-                                      <p className="text-[9px] text-slate-500 font-medium leading-tight truncate">{apt.timeSlot} · {getAdminServiceLabel(apt.service, locale)}</p>
+                                    <div key={apt.id} className={`rounded-md px-1.5 py-1 border-l-2 ${isInternalBooking(apt)?"bg-sky-50 border-sky-500":apt.status==="pending"?"bg-amber-50 border-amber-400":"bg-green-50 border-green-500"}`}>
+                                      <p className="text-[10px] font-black text-slate-800 leading-tight truncate">{getAppointmentTitle(apt)}</p>
+                                      <p className="text-[9px] text-slate-500 font-medium leading-tight truncate">{apt.timeSlot} · {getAppointmentSubtitle(apt, locale, dict)}</p>
                                     </div>
                                   ))}
                                   {dayApts.length>3&&<p className="text-[9px] font-bold text-slate-400 pl-1">+{dayApts.length-3} {dict.appointments.overlay.more}</p>}
@@ -546,7 +607,7 @@ export default function AppointmentsClient({
                       return(
                         <div key={ds} className="border-r border-slate-100 last:border-r-0 relative">
                           {ALL_SLOTS.map(slot=>{
-                            const slotApts=appointments.filter(a=>format(a.date,"yyyy-MM-dd")===ds&&a.timeSlot===slot&&a.status!=="cancelled");
+                            const slotApts=calData[ds]?.[slot]??[];
                             const coveredBySpan=renderedSlots.has(slot);
                             // Mark follow-on slots as covered
                             slotApts.forEach(apt=>{
@@ -569,9 +630,9 @@ export default function AppointmentsClient({
                                   const dur=apt.durationHours??1;
                                   const cardH=dur*72-4;
                                   return(
-                                    <div key={apt.id} style={{height:cardH,zIndex:20}} className={`${dur>1?"absolute left-1 right-1 top-0.5":""} rounded-lg px-2 py-1.5 border-l-2 mb-1 ${apt.status==="pending"?"bg-amber-50 border-amber-400":"bg-green-50 border-green-500"}`}>
-                                      <p className="text-[11px] font-black text-slate-800 leading-tight truncate">{apt.name}</p>
-                                      <p className="text-[9px] text-slate-500 font-medium mt-0.5 truncate">{getAdminServiceLabel(apt.service, locale)}</p>
+                                    <div key={apt.id} style={{height:cardH,zIndex:20}} className={`${dur>1?"absolute left-1 right-1 top-0.5":""} rounded-lg px-2 py-1.5 border-l-2 mb-1 ${isInternalBooking(apt)?"bg-sky-50 border-sky-500":apt.status==="pending"?"bg-amber-50 border-amber-400":"bg-green-50 border-green-500"}`}>
+                                      <p className="text-[11px] font-black text-slate-800 leading-tight truncate">{getAppointmentTitle(apt)}</p>
+                                      <p className="text-[9px] text-slate-500 font-medium mt-0.5 truncate">{getAppointmentSubtitle(apt, locale, dict)}</p>
                                       {dur>1&&<p className="text-[9px] font-bold text-slate-400 mt-0.5">{dur}u</p>}
                                     </div>
                                   );
@@ -592,7 +653,8 @@ export default function AppointmentsClient({
           {overlayView==="day"&&(()=>{
             const ds=format(overlayDay,"yyyy-MM-dd");
             const isDayBlocked=blockedDays.has(ds);
-            const dayApts=appointments.filter(a=>format(a.date,"yyyy-MM-dd")===ds&&a.status!=="cancelled");
+            const dayApts=appointmentsByDay[ds]??[];
+            const daySlots=calData[ds]??{};
             return(
               <div className="flex-1 overflow-y-auto px-8 py-6">
                 {isDayBlocked&&(
@@ -624,7 +686,7 @@ export default function AppointmentsClient({
                       }
                     }
                     return ALL_SLOTS.map(slot=>{
-                      const slotApts=dayApts.filter(a=>a.timeSlot===slot);
+                      const slotApts=daySlots[slot]??[];
                       const isSlotBlocked=!isDayBlocked&&(blockedSlots[ds]?.has(slot)??false);
                       const covered=coveredSlots.get(slot);
                       // Slot is covered by a spanning appointment — show as occupied
@@ -632,7 +694,7 @@ export default function AppointmentsClient({
                         return(
                           <div key={slot} className="flex gap-4 items-start rounded-xl px-4 py-3 bg-green-50/40">
                             <span className="text-sm font-black w-14 shrink-0 pt-0.5 text-slate-300">{slot}</span>
-                            <span className="text-xs font-bold text-green-500/60 pt-1">{dict.appointments.modals.occupied} · {covered.apt.name}</span>
+                            <span className="text-xs font-bold text-green-500/60 pt-1">{dict.appointments.modals.occupied} · {getAppointmentTitle(covered.apt)}</span>
                           </div>
                         );
                       }
@@ -645,17 +707,21 @@ export default function AppointmentsClient({
                             {slotApts.map(apt=>{
                               const dur=apt.durationHours??1;
                               return(
-                                <div key={apt.id} className={`flex-1 min-w-[200px] rounded-xl px-4 py-3 border-l-4 shadow-sm ${apt.status==="pending"?"bg-amber-50 border-amber-400":"bg-green-50 border-green-500"}`}>
+                                <div key={apt.id} className={`flex-1 min-w-[200px] rounded-xl px-4 py-3 border-l-4 shadow-sm ${isInternalBooking(apt)?"bg-sky-50 border-sky-500":apt.status==="pending"?"bg-amber-50 border-amber-400":"bg-green-50 border-green-500"}`}>
                                   <div className="flex items-start justify-between gap-2">
                                     <div>
-                                      <p className="font-black text-slate-900 text-sm">{apt.name}</p>
-                                      <p className="text-xs text-slate-500 font-medium mt-0.5">{getAdminServiceLabel(apt.service, locale)}</p>
+                                      <div className="flex items-start gap-2">
+                                        <p className="font-black text-slate-900 text-sm">{getAppointmentTitle(apt)}</p>
+                                        {isInternalBooking(apt)&&<span className="shrink-0 rounded-full bg-sky-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-sky-700">{dict.appointments.modals.internalBadge}</span>}
+                                      </div>
+                                      <p className="text-xs text-slate-500 font-medium mt-0.5">{getAppointmentSubtitle(apt, locale, dict)}</p>
                                     </div>
                                     {dur>1&&<span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full shrink-0">{dur}u · {apt.timeSlot}–{ALL_SLOTS[ALL_SLOTS.indexOf(apt.timeSlot)+dur]??`${parseInt(apt.timeSlot)+dur}:00`}</span>}
                                   </div>
                                   <div className="flex items-center gap-3 mt-2">
-                                    <a href={`mailto:${apt.email}`} className="text-[11px] text-[#d91c1c] font-medium hover:underline flex items-center gap-1"><Mail size={10}/>{apt.email}</a>
-                                    <a href={`tel:${apt.phone}`} className="text-[11px] text-slate-500 font-medium hover:underline flex items-center gap-1"><Phone size={10}/>{apt.phone}</a>
+                                    {!isInternalBooking(apt)&&<a href={`mailto:${apt.email}`} className="text-[11px] text-[#d91c1c] font-medium hover:underline flex items-center gap-1"><Mail size={10}/>{apt.email}</a>}
+                                    {!isInternalBooking(apt)&&<a href={`tel:${apt.phone}`} className="text-[11px] text-slate-500 font-medium hover:underline flex items-center gap-1"><Phone size={10}/>{apt.phone}</a>}
+                                    {isInternalBooking(apt)&&apt.internalKeyNumber&&<span className="text-[11px] text-slate-500 font-medium flex items-center gap-1"><Hash size={10}/>#{apt.internalKeyNumber}</span>}
                                   </div>
                                 </div>
                               );
@@ -690,7 +756,7 @@ export default function AppointmentsClient({
                 <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center"><CheckCircle size={18} className="text-green-600"/></div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-green-600">{dict.common.confirm}</p>
-                  <h3 className="text-base font-black text-slate-900 leading-tight">{apt?.name}</h3>
+                  <h3 className="text-base font-black text-slate-900 leading-tight">{apt ? getAppointmentTitle(apt) : ""}</h3>
                   <p className="text-xs text-slate-500 font-medium">{apt&&format(apt.date,"d MMM",{locale:dateLocale})} · {apt?.timeSlot}</p>
                 </div>
               </div>
@@ -727,10 +793,10 @@ export default function AppointmentsClient({
       })()}
 
       {/* ── CREATE modal ─────────────────────────────────────────────────────── */}
-      {createOpen&&<AptModal dict={dict} locale={locale} dateLocale={dateLocale} serviceOptions={serviceOptions} title={dict.appointments.modals.createTitle} icon={<CalendarPlus size={18} className="text-[#d91c1c]"/>} form={createForm} setForm={(f)=>dispatch({type:"SET_CREATE_FORM",form:f})} errors={createErrors} serverError={createError} submitting={createSub} pickerMonth={createMonth} setPickerMonth={(d)=>dispatch({type:"SET_CREATE_MONTH",month:d})} availSlots={availCreate} today={today} onSubmit={handleCreateSubmit} onClose={()=>dispatch({type:"CLOSE_CREATE"})} submitLabel={dict.appointments.modals.submitCreate} showStatus={false} infoNote={<>{locale==="fr"?"Les rendez-vous créés manuellement sont enregistrés directement comme ":"Handmatig aangemaakte afspraken worden direct als "}<span className="font-bold text-green-600">{dict.appointments.statuses.confirmed}</span>{locale==="fr"?"." :" opgeslagen."}</>}/>}
+      {createOpen&&<AptModal dict={dict} locale={locale} dateLocale={dateLocale} serviceOptions={serviceOptions} inventoryCars={inventoryCars} title={dict.appointments.modals.createTitle} icon={<CalendarPlus size={18} className="text-[#d91c1c]"/>} form={createForm} setForm={(f)=>dispatch({type:"SET_CREATE_FORM",form:f})} errors={createErrors} serverError={createError} submitting={createSub} pickerMonth={createMonth} setPickerMonth={(d)=>dispatch({type:"SET_CREATE_MONTH",month:d})} availSlots={availCreate} today={today} onSubmit={handleCreateSubmit} onClose={()=>dispatch({type:"CLOSE_CREATE"})} submitLabel={dict.appointments.modals.submitCreate} showStatus={false} modeEditable infoNote={createForm.mode==="internal"?dict.appointments.modals.internalAutoConfirmNote:dict.appointments.modals.customerAutoConfirmNote}/>}
 
       {/* ── EDIT modal ───────────────────────────────────────────────────────── */}
-      {editOpen&&<AptModal dict={dict} locale={locale} dateLocale={dateLocale} serviceOptions={serviceOptions} title={dict.appointments.modals.editTitle} icon={<Pencil size={18} className="text-[#d91c1c]"/>} form={editForm} setForm={(f)=>dispatch({type:"SET_EDIT_FORM",form:f})} errors={editErrors} serverError={editError} submitting={editSub} pickerMonth={editMonth} setPickerMonth={(d)=>dispatch({type:"SET_EDIT_MONTH",month:d})} availSlots={availEdit} today={today} onSubmit={handleEditSubmit} onClose={()=>dispatch({type:"CLOSE_EDIT"})} submitLabel={dict.common.save} showStatus={true}/>}
+      {editOpen&&<AptModal dict={dict} locale={locale} dateLocale={dateLocale} serviceOptions={serviceOptions} inventoryCars={inventoryCars} title={dict.appointments.modals.editTitle} icon={<Pencil size={18} className="text-[#d91c1c]"/>} form={editForm} setForm={(f)=>dispatch({type:"SET_EDIT_FORM",form:f})} errors={editErrors} serverError={editError} submitting={editSub} pickerMonth={editMonth} setPickerMonth={(d)=>dispatch({type:"SET_EDIT_MONTH",month:d})} availSlots={availEdit} today={today} onSubmit={handleEditSubmit} onClose={()=>dispatch({type:"CLOSE_EDIT"})} submitLabel={dict.common.save} showStatus={true}/>}
 
       {/* ── BLOCK modal ─────────────────────────────────────────────────────── */}
       {blockOpen&&(
@@ -803,35 +869,221 @@ export default function AppointmentsClient({
 
 // ─── Shared AptModal ──────────────────────────────────────────────────────────
 
-function AptModal({dict,locale,dateLocale,serviceOptions,title,icon,form,setForm,errors,serverError,submitting,pickerMonth,setPickerMonth,availSlots,today,onSubmit,onClose,submitLabel,showStatus,infoNote}:{
-    dict: ReturnType<typeof useAdminI18n>["dict"]; locale: ReturnType<typeof useAdminI18n>["locale"]; dateLocale: ReturnType<typeof getAdminDateFnsLocale>; serviceOptions: Array<{ value: string; label: string }>;
+function AptModal({dict,locale,dateLocale,serviceOptions,inventoryCars,title,icon,form,setForm,errors,serverError,submitting,pickerMonth,setPickerMonth,availSlots,today,onSubmit,onClose,submitLabel,showStatus,modeEditable=false,infoNote}:{
+    dict: ReturnType<typeof useAdminI18n>["dict"]; locale: ReturnType<typeof useAdminI18n>["locale"]; dateLocale: ReturnType<typeof getAdminDateFnsLocale>; serviceOptions: Array<{ value: string; label: string }>; inventoryCars: InventoryCarOption[];
     title:string;icon:React.ReactNode;form:AptForm;setForm:(f:AptForm)=>void;
     errors:Partial<AptForm>;serverError:string|null;submitting:boolean;
     pickerMonth:Date;setPickerMonth:(d:Date)=>void;availSlots:string[];today:Date;
-    onSubmit:(e:React.FormEvent)=>void;onClose:()=>void;submitLabel:string;showStatus:boolean;infoNote?:React.ReactNode;
+    onSubmit:(e:React.FormEvent)=>void;onClose:()=>void;submitLabel:string;showStatus:boolean;modeEditable?:boolean;infoNote?:React.ReactNode;
 }) {
+    const dialogTitleId = useId();
+    const dialogDescriptionId = useId();
+    const internalCarListId = useId();
+    const modalRef = useRef<HTMLDivElement>(null);
+    const internalCarFieldRef = useRef<HTMLDivElement>(null);
+    const internalCarInputRef = useRef<HTMLInputElement>(null);
+    const internalKeyInputRef = useRef<HTMLInputElement>(null);
+    const restoreFocusRef = useRef<HTMLElement | null>(null);
+    const onCloseRef = useRef(onClose);
+    const internalCarMenuOpenRef = useRef(false);
+    const [internalCarMenuOpen, setInternalCarMenuOpen] = useState(false);
+    const [activeInventoryIndex, setActiveInventoryIndex] = useState(0);
     const days=eachDayOfInterval({start:startOfMonth(pickerMonth),end:endOfMonth(pickerMonth)});
     const lead=mondayIndex(startOfMonth(pickerMonth));
     const slotIdx = form.slot ? ALL_SLOTS.indexOf(form.slot) : -1;
     const maxDuration = slotIdx >= 0 ? Math.min(8, ALL_SLOTS.length - slotIdx) : 8;
+    const statusOptions = form.mode === "internal" ? (["confirmed","cancelled"] as const) : (["pending","confirmed","cancelled"] as const);
+    const inventoryOptions = useMemo(() => (
+        inventoryCars.map((car) => ({
+            id: car.id,
+            label: getInventoryCarLabel(car, locale),
+            thumbnailUrl: car.images?.[0]?.url ? getThumbnailImageUrl(car.images[0].url) : null,
+        }))
+    ), [inventoryCars, locale]);
+    const selectedInventoryOption = useMemo(() => (
+        inventoryOptions.find((option) => option.id === form.internalCarId) ?? null
+    ), [form.internalCarId, inventoryOptions]);
+    const filteredInventoryOptions = useMemo(() => {
+        const hasCommittedSelection = Boolean(
+            internalCarMenuOpen &&
+            selectedInventoryOption &&
+            form.internalCarLabel === selectedInventoryOption.label
+        );
+        if (hasCommittedSelection) return inventoryOptions;
+        const query = form.internalCarLabel.trim().toLowerCase();
+        if (!query) return inventoryOptions;
+        return inventoryOptions.filter((option) => option.label.toLowerCase().includes(query));
+    }, [form.internalCarLabel, internalCarMenuOpen, inventoryOptions, selectedInventoryOption]);
+
+    useEffect(() => {
+        onCloseRef.current = onClose;
+    }, [onClose]);
+
+    useEffect(() => {
+        internalCarMenuOpenRef.current = internalCarMenuOpen;
+    }, [internalCarMenuOpen]);
+
+    useEffect(() => {
+        restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                if (internalCarMenuOpenRef.current) {
+                    setInternalCarMenuOpen(false);
+                    return;
+                }
+                onCloseRef.current();
+            }
+        };
+
+        document.addEventListener("keydown", onKeyDown);
+        const frame = window.requestAnimationFrame(() => {
+            const autoFocusTarget = modalRef.current?.querySelector<HTMLElement>("[data-autofocus]");
+            const fallbackTarget = modalRef.current?.querySelector<HTMLElement>(
+                "input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])",
+            );
+            (autoFocusTarget ?? fallbackTarget)?.focus();
+        });
+
+        return () => {
+            document.removeEventListener("keydown", onKeyDown);
+            window.cancelAnimationFrame(frame);
+            restoreFocusRef.current?.focus();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!internalCarMenuOpen) return;
+        const onPointerDown = (event: MouseEvent) => {
+            if (!internalCarFieldRef.current?.contains(event.target as Node)) {
+                setInternalCarMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", onPointerDown);
+        return () => document.removeEventListener("mousedown", onPointerDown);
+    }, [internalCarMenuOpen]);
+
+    const openInternalCarMenu = () => {
+        const selectedIndex = filteredInventoryOptions.findIndex((option) => option.id === form.internalCarId);
+        setActiveInventoryIndex(selectedIndex >= 0 ? selectedIndex : 0);
+        setInternalCarMenuOpen(true);
+    };
+
+    const handleModeSwitch = (mode: "customer" | "internal") => {
+        if (!modeEditable || form.mode === mode) return;
+        setForm({
+            ...form,
+            mode,
+            name: "",
+            email: "",
+            phone: "",
+            service: "",
+            internalCarId: "",
+            internalCarLabel: "",
+            internalKeyNumber: "",
+            sendConfirmation: mode === "customer",
+            status: "confirmed",
+        });
+    };
+
+    const handleInternalCarInputChange = (value: string) => {
+        const nextOption = inventoryOptions.find((option) => option.label === value);
+        setForm({
+            ...form,
+            internalCarId: nextOption?.id ?? "",
+            internalCarLabel: value,
+        });
+        setInternalCarMenuOpen(true);
+        setActiveInventoryIndex(0);
+    };
+
+    const handleInternalCarToggle = () => {
+        if (internalCarMenuOpenRef.current) {
+            setInternalCarMenuOpen(false);
+        } else {
+            openInternalCarMenu();
+        }
+        window.requestAnimationFrame(() => {
+            internalCarInputRef.current?.focus();
+        });
+    };
+
+    const selectInternalCarOption = (option: { id: string; label: string }, focusKeyField = true) => {
+        setForm({
+            ...form,
+            internalCarId: option.id,
+            internalCarLabel: option.label,
+        });
+        setInternalCarMenuOpen(false);
+        if (focusKeyField) {
+            window.requestAnimationFrame(() => {
+                internalKeyInputRef.current?.focus();
+            });
+        }
+    };
+
+    const handleInternalCarKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === "ArrowDown") {
+            event.preventDefault();
+            if (!internalCarMenuOpen) {
+                openInternalCarMenu();
+                return;
+            }
+            setActiveInventoryIndex((index) => Math.min(index + 1, Math.max(filteredInventoryOptions.length - 1, 0)));
+            return;
+        }
+        if (event.key === "ArrowUp") {
+            event.preventDefault();
+            if (!internalCarMenuOpen) {
+                openInternalCarMenu();
+                return;
+            }
+            setActiveInventoryIndex((index) => Math.max(index - 1, 0));
+            return;
+        }
+        if (event.key === "Enter" && internalCarMenuOpen && filteredInventoryOptions[activeInventoryIndex]) {
+            event.preventDefault();
+            selectInternalCarOption(filteredInventoryOptions[activeInventoryIndex]);
+            return;
+        }
+        if (event.key === "Tab" && internalCarMenuOpen) {
+            setInternalCarMenuOpen(false);
+        }
+    };
 
     return(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{backgroundColor:"rgba(0,0,0,0.6)",backdropFilter:"blur(4px)"}} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col overflow-hidden" style={{maxHeight:"92vh"}}>
+      <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby={dialogTitleId} aria-describedby={infoNote ? dialogDescriptionId : undefined} className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col overflow-hidden" style={{maxHeight:"92vh"}}>
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#d91c1c]/10 flex items-center justify-center">{icon}</div>
-            <div><p className="text-[10px] font-bold uppercase tracking-widest text-[#d91c1c]">{dict.appointments.modals.admin}</p><h3 className="text-lg font-black text-slate-900 leading-tight">{title}</h3></div>
+            <div><p className="text-[10px] font-bold uppercase tracking-widest text-[#d91c1c]">{dict.appointments.modals.admin}</p><h3 id={dialogTitleId} className="text-lg font-black text-slate-900 leading-tight">{title}</h3></div>
           </div>
-          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 transition-colors"><X size={20}/></button>
+          <button aria-label={dict.common.close} onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 transition-colors"><X size={20}/></button>
         </div>
         <div className="overflow-y-auto flex-1 px-6 py-5">
           <form onSubmit={onSubmit} noValidate>
             <div className="space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.mode}</label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button type="button" onClick={()=>handleModeSwitch("customer")} disabled={!modeEditable && form.mode !== "customer"}
+                    aria-pressed={form.mode==="customer"}
+                    className={`rounded-xl border px-4 py-3 text-left transition-all ${form.mode==="customer"?"border-[#d91c1c] bg-white shadow-sm":"border-slate-200 bg-white/70 text-slate-500"} ${modeEditable?"hover:border-[#d91c1c]":"cursor-default"}`}>
+                    <p className={`text-sm font-black ${form.mode==="customer"?"text-slate-900":"text-slate-600"}`}>{dict.appointments.modals.customerMode}</p>
+                    <p className="mt-1 text-[11px] font-medium text-slate-500">{dict.appointments.modals.customerModeHint}</p>
+                  </button>
+                  <button type="button" onClick={()=>handleModeSwitch("internal")} disabled={!modeEditable && form.mode !== "internal"}
+                    aria-pressed={form.mode==="internal"}
+                    className={`rounded-xl border px-4 py-3 text-left transition-all ${form.mode==="internal"?"border-sky-500 bg-white shadow-sm":"border-slate-200 bg-white/70 text-slate-500"} ${modeEditable?"hover:border-sky-500":"cursor-default"}`}>
+                    <p className={`text-sm font-black ${form.mode==="internal"?"text-slate-900":"text-slate-600"}`}>{dict.appointments.modals.internalMode}</p>
+                    <p className="mt-1 text-[11px] font-medium text-slate-500">{dict.appointments.modals.internalModeHint}</p>
+                  </button>
+                </div>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Date picker */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.date}</label>
+                <div role="group" aria-labelledby="f-date-label" aria-describedby={errors.dateStr ? "f-date-error" : undefined}>
+                  <label id="f-date-label" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.date}</label>
                   <div className="flex items-center justify-between mb-2">
                     <button type="button" onClick={()=>setPickerMonth(subMonths(pickerMonth,1))} className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"><ChevronLeft size={14}/></button>
                     <p className="text-xs font-bold text-slate-700 capitalize">{format(pickerMonth,"MMMM yyyy",{locale:dateLocale})}</p>
@@ -847,11 +1099,11 @@ function AptModal({dict,locale,dateLocale,serviceOptions,title,icon,form,setForm
                       </button>
                     );})}
                   </div>
-                  {errors.dateStr&&<p className="text-red-500 text-xs mt-1">{errors.dateStr}</p>}
+                  {errors.dateStr&&<p id="f-date-error" role="alert" className="text-red-500 text-xs mt-1">{errors.dateStr}</p>}
                 </div>
                 {/* Slot picker */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.slot}</label>
+                <div role="group" aria-labelledby="f-slot-label" aria-describedby={errors.slot ? "f-slot-error" : undefined}>
+                  <label id="f-slot-label" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.slot}</label>
                   {!form.dateStr?<p className="text-xs text-slate-400 font-medium mt-6">{dict.appointments.modals.selectDateFirst}</p>:(
                     <div className="grid grid-cols-2 gap-1.5">
                       {ALL_SLOTS.map(s=>{const avail=availSlots.includes(s)||form.slot===s;const sel=form.slot===s;return(
@@ -862,7 +1114,7 @@ function AptModal({dict,locale,dateLocale,serviceOptions,title,icon,form,setForm
                       );})}
                     </div>
                   )}
-                  {errors.slot&&<p className="text-red-500 text-xs mt-1">{errors.slot}</p>}
+                  {errors.slot&&<p id="f-slot-error" role="alert" className="text-red-500 text-xs mt-1">{errors.slot}</p>}
                 </div>
               </div>
 
@@ -892,7 +1144,7 @@ function AptModal({dict,locale,dateLocale,serviceOptions,title,icon,form,setForm
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">{dict.appointments.modals.status}</label>
                   <div className="flex gap-2">
-                    {(["pending","confirmed","cancelled"] as const).map(s=>(
+                    {statusOptions.map(s=>(
                       <button type="button" key={s} onClick={()=>setForm({...form,status:s})}
                         className={`flex-1 py-2 rounded-xl border text-xs font-bold transition-all ${form.status===s?(s==="confirmed"?"bg-green-600 border-green-600 text-white":s==="pending"?"bg-amber-500 border-amber-500 text-white":"bg-slate-600 border-slate-600 text-white"):"border-slate-200 text-slate-500 hover:border-slate-400"}`}>
                         {s==="pending"?dict.appointments.modals.pending:s==="confirmed"?dict.appointments.modals.confirmed:dict.appointments.modals.cancelled}
@@ -902,12 +1154,94 @@ function AptModal({dict,locale,dateLocale,serviceOptions,title,icon,form,setForm
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label={dict.appointments.modals.name} id="f-name" error={errors.name}><input id="f-name" type="text" placeholder={locale==="fr"?"Prénom Nom":"Voornaam Achternaam"} value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className={ic(!!errors.name)}/></Field>
-                <Field label={dict.appointments.modals.phone} id="f-phone" error={errors.phone}><input id="f-phone" type="tel" placeholder="+32 4xx xx xx xx" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} className={ic(!!errors.phone)}/></Field>
-                <Field label={dict.appointments.modals.email} id="f-email" error={errors.email} cls="sm:col-span-2"><input id="f-email" type="email" placeholder="client@email.be" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} className={ic(!!errors.email)}/></Field>
-                <Field label={dict.appointments.modals.service} id="f-svc" error={errors.service} cls="sm:col-span-2"><select id="f-svc" value={form.service} onChange={e=>setForm({...form,service:e.target.value})} className={ic(!!errors.service)+" bg-white"}><option value="">{dict.appointments.modals.servicePlaceholder}</option>{serviceOptions.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}</select></Field>
-                <Field label={dict.appointments.modals.notes} id="f-notes" cls="sm:col-span-2"><textarea id="f-notes" rows={2} placeholder={dict.appointments.modals.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className={ic(false)+" resize-none"}/></Field>
+                {form.mode==="customer" ? (
+                  <>
+                    <Field label={dict.appointments.modals.name} id="f-name" error={errors.name}><input data-autofocus id="f-name" type="text" placeholder={locale==="fr"?"Prénom Nom":"Voornaam Achternaam"} value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className={ic(!!errors.name)}/></Field>
+                    <Field label={dict.appointments.modals.phone} id="f-phone" error={errors.phone}><input id="f-phone" type="tel" placeholder="+32 4xx xx xx xx" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} className={ic(!!errors.phone)}/></Field>
+                    <Field label={dict.appointments.modals.email} id="f-email" error={errors.email} cls="sm:col-span-2"><input id="f-email" type="email" placeholder="client@email.be" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} className={ic(!!errors.email)}/></Field>
+                    <Field label={dict.appointments.modals.service} id="f-svc" error={errors.service} cls="sm:col-span-2"><select id="f-svc" value={form.service} onChange={e=>setForm({...form,service:e.target.value})} className={ic(!!errors.service)+" bg-white"}><option value="">{dict.appointments.modals.servicePlaceholder}</option>{serviceOptions.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}</select></Field>
+                    <Field label={dict.appointments.modals.notes} id="f-notes" cls="sm:col-span-2"><textarea id="f-notes" rows={2} placeholder={dict.appointments.modals.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className={ic(false)+" resize-none"}/></Field>
+                  </>
+                ) : (
+                  <>
+                    <Field label={dict.appointments.modals.internalCar} id="f-internal-car" error={errors.internalCarId} cls="sm:col-span-2">
+                      <div ref={internalCarFieldRef} className="relative">
+                        {selectedInventoryOption?.thumbnailUrl ? (
+                          <div className="pointer-events-none absolute left-2 top-1/2 h-10 w-14 -translate-y-1/2 overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                            <Image src={selectedInventoryOption.thumbnailUrl} alt={selectedInventoryOption.label} width={56} height={40} unoptimized className="h-full w-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="pointer-events-none absolute left-2 top-1/2 flex h-10 w-14 -translate-y-1/2 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-100 text-slate-400">
+                            <Car size={14} />
+                          </div>
+                        )}
+                        <input
+                          data-autofocus
+                          ref={internalCarInputRef}
+                          id="f-internal-car"
+                          type="text"
+                          value={form.internalCarLabel}
+                          onChange={e=>handleInternalCarInputChange(e.target.value)}
+                          onFocus={openInternalCarMenu}
+                          onKeyDown={handleInternalCarKeyDown}
+                          placeholder={dict.appointments.modals.internalCarPlaceholder}
+                          autoComplete="off"
+                          role="combobox"
+                          aria-expanded={internalCarMenuOpen}
+                          aria-controls={internalCarListId}
+                          aria-activedescendant={internalCarMenuOpen && filteredInventoryOptions[activeInventoryIndex] ? `${internalCarListId}-${filteredInventoryOptions[activeInventoryIndex].id}` : undefined}
+                          className={ic(!!errors.internalCarId)+" pl-[4.75rem] pr-12"}
+                        />
+                        <button type="button" aria-label={internalCarMenuOpen ? dict.appointments.modals.closeInternalCarList : dict.appointments.modals.openInternalCarList} onMouseDown={e=>e.preventDefault()} onClick={handleInternalCarToggle} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+                          <ChevronDown size={16} className={`transition-transform ${internalCarMenuOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        {internalCarMenuOpen&&(
+                          <div id={internalCarListId} role="listbox" className="absolute left-0 right-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                            {filteredInventoryOptions.length===0?(
+                              <p className="px-3 py-2 text-xs font-medium text-slate-400">{dict.appointments.modals.internalCarNoResults}</p>
+                            ):(
+                              filteredInventoryOptions.map((option, index)=>(
+                                <button
+                                  key={option.id}
+                                  id={`${internalCarListId}-${option.id}`}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={form.internalCarId===option.id}
+                                  onMouseDown={e=>e.preventDefault()}
+                                  onClick={()=>selectInternalCarOption(option)}
+                                  className={`flex w-full items-center gap-3 rounded-xl border px-2 py-2 text-left transition-colors ${form.internalCarId===option.id?"border-slate-200 bg-slate-100":"border-transparent"} ${activeInventoryIndex===index?"bg-slate-50":"hover:bg-slate-50"}`}
+                                >
+                                  {option.thumbnailUrl ? (
+                                    <div className="h-11 w-16 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shrink-0">
+                                      <Image src={option.thumbnailUrl} alt={option.label} width={64} height={44} unoptimized className="h-full w-full object-cover" />
+                                    </div>
+                                  ) : (
+                                    <div className="flex h-11 w-16 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-400 shrink-0">
+                                      <Car size={14} />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <span className="block truncate text-sm font-semibold text-slate-700">{option.label}</span>
+                                  </div>
+                                  {form.internalCarId===option.id&&<CheckCircle size={16} className="shrink-0 text-green-600" />}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </Field>
+                    <Field label={dict.appointments.modals.internalKeyNumber} id="f-internal-key" error={errors.internalKeyNumber}>
+                      <div className="relative">
+                        <Hash size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input ref={internalKeyInputRef} id="f-internal-key" type="text" placeholder={dict.appointments.modals.internalKeyPlaceholder} value={form.internalKeyNumber} onChange={e=>setForm({...form,internalKeyNumber:e.target.value})} className={ic(!!errors.internalKeyNumber)+" pl-9"}/>
+                      </div>
+                    </Field>
+                    <Field label={dict.appointments.modals.notes} id="f-internal-notes" cls="sm:col-span-2"><textarea id="f-internal-notes" rows={3} placeholder={dict.appointments.modals.notesPlaceholder} value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} className={ic(false)+" resize-none"}/></Field>
+                  </>
+                )}
               </div>
+              {form.mode==="customer"&&(
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-3">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input type="checkbox" checked={form.sendConfirmation} onChange={e=>setForm({...form,sendConfirmation:e.target.checked})} className="mt-0.5 w-4 h-4 accent-[#d91c1c] cursor-pointer"/>
@@ -930,8 +1264,9 @@ function AptModal({dict,locale,dateLocale,serviceOptions,title,icon,form,setForm
                     </div>
                   )}
               </div>
-              {serverError&&<div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 font-medium"><X size={15} className="shrink-0 mt-0.5"/>{serverError}</div>}
-              {infoNote&&<p className="text-xs text-slate-400 font-medium bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">{infoNote}</p>}
+              )}
+              {serverError&&<div role="alert" aria-live="polite" className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 font-medium"><X size={15} className="shrink-0 mt-0.5"/>{serverError}</div>}
+              {infoNote&&<p id={dialogDescriptionId} className="text-xs text-slate-400 font-medium bg-slate-50 rounded-xl px-4 py-3 border border-slate-100">{infoNote}</p>}
               <div className="flex gap-3">
                 <button type="button" onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 transition-colors">{dict.common.cancel}</button>
                 <button type="submit" disabled={submitting} className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#d91c1c] text-white font-bold rounded-xl text-sm hover:bg-[#b91515] disabled:opacity-60 transition-all">
@@ -948,7 +1283,14 @@ function AptModal({dict,locale,dateLocale,serviceOptions,title,icon,form,setForm
 
 function ic(err:boolean){return`w-full px-3 py-2.5 rounded-xl border text-sm font-medium text-slate-900 placeholder-slate-400 outline-none transition-colors ${err?"border-red-400 focus:border-red-500":"border-slate-200 focus:border-[#d91c1c]"}`;}
 function Field({label,id,error,children,cls=""}:{label:string;id:string;error?:string;children:React.ReactNode;cls?:string}){
-    return <div className={cls}><label htmlFor={id} className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">{label}</label>{children}{error&&<p className="text-red-500 text-xs mt-1 font-medium">{error}</p>}</div>;
+    const errorId = error ? `${id}-error` : undefined;
+    const control = isValidElement(children)
+        ? cloneElement(children as React.ReactElement<{ "aria-describedby"?: string; "aria-invalid"?: boolean }>, {
+            "aria-describedby": errorId,
+            "aria-invalid": error ? true : undefined,
+        })
+        : children;
+    return <div className={cls}><label htmlFor={id} className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">{label}</label>{control}{error&&<p id={errorId} role="alert" className="text-red-500 text-xs mt-1 font-medium">{error}</p>}</div>;
 }
 
 // ─── Calendar cell popover ────────────────────────────────────────────────────
@@ -963,24 +1305,28 @@ function CalendarPopover({dict,locale,apt,onClose,onEdit,onConfirm,onCancel,isPe
       <div className={`absolute z-30 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-4 ${flipUp?"bottom-full mb-1":"top-0 mt-1"} ${flipLeft?"right-0":"left-0"}`}>
         <div className="flex items-start justify-between mb-3">
           <div>
-            <p className="font-black text-slate-900 text-sm">{apt.name}</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">{getAdminServiceLabel(apt.service, locale)}</p>
-            <div className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${apt.status==="pending"?"bg-amber-50 text-amber-700 border-amber-200":"bg-green-50 text-green-700 border-green-200"}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[apt.status]}`}/>{apt.status==="pending"?dict.appointments.statuses.pending:dict.appointments.statuses.confirmed}
+            <div className="flex items-start gap-2">
+              <p className="font-black text-slate-900 text-sm">{getAppointmentTitle(apt)}</p>
+              {isInternalBooking(apt)&&<span className="shrink-0 rounded-full bg-sky-100 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-sky-700">{dict.appointments.modals.internalBadge}</span>}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-0.5">{getAppointmentSubtitle(apt, locale, dict)}</p>
+            <div className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${apt.status==="pending"?"bg-amber-50 text-amber-700 border-amber-200":isInternalBooking(apt)?"bg-sky-50 text-sky-700 border-sky-200":"bg-green-50 text-green-700 border-green-200"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${getAppointmentDotClass(apt)}`}/>{apt.status==="pending"?dict.appointments.statuses.pending:isInternalBooking(apt)?dict.appointments.calendar.internalLegend:dict.appointments.statuses.confirmed}
             </div>
           </div>
           <button onClick={onClose} className="text-slate-300 hover:text-slate-600 text-xl leading-none ml-2 shrink-0">×</button>
         </div>
         <div className="space-y-1.5 mb-3 pb-3 border-b border-slate-100">
-          <a href={`mailto:${apt.email}`} className="flex items-center gap-2 text-xs text-[#d91c1c] font-medium hover:underline"><Mail size={12} className="text-slate-400 shrink-0"/>{apt.email}</a>
-          <a href={`tel:${apt.phone}`} className="flex items-center gap-2 text-xs text-slate-600 font-medium hover:underline"><Phone size={12} className="text-slate-400 shrink-0"/>{apt.phone}</a>
+          {!isInternalBooking(apt)&&<a href={`mailto:${apt.email}`} className="flex items-center gap-2 text-xs text-[#d91c1c] font-medium hover:underline"><Mail size={12} className="text-slate-400 shrink-0"/>{apt.email}</a>}
+          {!isInternalBooking(apt)&&<a href={`tel:${apt.phone}`} className="flex items-center gap-2 text-xs text-slate-600 font-medium hover:underline"><Phone size={12} className="text-slate-400 shrink-0"/>{apt.phone}</a>}
+          {isInternalBooking(apt)&&apt.internalKeyNumber&&<div className="flex items-center gap-2 text-xs text-slate-600 font-medium"><Hash size={12} className="text-slate-400 shrink-0"/>#{apt.internalKeyNumber}</div>}
           {apt.notes&&<div className="flex items-start gap-2 text-xs text-slate-500"><MessageSquare size={12} className="text-slate-300 shrink-0 mt-0.5"/>{apt.notes}</div>}
           {(apt.durationHours??1)>1&&<p className="text-xs font-bold text-slate-500">⏱ {tpl(dict.appointments.modals.appointmentDuration, { hours: apt.durationHours })}</p>}
         </div>
         <div className="flex flex-col gap-2">
           <button onClick={onEdit} className="w-full flex items-center justify-center gap-1.5 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors"><Pencil size={12}/>{dict.appointments.modals.editAppointment}</button>
           <div className="flex gap-2">
-            {apt.status==="pending"&&<button onClick={()=>{onConfirm(apt.id);onClose();}} disabled={isPending} className="flex-1 flex items-center justify-center gap-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 disabled:opacity-50 transition-colors"><CheckCircle size={12}/>{dict.common.confirm}</button>}
+            {apt.status==="pending"&&!isInternalBooking(apt)&&<button onClick={()=>{onConfirm(apt.id);onClose();}} disabled={isPending} className="flex-1 flex items-center justify-center gap-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold hover:bg-green-700 disabled:opacity-50 transition-colors"><CheckCircle size={12}/>{dict.common.confirm}</button>}
             <button onClick={()=>{onCancel(apt.id);onClose();}} disabled={isPending} className="flex-1 flex items-center justify-center gap-1 py-2 bg-white text-red-600 border border-red-200 rounded-lg text-xs font-bold hover:bg-red-50 disabled:opacity-50 transition-colors"><XCircle size={12}/>{dict.appointments.modals.cancelAppointment}</button>
           </div>
         </div>

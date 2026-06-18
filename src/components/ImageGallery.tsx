@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, X, ZoomIn, Maximize2 } from "lucide-react";
 import { useGallery } from "@/hooks/useGallery";
-import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
+import { getImageUrl, getImageVariantUrl, shouldUseDirectImageDelivery } from "@/lib/image-url";
 
 interface ImageGalleryProps {
     images: { id: string; url: string }[];
@@ -21,7 +21,10 @@ const MAIN_GALLERY_HOVER_TRANSITION = { duration: 0.46, ease: [0.22, 1, 0.36, 1]
 const LIGHTBOX_GALLERY_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
 const THUMBNAIL_IMAGE_QUALITY = 50;
 const PRELOAD_BEHIND = 1;
-const PRELOAD_AHEAD = 1;
+const PRELOAD_AHEAD = 2;
+const LIGHTBOX_PRELOAD_AHEAD = 4;
+const INITIAL_GALLERY_WARMUP_COUNT = 8;
+const IDLE_WARMUP_TIMEOUT_MS = 250;
 type ImageFetchPriority = "high" | "low" | "auto";
 type GalleryImage = {
     id: string;
@@ -29,6 +32,10 @@ type GalleryImage = {
     thumbUrl: string;
     galleryUrl: string;
     lightboxUrl: string;
+};
+type IdleWindow = Window & typeof globalThis & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+    cancelIdleCallback?: (handle: number) => void;
 };
 
 function getGalleryPreloadKey(image: GalleryImage, src: string) {
@@ -106,14 +113,21 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
             return next;
         });
     }, [getVariantFailureKey]);
-    const getWindowIndexes = useCallback((index: number) =>
-        [index, index - PRELOAD_BEHIND, index + PRELOAD_AHEAD]
+    const getPreloadIndexes = useCallback((index: number, behind: number, ahead: number) => (
+        Array.from({ length: behind + ahead + 1 }, (_, offset) => index - behind + offset)
             .filter((candidate, position, array) =>
                 candidate >= 0 &&
                 candidate < resolvedImages.length &&
                 array.indexOf(candidate) === position
-            ), [resolvedImages.length]);
-    const preloadFullSizeAt = useCallback((index: number) => {
+            )
+    ), [resolvedImages.length]);
+    const initialGalleryWarmupIndexes = useMemo(() => (
+        Array.from(
+            { length: Math.min(resolvedImages.length, INITIAL_GALLERY_WARMUP_COUNT) },
+            (_, index) => index
+        )
+    ), [resolvedImages.length]);
+    const preloadFullSizeAt = useCallback((index: number, fetchPriority: ImageFetchPriority = "low") => {
         const image = resolvedImages[index];
         if (!image) return;
         const gallerySrc = getGallerySrc(image);
@@ -131,12 +145,13 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
             height: 800,
             sizes: MAIN_GALLERY_IMAGE_SIZES,
             quality: GALLERY_IMAGE_QUALITY,
+            unoptimized: shouldUseDirectImageDelivery(gallerySrc),
         }).props;
 
-        preloadedImageRefs.current.set(galleryKey, preloadResponsiveImage(galleryImage, "low"));
+        preloadedImageRefs.current.set(galleryKey, preloadResponsiveImage(galleryImage, fetchPriority));
         preloadedAssetKeys.current.add(galleryKey);
     }, [getGallerySrc, loadedImageIds, resolvedImages]);
-    const preloadLightboxAt = useCallback((index: number) => {
+    const preloadLightboxAt = useCallback((index: number, fetchPriority: ImageFetchPriority = "low") => {
         const image = resolvedImages[index];
         if (!image) return;
         const lightboxSrc = getLightboxSrc(image);
@@ -151,16 +166,25 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
             height: 1200,
             sizes: LIGHTBOX_IMAGE_SIZES,
             quality: LIGHTBOX_IMAGE_QUALITY,
+            unoptimized: shouldUseDirectImageDelivery(lightboxSrc),
         }).props;
 
-        preloadedImageRefs.current.set(lightboxKey, preloadResponsiveImage(lightboxImage, "low"));
+        preloadedImageRefs.current.set(lightboxKey, preloadResponsiveImage(lightboxImage, fetchPriority));
         preloadedAssetKeys.current.add(lightboxKey);
     }, [getLightboxSrc, resolvedImages]);
     const preloadSelectionWindow = useCallback((index: number, includeLightbox = false) => {
-        const windowIndexes = getWindowIndexes(index);
-        windowIndexes.forEach(preloadFullSizeAt);
-        if (includeLightbox) windowIndexes.forEach(preloadLightboxAt);
-    }, [getWindowIndexes, preloadFullSizeAt, preloadLightboxAt]);
+        preloadFullSizeAt(index, "high");
+        getPreloadIndexes(index, PRELOAD_BEHIND, PRELOAD_AHEAD)
+            .filter((candidate) => candidate !== index)
+            .forEach((candidate) => preloadFullSizeAt(candidate, "low"));
+
+        if (!includeLightbox) return;
+
+        preloadLightboxAt(index, "high");
+        getPreloadIndexes(index, PRELOAD_BEHIND, LIGHTBOX_PRELOAD_AHEAD)
+            .filter((candidate) => candidate !== index)
+            .forEach((candidate) => preloadLightboxAt(candidate, "low"));
+    }, [getPreloadIndexes, preloadFullSizeAt, preloadLightboxAt]);
     const handleNavigateIntent = useCallback((index: number, nextLightboxOpen: boolean) => {
         preloadSelectionWindow(index, nextLightboxOpen);
     }, [preloadSelectionWindow]);
@@ -179,14 +203,14 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
     const isActiveImageLoaded = activeImage ? loadedImageIds.has(activeImage.id) : false;
     const showActiveImage = currentIndex === 0 || isActiveImageLoaded;
     const adjacentPreloadIndexes = useMemo(
-        () => [currentIndex - PRELOAD_BEHIND, currentIndex + PRELOAD_AHEAD]
-            .filter((index, position, array) =>
-                index >= 0 &&
-                index < resolvedImages.length &&
-                index !== currentIndex &&
-                array.indexOf(index) === position
-            ),
-        [currentIndex, resolvedImages.length]
+        () => getPreloadIndexes(currentIndex, PRELOAD_BEHIND, PRELOAD_AHEAD)
+            .filter((index) => index !== currentIndex),
+        [currentIndex, getPreloadIndexes]
+    );
+    const lightboxWarmupIndexes = useMemo(
+        () => getPreloadIndexes(currentIndex, PRELOAD_BEHIND, LIGHTBOX_PRELOAD_AHEAD)
+            .filter((index) => index !== currentIndex),
+        [currentIndex, getPreloadIndexes]
     );
     const goToPreloaded = (index: number, includeLightbox = lightboxOpen) => {
         if (resolvedImages.length === 0) return;
@@ -209,12 +233,32 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
     useEffect(() => {
         for (const index of adjacentPreloadIndexes) {
             preloadFullSizeAt(index);
-
-            if (!lightboxOpen) continue;
-            preloadLightboxAt(index);
         }
-        if (lightboxOpen) preloadLightboxAt(currentIndex);
-    }, [adjacentPreloadIndexes, currentIndex, lightboxOpen, preloadFullSizeAt, preloadLightboxAt]);
+    }, [adjacentPreloadIndexes, preloadFullSizeAt]);
+
+    useEffect(() => {
+        if (initialGalleryWarmupIndexes.length === 0) return;
+
+        const idleWindow = window as IdleWindow;
+        const warmGallery = () => {
+            initialGalleryWarmupIndexes.forEach((index) => preloadFullSizeAt(index));
+        };
+
+        if (idleWindow.requestIdleCallback) {
+            const handle = idleWindow.requestIdleCallback(warmGallery, { timeout: IDLE_WARMUP_TIMEOUT_MS });
+            return () => idleWindow.cancelIdleCallback?.(handle);
+        }
+
+        const timeoutHandle = window.setTimeout(warmGallery, IDLE_WARMUP_TIMEOUT_MS);
+        return () => window.clearTimeout(timeoutHandle);
+    }, [initialGalleryWarmupIndexes, preloadFullSizeAt]);
+
+    useEffect(() => {
+        if (!lightboxOpen) return;
+
+        preloadLightboxAt(currentIndex, "high");
+        lightboxWarmupIndexes.forEach((index) => preloadLightboxAt(index, "low"));
+    }, [currentIndex, lightboxOpen, lightboxWarmupIndexes, preloadLightboxAt]);
 
     const slideVariants = {
         enter: (dir: number) => ({
@@ -310,6 +354,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 fetchPriority="high"
                                 sizes={MAIN_GALLERY_IMAGE_SIZES}
                                 quality={GALLERY_IMAGE_QUALITY}
+                                unoptimized={shouldUseDirectImageDelivery(activeGallerySrc)}
                                 decoding={currentIndex === 0 ? "sync" : "async"}
                                 onError={() => markVariantFailed(activeImage, "gallery")}
                                 onLoad={() => {
@@ -343,6 +388,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                     {/* Nav arrows on main image */}
                     {currentIndex > 0 && (
                         <button
+                            onMouseEnter={() => preloadSelectionWindow(currentIndex - 1, false)}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 goToPreloaded(currentIndex - 1, false);
@@ -355,6 +401,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                     )}
                     {currentIndex < resolvedImages.length - 1 && (
                         <button
+                            onMouseEnter={() => preloadSelectionWindow(currentIndex + 1, false)}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 goToPreloaded(currentIndex + 1, false);
@@ -377,6 +424,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                             return (
                                 <button
                                     key={img.id}
+                                    onMouseEnter={() => preloadSelectionWindow(preloadIndex, isLast)}
                                     onPointerDown={() => preloadSelectionWindow(preloadIndex, isLast)}
                                     onFocus={() => preloadSelectionWindow(preloadIndex, isLast)}
                                     onClick={() => isLast ? openLightboxPreloaded() : goToPreloaded(realIndex)}
@@ -390,6 +438,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                         className="object-cover transition-transform duration-500 group-hover/thumb:scale-105"
                                         sizes="20vw"
                                         quality={THUMBNAIL_IMAGE_QUALITY}
+                                        unoptimized={shouldUseDirectImageDelivery(getThumbSrc(img))}
                                         loading="eager"
                                         fetchPriority="low"
                                         decoding="async"
@@ -420,6 +469,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                         {resolvedImages.map((img, i) => (
                             <button
                                 key={img.id}
+                                onMouseEnter={() => preloadSelectionWindow(i)}
                                 onPointerDown={() => preloadSelectionWindow(i)}
                                 onFocus={() => preloadSelectionWindow(i)}
                                 onClick={() => goToPreloaded(i, false)}
@@ -436,6 +486,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                     className="object-cover"
                                     sizes="96px"
                                     quality={THUMBNAIL_IMAGE_QUALITY}
+                                    unoptimized={shouldUseDirectImageDelivery(getThumbSrc(img))}
                                     loading="eager"
                                     fetchPriority="low"
                                     decoding="async"
@@ -521,6 +572,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                             className="object-contain"
                                             sizes={LIGHTBOX_IMAGE_SIZES}
                                             quality={LIGHTBOX_IMAGE_QUALITY}
+                                            unoptimized={shouldUseDirectImageDelivery(activeLightboxSrc)}
                                             loading="eager"
                                             fetchPriority={lightboxOpen ? "high" : "auto"}
                                             decoding="async"
@@ -533,6 +585,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                             {/* Nav arrows */}
                             {currentIndex > 0 && !isZoomed && (
                                 <button
+                                    onMouseEnter={() => preloadSelectionWindow(currentIndex - 1, true)}
                                     onClick={() => goToPreloaded(currentIndex - 1, true)}
                                     className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/20 text-white rounded-full p-3 transition-all duration-200 hover:scale-110 active:scale-90"
                                     aria-label="Vorige foto"
@@ -542,6 +595,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                             )}
                             {currentIndex < resolvedImages.length - 1 && !isZoomed && (
                                 <button
+                                    onMouseEnter={() => preloadSelectionWindow(currentIndex + 1, true)}
                                     onClick={() => goToPreloaded(currentIndex + 1, true)}
                                     className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/20 text-white rounded-full p-3 transition-all duration-200 hover:scale-110 active:scale-90"
                                     aria-label="Volgende foto"
@@ -569,6 +623,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                     {resolvedImages.map((img, i) => (
                                         <button
                                             key={img.id}
+                                            onMouseEnter={() => preloadSelectionWindow(i, true)}
                                             onPointerDown={() => preloadSelectionWindow(i, true)}
                                             onFocus={() => preloadSelectionWindow(i, true)}
                                             onClick={() => goToPreloaded(i, true)}
@@ -585,6 +640,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                                 className="object-cover"
                                                 sizes="80px"
                                                 quality={THUMBNAIL_IMAGE_QUALITY}
+                                                unoptimized={shouldUseDirectImageDelivery(getThumbSrc(img))}
                                                 loading="eager"
                                                 fetchPriority="low"
                                                 decoding="async"
