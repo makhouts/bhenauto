@@ -7,6 +7,7 @@ import "../../globals.css";
 
 export const metadata: Metadata = {
     robots: { index: false, follow: false },
+    referrer: "no-referrer",
 };
 
 export default async function WorkshopLayout({ children }: { children: ReactNode }) {
@@ -16,6 +17,7 @@ export default async function WorkshopLayout({ children }: { children: ReactNode
     return (
         <html lang={locale} className="scroll-smooth" data-scroll-behavior="smooth">
             <head>
+                <meta name="referrer" content="no-referrer" />
                 <link rel="dns-prefetch" href="https://images.bhenauto.com" />
                 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
                 <meta name="theme-color" content="#eef3f8" />
