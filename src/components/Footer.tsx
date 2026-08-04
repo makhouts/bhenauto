@@ -141,8 +141,19 @@ export default function Footer({ dict }: FooterProps) {
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-end items-center gap-4 pt-6 relative z-10 w-full text-xs text-white/50 border-t border-white/10">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 relative z-10 w-full text-xs text-white/50 border-t border-white/10">
                     <p>&copy; {new Date().getFullYear()} Bhenauto. {dict.copyright}</p>
+                    <p>
+                        Designed &amp; developed by{" "}
+                        <a
+                            href="https://rakamilabs.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-white/70 hover:text-white transition-colors duration-300"
+                        >
+                            RakamiLabs
+                        </a>
+                    </p>
                 </div>
 
                 {/* Large Watermark Text */}
