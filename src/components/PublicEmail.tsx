@@ -6,9 +6,9 @@ const EMAIL_TLD = "com";
 
 export function PublicEmail() {
     return (
-        <>
+        <span className="whitespace-nowrap">
             {EMAIL_USER}<span className="email-at" aria-hidden="true" />{EMAIL_DOMAIN_NAME}<span aria-hidden="true">.</span>{EMAIL_TLD}
-        </>
+        </span>
     );
 }
 

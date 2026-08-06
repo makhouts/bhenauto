@@ -1,86 +1,90 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { normalizeVehicleDescription } from "@/lib/autoscout24/presentation-format";
 
-const COLLAPSED_HEIGHT = 160; // px — roughly 5-6 lines
+const COLLAPSED_HEIGHT = 168;
 
-export default function ExpandableDescription({ description }: { description: string }) {
+export default function ExpandableDescription({
+  description,
+  showMoreLabel,
+  showLessLabel,
+}: {
+  description: string;
+  showMoreLabel: string;
+  showLessLabel: string;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [needsToggle, setNeedsToggle] = useState(false);
   const [contentHeight, setContentHeight] = useState(0);
   const innerRef = useRef<HTMLDivElement>(null);
+  const contentId = useId();
   const normalizedDescription = normalizeVehicleDescription(description);
 
   useEffect(() => {
-    if (innerRef.current) {
-      const h = innerRef.current.scrollHeight;
-      setContentHeight(h);
-      setNeedsToggle(h > COLLAPSED_HEIGHT + 20);
-    }
+    const content = innerRef.current;
+    if (!content) return;
+
+    const measure = () => {
+      const height = content.scrollHeight;
+      setContentHeight(height);
+      setNeedsToggle(height > COLLAPSED_HEIGHT + 16);
+    };
+
+    measure();
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(content);
+    return () => resizeObserver.disconnect();
   }, [normalizedDescription]);
 
   const paragraphs = normalizedDescription.split("\n").filter(Boolean);
 
   return (
-    <div>
-      {/* Collapsible body */}
+    <div className="max-w-3xl">
       <div
-        className="relative overflow-hidden"
+        id={contentId}
+        className="relative overflow-hidden motion-reduce:transition-none"
         style={{
-          maxHeight: expanded || !needsToggle ? contentHeight + 32 : COLLAPSED_HEIGHT,
-          transition: "max-height 0.55s cubic-bezier(0.4, 0, 0.2, 1)",
+          maxHeight: expanded || !needsToggle ? contentHeight + 8 : COLLAPSED_HEIGHT,
+          transition: "max-height 320ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         <div
           ref={innerRef}
-          className="prose max-w-none theme-text-muted leading-relaxed text-sm space-y-1"
+          className="max-w-[72ch] space-y-3 text-[15px] leading-7 theme-text-secondary"
         >
           {paragraphs.map((p, i) => (
             <p key={i}>{p}</p>
           ))}
         </div>
 
-        {/* Fade-out gradient shown when collapsed */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none transition-opacity duration-500"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-20 transition-opacity duration-200 motion-reduce:transition-none"
           style={{
             opacity: expanded || !needsToggle ? 0 : 1,
-            background: "linear-gradient(to bottom, transparent, var(--theme-surface, #fff))",
+            background: "linear-gradient(to bottom, transparent, var(--theme-bg) 92%)",
           }}
         />
       </div>
 
-      {/* Full-width toggle button */}
       {needsToggle && (
         <button
+          type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="w-full flex flex-col items-center justify-center gap-1.5 pt-4 pb-1 group cursor-pointer"
+          className="group mt-5 flex min-h-12 w-full items-center justify-between border-y border-[var(--theme-border)] py-3 text-left transition-colors duration-200 hover:border-[#d91c1c] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d91c1c]"
           aria-expanded={expanded}
+          aria-controls={contentId}
         >
-          {/* Animated line */}
-          <div
-            className="h-px transition-all duration-500 group-hover:opacity-100"
-            style={{
-              width: expanded ? "100%" : "40%",
-              backgroundColor: "var(--theme-border)",
-              opacity: 0.7,
-              transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          />
-
-          {/* Label + icon */}
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#d91c1c] group-hover:opacity-75 transition-opacity py-1.5">
-            <span>{expanded ? "Minder tonen" : "Meer lezen"}</span>
-            <ChevronDown
-              size={14}
-              style={{
-                transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)",
-              }}
-            />
-          </div>
+          <span className="flex items-center gap-3">
+            <span className="h-px w-7 bg-[#d91c1c] transition-[width] duration-200 group-hover:w-10 motion-reduce:transition-none" aria-hidden="true" />
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] theme-text">
+              {expanded ? showLessLabel : showMoreLabel}
+            </span>
+          </span>
+          <span className="flex size-8 items-center justify-center border border-[var(--theme-border)] text-[#d91c1c] transition-colors duration-200 group-hover:border-[#d91c1c]">
+            <ChevronDown className={`size-4 transition-transform duration-200 motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
+          </span>
         </button>
       )}
     </div>

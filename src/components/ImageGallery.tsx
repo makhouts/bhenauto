@@ -2,6 +2,7 @@
 
 import Image, { getImageProps } from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronLeft, ChevronRight, X, ZoomIn, Maximize2 } from "lucide-react";
 import { useGallery } from "@/hooks/useGallery";
@@ -10,6 +11,9 @@ import { getImageUrl, getImageVariantUrl, shouldUseDirectImageDelivery } from "@
 interface ImageGalleryProps {
     images: { id: string; url: string }[];
     title: string;
+    closeLabel: string;
+    zoomInLabel: string;
+    zoomOutLabel: string;
 }
 
 const GALLERY_IMAGE_QUALITY = 80;
@@ -62,11 +66,14 @@ function preloadResponsiveImage(
     return preloadImage;
 }
 
-export default function ImageGallery({ images, title }: ImageGalleryProps) {
+export default function ImageGallery({ images, title, closeLabel, zoomInLabel, zoomOutLabel }: ImageGalleryProps) {
     const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(() => new Set());
     const [failedVariantKeys, setFailedVariantKeys] = useState<Set<string>>(() => new Set());
+    const [portalMounted, setPortalMounted] = useState(false);
     const preloadedAssetKeys = useRef<Set<string>>(new Set());
     const preloadedImageRefs = useRef<Map<string, HTMLImageElement>>(new Map());
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const previousFocusRef = useRef<HTMLElement | null>(null);
 
     // Resolve all image URLs once (R2 keys → full CDN URLs)
     const resolvedImages = useMemo(() =>
@@ -79,6 +86,8 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
         })),
         [images]
     );
+
+    useEffect(() => setPortalMounted(true), []);
 
     const getVariantFailureKey = useCallback((image: GalleryImage, variant: "thumb" | "gallery" | "lightbox") => `${variant}:${image.id}`, []);
     const getThumbSrc = useCallback((image: GalleryImage) => (
@@ -220,9 +229,20 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
         goTo(targetIndex);
     };
     const openLightboxPreloaded = () => {
+        previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         preloadSelectionWindow(currentIndex, true);
         openLightbox();
     };
+
+    useEffect(() => {
+        if (lightboxOpen) {
+            window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+            return;
+        }
+
+        previousFocusRef.current?.focus();
+        previousFocusRef.current = null;
+    }, [lightboxOpen]);
 
     useEffect(() => {
         if (resolvedImages.length > 0 && activeIndex >= resolvedImages.length) {
@@ -501,18 +521,21 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
             {/* ═══════════════════════════════════════════
                 ║         FULLSCREEN LIGHTBOX             ║
                 ═══════════════════════════════════════════ */}
-            <AnimatePresence>
+            {portalMounted && createPortal(<AnimatePresence>
                 {lightboxOpen && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.3 }}
-                        className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col"
+                        className="fixed inset-0 z-[1000] flex flex-col bg-black/95 backdrop-blur-xl"
                         onClick={closeLightbox}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={title}
                     >
                         {/* ── Top Bar ── */}
-                        <div className="flex items-center justify-between px-6 py-4 relative z-20"
+                        <div className="relative z-30 flex min-h-16 items-center justify-between border-b border-white/15 bg-[#111116]/95 px-3 py-2 sm:px-6"
                             onClick={e => e.stopPropagation()}>
                             <div className="flex items-center gap-3">
                                 <span className="text-white/90 text-sm font-bold">
@@ -524,16 +547,20 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={toggleZoom}
-                                    className={`text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all ${isZoomed ? 'bg-white/15 text-white' : ''}`}
-                                    title={isZoomed ? "Uitzoomen" : "Inzoomen"}
+                                    className={`flex size-11 items-center justify-center border transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${isZoomed ? 'border-white bg-white text-[#111116]' : 'border-white/25 text-white/75 hover:border-white hover:text-white'}`}
+                                    title={isZoomed ? zoomOutLabel : zoomInLabel}
+                                    aria-label={isZoomed ? zoomOutLabel : zoomInLabel}
                                 >
                                     <ZoomIn size={20} />
                                 </button>
                                 <button
+                                    ref={closeButtonRef}
                                     onClick={closeLightbox}
-                                    className="text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-all"
+                                    className="flex min-h-11 items-center gap-2 border border-white bg-white px-3 text-[#111116] transition-colors duration-200 hover:border-[#d91c1c] hover:bg-[#d91c1c] hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-4"
+                                    aria-label={closeLabel}
                                 >
-                                    <X size={22} strokeWidth={2.5} />
+                                    <span className="text-[10px] font-extrabold uppercase tracking-[0.16em]">{closeLabel}</span>
+                                    <X size={18} strokeWidth={2.25} aria-hidden="true" />
                                 </button>
                             </div>
                         </div>
@@ -653,7 +680,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                         )}
                     </motion.div>
                 )}
-            </AnimatePresence>
+            </AnimatePresence>, document.body)}
         </>
     );
 }

@@ -8,6 +8,7 @@ import ImageGallery from '@/components/ImageGallery';
 import RelatedVehicles from '@/components/RelatedVehicles';
 import MobileContactBar from '@/components/MobileContactBar';
 import ExpandableDescription from '@/components/ExpandableDescription';
+import ExpandableFeatures from '@/components/ExpandableFeatures';
 import { getImageVariantUrl } from '@/lib/image-url';
 import { ShieldCheck } from 'lucide-react';
 import CarContactPanel from '@/components/CarContactPanel';
@@ -268,7 +269,13 @@ export default async function CarDetailPage(
                         </div>
 
                         <div className="relative">
-                            <ImageGallery images={car.images} title={car.title} />
+                            <ImageGallery
+                                images={car.images}
+                                title={car.title}
+                                closeLabel={t.galleryClose}
+                                zoomInLabel={t.galleryZoomIn}
+                                zoomOutLabel={t.galleryZoomOut}
+                            />
                             {car.sold && (
                                 <div className="absolute right-4 top-4 z-20 border-l-2 border-[#d91c1c] bg-black/75 px-4 py-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white">
                                     {t.soldOverlayLabel}
@@ -283,7 +290,7 @@ export default async function CarDetailPage(
                                 { label: t.statFuel, value: car.fuel_type },
                                 { label: t.statTransmission, value: transmissionLabel },
                             ].map((item, index) => (
-                                <div key={item.label} className={`min-w-0 py-5 pr-4 sm:px-6 sm:first:pl-0 ${index % 2 ? 'border-l border-white/15' : ''} sm:border-l sm:first:border-l-0`}>
+                                <div key={item.label} className={`min-w-0 border-white/15 py-5 pr-4 sm:border-l sm:px-6 sm:first:border-l-0 sm:first:pl-0 ${index % 2 ? 'border-l' : ''}`}>
                                     <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/40">{item.label}</p>
                                     <p className="truncate text-sm font-bold text-white/90" title={item.value}>{item.value}</p>
                                 </div>
@@ -330,7 +337,11 @@ export default async function CarDetailPage(
                                     <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">02 / {t.descriptionTitle}</p>
                                     <h2 className="mb-8 font-headings text-4xl font-semibold uppercase leading-none theme-text sm:text-5xl">{t.descriptionTitle}</h2>
                                     <div className="max-w-3xl border-l-2 border-[#d91c1c] pl-6 sm:pl-8">
-                                        <ExpandableDescription description={car.description} />
+                                        <ExpandableDescription
+                                            description={car.description}
+                                            showMoreLabel={t.descriptionShowMore}
+                                            showLessLabel={t.descriptionShowLess}
+                                        />
                                     </div>
                                 </section>
 
@@ -338,14 +349,11 @@ export default async function CarDetailPage(
                                     <section className="border-t border-[var(--theme-border)] pt-10">
                                         <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">03 / {t.featuresTitle}</p>
                                         <h2 className="mb-8 font-headings text-4xl font-semibold uppercase leading-none theme-text sm:text-5xl">{t.featuresTitle}</h2>
-                                        <div className="grid grid-cols-1 border-t border-[var(--theme-border)] sm:grid-cols-2 sm:gap-x-12">
-                                            {translatedFeatures.map((feature: string) => (
-                                                <div key={feature} className="flex min-h-14 items-center gap-4 border-b border-[var(--theme-border)] text-sm font-semibold theme-text-secondary">
-                                                    <span className="size-1.5 shrink-0 bg-[#d91c1c]" />
-                                                    <span>{feature}</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                                        <ExpandableFeatures
+                                            features={translatedFeatures}
+                                            showMoreLabel={t.featuresShowMore}
+                                            showLessLabel={t.featuresShowLess}
+                                        />
                                     </section>
                                 )}
                             </article>
