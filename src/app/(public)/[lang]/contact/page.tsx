@@ -7,7 +7,7 @@ import { isValidLocale, type Locale } from "@/lib/i18n";
 import { PublicEmail, PublicEmailLink } from "@/components/PublicEmail";
 import OpeningStatus from "@/components/OpeningStatus";
 import { businessJsonLd, jsonLdScriptContent } from "@/lib/business-schema";
-import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
+import { buildPageSocialMetadata, localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 // Static content — revalidate once per hour
 export const revalidate = 3600;
@@ -29,11 +29,12 @@ export async function generateMetadata({
       canonical: localizedUrl(locale, "/contact"),
       languages: localizedAlternates("/contact"),
     },
-    openGraph: {
-      url: localizedUrl(locale, "/contact"),
+    ...buildPageSocialMetadata({
+      locale,
+      path: "/contact",
       title: "Contact",
       description: c.pageSubtitle,
-    },
+    }),
   };
 }
 
@@ -62,20 +63,17 @@ export default async function ContactPage({
         dangerouslySetInnerHTML={jsonLdScriptContent(businessJsonLd)}
       />
 
-      {/* ── Subtle background accent ─────────────────────────────── */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-[#d91c1c]/4 rounded-full blur-[140px] pointer-events-none" />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 md:pt-28 pb-20 relative z-10">
 
         {/* ── Hero text ────────────────────────────────────────── */}
         <div className="mb-10 md:mb-14">
-          <p className="text-[10px] font-black text-[#d91c1c] uppercase tracking-[0.25em] mb-4">
+          <p className="brand-kicker mb-5">
             {c.pageLabel}
           </p>
-          <h1 className="font-headings font-black theme-text leading-none tracking-tight">
-            <span className="text-4xl md:text-6xl lg:text-7xl block">{c.pageTitle}</span>
-            <span className="text-4xl md:text-6xl lg:text-7xl block">
-              <span className="text-[#d91c1c] italic">{c.pageTitleHighlight}</span>
+          <h1 className="brand-section-title max-w-4xl theme-text">
+            <span className="block">{c.pageTitle}</span>
+            <span className="block">
+              <span className="text-[#d91c1c]">{c.pageTitleHighlight}</span>
             </span>
           </h1>
           <p className="mt-5 theme-text-muted max-w-md text-base leading-relaxed">
@@ -89,12 +87,9 @@ export default async function ContactPage({
           {/* ── LEFT: contact form (3 cols) ─────────────────── */}
           <div className="lg:col-span-3">
             <div
-              className="relative theme-surface shadow-sm rounded-2xl p-7 md:p-10 overflow-hidden"
+              className="relative overflow-hidden border-l-4 border-l-[#d91c1c] p-7 theme-surface md:p-10"
               style={{ border: "1px solid var(--theme-border)" }}
             >
-              {/* top accent line */}
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#d91c1c] to-transparent" />
-
               <h3 className="text-xl font-headings font-black theme-text mb-1 uppercase tracking-wide">
                 {c.formTitle}
               </h3>
@@ -121,13 +116,12 @@ export default async function ContactPage({
 
             {/* Locatie card */}
             <div
-              className="group relative theme-surface shadow-sm rounded-2xl p-6 overflow-hidden hover:shadow-md transition-all duration-300"
+              className="group relative border-t-2 border-t-[#d91c1c] p-6 theme-surface"
               style={{ border: "1px solid var(--theme-border)" }}
             >
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#d91c1c]/30 to-transparent" />
               <div className="flex items-start gap-4">
                 <div
-                  className="w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 group-hover:bg-[#d91c1c]/25 transition-colors duration-300"
+                  className="flex size-10 shrink-0 items-center justify-center border transition-colors duration-300 group-hover:bg-[#d91c1c]/10"
                   style={{ backgroundColor: "var(--theme-icon-bg)", borderColor: "rgba(217,28,28,0.2)" }}
                 >
                   <MapPin size={18} className="text-[#d91c1c]" />
@@ -154,10 +148,9 @@ export default async function ContactPage({
 
             {/* Direct contact card */}
             <div
-              className="group relative theme-surface shadow-sm rounded-2xl p-6 overflow-hidden hover:shadow-md transition-all duration-300"
+              className="group relative border-t border-[var(--theme-border)] p-6 theme-surface"
               style={{ border: "1px solid var(--theme-border)" }}
             >
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#d91c1c]/30 to-transparent" />
               <p className="text-[10px] font-black theme-text-faint uppercase tracking-[0.2em] mb-4">{c.directContactLabel}</p>
               <div className="space-y-4">
                 <a href="tel:+3225828353" className="flex items-center gap-3 group/link">
@@ -189,10 +182,9 @@ export default async function ContactPage({
 
             {/* Openingstijden card */}
             <div
-              className="group relative theme-surface shadow-sm rounded-2xl p-6 overflow-hidden hover:shadow-md transition-all duration-300"
+              className="group relative border-t border-[var(--theme-border)] p-6 theme-surface"
               style={{ border: "1px solid var(--theme-border)" }}
             >
-              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#d91c1c]/30 to-transparent" />
               <div className="flex items-center gap-2.5 mb-4">
                 <Clock size={14} className="text-[#d91c1c]" />
                 <p className="text-[10px] font-black theme-text-faint uppercase tracking-[0.2em]">{c.hoursLabel}</p>
@@ -213,9 +205,7 @@ export default async function ContactPage({
             </div>
 
             {/* CTA card */}
-            <div className="group relative bg-[#d91c1c] rounded-2xl p-6 overflow-hidden hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-[#d91c1c]/30 transition-all duration-300">
-              <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
-              <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-black/10 pointer-events-none" />
+            <div className="group relative overflow-hidden border-l-4 border-l-white bg-[#d91c1c] p-6">
               <div className="relative z-10">
                 <p className="text-white/80 text-sm font-bold mb-2 uppercase tracking-widest">{c.preferenceLabel}</p>
                 <p className="text-white font-black text-lg font-headings leading-snug mb-4">{c.preferenceTitle}</p>
@@ -234,10 +224,9 @@ export default async function ContactPage({
 
         {/* ── Google Maps full-width ────────────────────────── */}
         <div
-          className="mt-6 group relative theme-surface shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300"
+          className="group relative mt-6 overflow-hidden border border-[var(--theme-border)] theme-surface"
           style={{ border: "1px solid var(--theme-border)" }}
         >
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#d91c1c]/40 to-transparent z-10" />
           <div className="h-[380px] w-full relative">
             <iframe
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2516.356948124384!2d4.225758377155591!3d50.89861107168115!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47c3c07cb13d10cd%3A0x14ae28aebd5ab2be!2sBhenauto!5e0!3m2!1sen!2sbe!4v1774786991203!5m2!1sen!2sbe"

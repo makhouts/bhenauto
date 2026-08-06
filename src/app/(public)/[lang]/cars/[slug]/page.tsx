@@ -87,12 +87,18 @@ export async function generateMetadata(
     }
 
     const imageUrl = car.images.length > 0 ? getImageVariantUrl(car.images[0].url, 'gallery') : '';
-    const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
     const seoDescription = buildCarMetaDescription(car, locale);
     const carUrl = localizedUrl(locale, `/cars/${car.slug}`);
+    const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
+    const seoTitles: Record<Locale, string> = {
+        nl: `${car.brand} ${car.model} ${car.year} te koop`,
+        fr: `${car.brand} ${car.model} ${car.year} à vendre`,
+        en: `${car.brand} ${car.model} ${car.year} for sale`,
+    };
+    const seoTitle = seoTitles[locale];
 
     return {
-        title: car.title,
+        title: seoTitle,
         description: seoDescription,
         metadataBase: new URL(SITE_URL),
         alternates: {
@@ -101,7 +107,7 @@ export async function generateMetadata(
         },
         openGraph: {
             url: carUrl,
-            title: `${car.title} – ${priceFormatted}`,
+            title: `${seoTitle} – ${priceFormatted}`,
             description: seoDescription,
             images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630, alt: car.title }] : [],
             type: 'website',
@@ -110,7 +116,7 @@ export async function generateMetadata(
         },
         twitter: {
             card: 'summary_large_image',
-            title: `${car.title} – ${priceFormatted}`,
+            title: `${seoTitle} – ${priceFormatted}`,
             description: seoDescription,
             images: imageUrl ? [imageUrl] : [],
         },
@@ -137,7 +143,6 @@ export default async function CarDetailPage(
     const t = dict.carDetail;
     const translatedFeatures = await getTranslatedEquipmentOptions(car.equipmentCodes, locale, car.features);
     const carUrl = localizedUrl(locale, `/cars/${car.slug}`);
-    const priceFormatted = `€${car.price.toLocaleString('nl-BE')}`;
     const seoDescription = buildCarMetaDescription(car, locale);
     const businessSchemaNode = Object.fromEntries(
         Object.entries(businessJsonLd).filter(([key]) => key !== '@context')
@@ -223,248 +228,169 @@ export default async function CarDetailPage(
                 dangerouslySetInnerHTML={jsonLdScriptContent(jsonLd)}
             />
 
-            {/* ── PAGE WRAPPER with top padding for fixed header ── */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 md:pt-24 pb-20">
+            <main>
+                <section className="bg-[#111116] text-white">
+                    <div className="mx-auto max-w-[1720px] px-4 pb-10 pt-10 sm:px-6 sm:pt-14 md:pt-[130px] lg:px-10 xl:px-12">
+                        <nav aria-label="Breadcrumb" className="mb-10 flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/45">
+                            <Link href={`/${lang}`} className="min-h-11 py-3 transition-colors hover:text-[#d91c1c]">Home</Link>
+                            <span className="h-px w-6 bg-[#d91c1c]" />
+                            <Link href={`/${lang}/inventory`} className="min-h-11 py-3 transition-colors hover:text-[#d91c1c]">{t.breadcrumbStock}</Link>
+                            <span>/</span>
+                            <span className="text-white/75">{car.brand} {car.model}</span>
+                        </nav>
 
-                {/* ── BREADCRUMB ── */}
-                <div className="flex items-center gap-2 text-[11px] font-bold theme-text-faint uppercase tracking-widest mb-6">
-                    <Link href={`/${lang}`} className="hover:text-[#d91c1c] transition-colors">Home</Link>
-                    <span>/</span>
-                    <Link href={`/${lang}/inventory`} className="hover:text-[#d91c1c] transition-colors">{t.breadcrumbStock}</Link>
-                    <span>/</span>
-                    <span className="theme-text-secondary">{car.brand} {car.model}</span>
-                </div>
+                        {car.sold && (
+                            <div className="mb-10 flex flex-col gap-5 border-y border-white/15 py-5 sm:flex-row sm:items-center">
+                                <ShieldCheck className="size-6 shrink-0 text-[#d91c1c]" />
+                                <div>
+                                    <p className="text-xs font-extrabold uppercase tracking-[0.16em]">{t.soldBannerTitle}</p>
+                                    <p className="mt-1 text-sm text-white/55">{t.soldBannerBody}</p>
+                                </div>
+                                <Link href={`/${lang}/inventory`} className="min-h-11 border border-white/20 px-5 py-3 text-center text-[10px] font-extrabold uppercase tracking-[0.16em] transition-colors hover:bg-white hover:text-[#111116] sm:ml-auto">
+                                    {t.soldBannerCta}
+                                </Link>
+                            </div>
+                        )}
 
-                {/* ── SOLD BANNER ── */}
-                {car.sold && (
-                    <div
-                        className="mb-8 flex items-center gap-4 px-6 py-5 rounded-2xl"
-                        style={{
-                            background: "#0f0f0f",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                        }}
-                    >
-                        <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                            style={{ background: "rgba(255,255,255,0.06)" }}
-                        >
-                            <ShieldCheck className="w-5 h-5 text-slate-300" />
+                        <div className="mb-9 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-end">
+                            <div className="lg:col-span-8">
+                                <p className="mb-5 text-[10px] font-extrabold uppercase tracking-[0.22em] text-white/45">BHEN / {car.year} / {car.brand}</p>
+                                <h1 className="max-w-5xl break-words font-headings text-[clamp(3.4rem,7vw,7.5rem)] font-semibold uppercase leading-[0.78] tracking-[-0.04em]">
+                                    {car.brand} {car.model}
+                                </h1>
+                                <p className="mt-6 max-w-3xl text-sm leading-7 text-white/55">{car.title}</p>
+                            </div>
+                            <div className="border-l border-white/15 pl-0 lg:col-span-4 lg:pl-10">
+                                <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.2em] text-white/40">EUR</p>
+                                <p className="font-headings text-5xl font-semibold leading-none text-[#d91c1c] tabular-nums sm:text-6xl">€{car.price.toLocaleString('nl-BE')}</p>
+                                <p className="mt-5 text-sm text-white/55">{car.color} · {transmissionLabel}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-white font-black text-sm uppercase tracking-[0.18em] mb-0.5">{t.soldBannerTitle}</p>
-                            <p className="text-slate-400 text-[13px] leading-snug">
-                                {t.soldBannerBody}
-                            </p>
-                        </div>
-                        <Link
-                            href={`/${lang}/inventory`}
-                            className="ml-auto shrink-0 px-4 py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/10"
-                            style={{ border: "1px solid rgba(255,255,255,0.15)" }}
-                        >
-                            {t.soldBannerCta}
-                        </Link>
-                    </div>
-                )}
 
-                {/* ── VEHICLE HEADING ── */}
-                <div className="mb-5" aria-label={`${car.brand} ${car.model}`}>
-                    <p className="text-3xl md:text-4xl font-headings font-black theme-text leading-tight break-words">
-                        {car.brand} {car.model}
-                    </p>
-                </div>
-
-                {/* ── HERO GALLERY ── */}
-                <div className="relative mb-10">
-                    <ImageGallery images={car.images} title={car.title} />
-                    {car.sold && (
-                        <div className="absolute top-4 right-4 z-20 flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.18em]"
-                            style={{ background: "rgba(255, 0, 0, 0.82)", color: "#f1f5f9", border: "1px solid rgba(255,255,255,0.14)", backdropFilter: "blur(8px)" }}
-                        >
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                            {t.soldOverlayLabel}
-                        </div>
-                    )}
-                </div>
-
-                {/* ── MAIN CONTENT GRID ── */}
-                <div className="flex flex-col lg:flex-row gap-10">
-
-                    {/* ╔═══════════════════════════════╗
-                        ║   LEFT — specs & description  ║
-                        ╚═══════════════════════════════╝ */}
-                    <div className="flex-1 min-w-0">
-                        {/* Title */}
-                        <h1 className="text-[17px] font-headings font-black theme-text leading-snug mb-3 break-words">
-                            {car.title}
-                        </h1>
-
-                        {/* Vehicle meta + optional Carpass logo */}
-                        <div className="flex items-center justify-between mb-6">
-                            <p className="theme-text-muted text-base">
-                                {car.year} · {car.color} · {transmissionLabel}
-                            </p>
-                            {car.carpass_url && (
-                                <a
-                                    href={car.carpass_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Bekijk Carpass"
-                                    className="shrink-0 ml-4 hover:opacity-80 transition-opacity"
-                                >
-                                    <Image
-                                        src={carpassImg}
-                                        alt="Carpass"
-                                        className="h-10 w-auto object-contain"
-                                        priority={false}
-                                    />
-                                </a>
+                        <div className="relative">
+                            <ImageGallery images={car.images} title={car.title} />
+                            {car.sold && (
+                                <div className="absolute right-4 top-4 z-20 border-l-2 border-[#d91c1c] bg-black/75 px-4 py-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white">
+                                    {t.soldOverlayLabel}
+                                </div>
                             )}
                         </div>
 
-                        {/* Price row */}
-                        <div className="flex items-baseline gap-4 mb-10">
-                            <span className="text-4xl font-black text-[#d91c1c]">
-                                €{car.price.toLocaleString('nl-BE')}
-                            </span>
-                        </div>
-
-                        {/* ── 4-stat quick bar ── */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 rounded-xl overflow-hidden mb-10 theme-surface shadow-sm" style={{ border: '1px solid var(--theme-border)' }}>
+                        <div className="mt-6 grid grid-cols-2 border-y border-white/15 sm:grid-cols-4">
                             {[
                                 { label: t.statMileage, value: `${car.mileage.toLocaleString('nl-BE')} km` },
                                 { label: t.statPower, value: `${car.horsepower} pk` },
                                 { label: t.statFuel, value: car.fuel_type },
                                 { label: t.statTransmission, value: transmissionLabel },
-                            ].map((item, i) => (
-                                <div
-                                    key={i}
-                                    className={`flex flex-col px-5 py-4 ${i < 3 ? 'border-r' : ''}`}
-                                    style={i < 3 ? { borderColor: 'var(--theme-border-subtle)' } : {}}
-                                >
-                                    <span className="text-[10px] font-bold theme-text-faint uppercase tracking-widest mb-1">
-                                        {item.label}
-                                    </span>
-                                    <span className="font-bold theme-text text-sm">
-                                        {item.value}
-                                    </span>
+                            ].map((item, index) => (
+                                <div key={item.label} className={`min-w-0 py-5 pr-4 sm:px-6 sm:first:pl-0 ${index % 2 ? 'border-l border-white/15' : ''} sm:border-l sm:first:border-l-0`}>
+                                    <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/40">{item.label}</p>
+                                    <p className="truncate text-sm font-bold text-white/90" title={item.value}>{item.value}</p>
                                 </div>
                             ))}
                         </div>
+                    </div>
+                </section>
 
-                        {/* ── Detailed specifications ── */}
-                        <div className="theme-surface rounded-xl shadow-sm p-7 mb-8" style={{ border: '1px solid var(--theme-border)' }}>
-                            <h2 className="text-xl font-headings font-black theme-text mb-6">
-                                {t.specsTitle}
-                            </h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-0">
-                                {[
-                                    { label: t.specBrand, value: car.brand },
-                                    { label: t.specColor, value: car.color },
-                                    { label: t.specFuel, value: car.fuel_type },
-                                    { label: t.specTransmission, value: transmissionLabel },
-                                    { label: t.specMileage, value: `${car.mileage.toLocaleString('nl-BE')} km` },
-                                    { label: t.specYear, value: car.year },
-                                    { label: t.specPower, value: `${car.horsepower} pk` },
-                                    { label: t.specCondition, value: t.specConditionValue },
-                                ].map((row, i) => (
-                                    <div key={i} className="flex justify-between items-center py-3.5 last:border-0" style={{ borderBottom: '1px solid var(--theme-border-subtle)' }}>
-                                        <span className="theme-text-muted text-sm">{row.label}</span>
-                                        <span className="font-semibold theme-text text-sm">{row.value}</span>
+                <section className="theme-bg">
+                    <div className="mx-auto max-w-[1720px] px-4 py-16 sm:px-6 sm:py-20 lg:px-10 xl:px-12">
+                        <div className="grid grid-cols-1 gap-14 lg:grid-cols-12 xl:gap-20">
+                            <article className="min-w-0 lg:col-span-8">
+                                <div className="mb-16 flex flex-col gap-8 border-b border-[var(--theme-border)] pb-10 sm:flex-row sm:items-end sm:justify-between">
+                                    <div>
+                                        <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">01 / {t.specsTitle}</p>
+                                        <h2 className="font-headings text-4xl font-semibold uppercase leading-none theme-text sm:text-5xl">{t.specsTitle}</h2>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
+                                    {car.carpass_url && (
+                                        <a href={car.carpass_url} target="_blank" rel="noopener noreferrer" title="Car-Pass" className="shrink-0 transition-opacity hover:opacity-70">
+                                            <Image src={carpassImg} alt="Car-Pass" className="h-11 w-auto object-contain" />
+                                        </a>
+                                    )}
+                                </div>
 
-                        {/* ── Description ── */}
-                        <div className="theme-surface rounded-xl shadow-sm p-7 mb-8" style={{ border: '1px solid var(--theme-border)' }}>
-                            <h2 className="text-xl font-headings font-black theme-text mb-4">
-                                {t.descriptionTitle}
-                            </h2>
-                            <ExpandableDescription description={car.description} />
-                        </div>
-
-                        {/* ── Features / Options ── */}
-                        {translatedFeatures.length > 0 && (
-                            <div className="theme-surface rounded-xl shadow-sm p-7" style={{ border: '1px solid var(--theme-border)' }}>
-                                <h2 className="text-xl font-headings font-black theme-text mb-5">
-                                    {t.featuresTitle}
-                                </h2>
-                                <div className="flex flex-wrap gap-2">
-                                    {translatedFeatures.map((feature: string, idx: number) => (
-                                        <span
-                                            key={idx}
-                                            className="text-[#d91c1c] text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm"
-                                            style={{ backgroundColor: 'var(--theme-icon-bg)', border: '1px solid rgba(217,28,28,0.2)' }}
-                                        >
-                                            {feature}
-                                        </span>
+                                <div className="mb-20 grid grid-cols-1 border-t border-[var(--theme-border)] sm:grid-cols-2 sm:gap-x-12">
+                                    {[
+                                        { label: t.specBrand, value: car.brand },
+                                        { label: t.specColor, value: car.color },
+                                        { label: t.specFuel, value: car.fuel_type },
+                                        { label: t.specTransmission, value: transmissionLabel },
+                                        { label: t.specMileage, value: `${car.mileage.toLocaleString('nl-BE')} km` },
+                                        { label: t.specYear, value: car.year },
+                                        { label: t.specPower, value: `${car.horsepower} pk` },
+                                        { label: t.specCondition, value: t.specConditionValue },
+                                    ].map((row) => (
+                                        <div key={row.label} className="flex min-h-16 items-center justify-between gap-6 border-b border-[var(--theme-border)]">
+                                            <span className="text-xs theme-text-muted">{row.label}</span>
+                                            <span className="text-right text-sm font-bold theme-text">{row.value}</span>
+                                        </div>
                                     ))}
                                 </div>
-                            </div>
-                        )}
-                    </div>
 
-                    {/* ╔═══════════════════════════════╗
-                        ║   RIGHT — contact sidebar     ║
-                        ╚═══════════════════════════════╝ */}
-                    <div className="w-full lg:w-[340px] xl:w-[380px] shrink-0 space-y-5">
+                                <section className="mb-20 border-t border-[var(--theme-border)] pt-10">
+                                    <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">02 / {t.descriptionTitle}</p>
+                                    <h2 className="mb-8 font-headings text-4xl font-semibold uppercase leading-none theme-text sm:text-5xl">{t.descriptionTitle}</h2>
+                                    <div className="max-w-3xl border-l-2 border-[#d91c1c] pl-6 sm:pl-8">
+                                        <ExpandableDescription description={car.description} />
+                                    </div>
+                                </section>
 
-                        {/* Sticky wrapper */}
-                        <div className="lg:sticky lg:top-24 space-y-5">
+                                {translatedFeatures.length > 0 && (
+                                    <section className="border-t border-[var(--theme-border)] pt-10">
+                                        <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">03 / {t.featuresTitle}</p>
+                                        <h2 className="mb-8 font-headings text-4xl font-semibold uppercase leading-none theme-text sm:text-5xl">{t.featuresTitle}</h2>
+                                        <div className="grid grid-cols-1 border-t border-[var(--theme-border)] sm:grid-cols-2 sm:gap-x-12">
+                                            {translatedFeatures.map((feature: string) => (
+                                                <div key={feature} className="flex min-h-14 items-center gap-4 border-b border-[var(--theme-border)] text-sm font-semibold theme-text-secondary">
+                                                    <span className="size-1.5 shrink-0 bg-[#d91c1c]" />
+                                                    <span>{feature}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+                            </article>
 
-                            {/* ── Contact Card ── */}
-                            <CarContactPanel
-                                lang={lang}
-                                carSlug={car.slug}
-                                carTitle={car.title}
-                                whatsappUrl={whatsappUrl}
-                                sold={car.sold ?? false}
-                                dict={dict.carDetail}
-                                securityError={dict.errors.turnstileFailed}
-                            />
-
-                            {/* ── Location Card Google Maps ── */}
-                            <div className="hidden lg:block theme-surface rounded-[28px] shadow-sm overflow-hidden p-3 mt-5" style={{ border: '1px solid var(--theme-border)' }}>
-                                <div className="h-[250px] w-full rounded-[20px] overflow-hidden relative group">
-                                    <div className="absolute inset-0 bg-transparent pointer-events-none shadow-[inset_0_0_20px_rgba(0,0,0,0.05)] z-10 transition-colors duration-300"></div>
-                                    <DeferredMap />
+                            <aside id="vehicle-contact" className="min-w-0 lg:col-span-4">
+                                <div className="space-y-6 lg:sticky lg:top-24">
+                                    <CarContactPanel
+                                        lang={lang}
+                                        carSlug={car.slug}
+                                        carTitle={car.title}
+                                        whatsappUrl={whatsappUrl}
+                                        sold={car.sold ?? false}
+                                        dict={dict.carDetail}
+                                        securityError={dict.errors.turnstileFailed}
+                                    />
+                                    <div className="hidden overflow-hidden border border-[var(--theme-border)] lg:block">
+                                        <div className="h-[280px] w-full">
+                                            <DeferredMap />
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-
+                            </aside>
                         </div>
+
+                        <Suspense fallback={null}>
+                            <RelatedVehicles
+                                currentCarId={car.id}
+                                brand={dbCar.brand}
+                                priceRange={dbCar.price}
+                                bodyType={dbCar.bodyType}
+                                vehicleType={dbCar.vehicleType}
+                                fuelType={dbCar.fuel_type}
+                                transmission={dbCar.transmission}
+                                year={dbCar.year}
+                                mileage={dbCar.mileage}
+                                lang={lang}
+                                dict={dict.carDetail}
+                            />
+                        </Suspense>
                     </div>
-                </div>
+                </section>
+            </main>
 
-                {/* ── RELATED VEHICLES ── */}
-                <Suspense fallback={null}>
-                    <RelatedVehicles
-                        currentCarId={car.id}
-                        brand={dbCar.brand}
-                        priceRange={dbCar.price}
-                        bodyType={dbCar.bodyType}
-                        vehicleType={dbCar.vehicleType}
-                        fuelType={dbCar.fuel_type}
-                        transmission={dbCar.transmission}
-                        year={dbCar.year}
-                        mileage={dbCar.mileage}
-                        lang={lang}
-                        dict={dict.carDetail}
-                    />
-                </Suspense>
-            </div>
-
-            {/* Sticky Mobile Contact Bar */}
-            <MobileContactBar
-                carSlug={car.slug}
-                locale={lang}
-                dict={dict.carDetail}
-                whatsappUrl={whatsappUrl}
-            />
-
-            {/* Bottom padding for mobile sticky bar */}
+            <MobileContactBar carSlug={car.slug} locale={lang} dict={dict.carDetail} whatsappUrl={whatsappUrl} />
             <div className="h-20 lg:hidden" />
-
-            {/* Car-specific floating WhatsApp button (desktop only) */}
             <CarWhatsAppButton whatsappUrl={whatsappUrl} label={t.contactWhatsApp} />
         </div>
     );

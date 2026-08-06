@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { ArrowRight, CalendarDays, CircleGauge, Fuel, Settings2, type LucideIcon } from "lucide-react";
 import { trackClientAnalyticsEvent } from "@/lib/analytics-client";
 import type { CommonDict } from "@/lib/dictionaries";
 import { getImageUrl, getImageVariantUrl, shouldUseDirectImageDelivery } from "@/lib/image-url";
@@ -39,22 +40,18 @@ interface CarCardProps {
     priorityImage?: boolean;
 }
 
-function SpecPill({ icon, label }: { icon: React.ReactNode; label: string }) {
+function SpecItem({ icon: Icon, value, divided = false, lowerRow = false }: { icon: LucideIcon; value: string; divided?: boolean; lowerRow?: boolean }) {
     return (
-        <div className="flex flex-col items-center gap-1.5">
-            <div style={{ color: "var(--theme-text-faint)" }}>{icon}</div>
-            <span className="text-[11px] font-semibold" style={{ color: "var(--theme-text-secondary)" }}>
-                {label}
+        <div className={`flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2 ${divided ? "border-l border-[var(--theme-border)]" : ""} ${lowerRow ? "border-t border-[var(--theme-border)]" : ""}`}>
+            <span className="flex size-7 shrink-0 items-center justify-center text-[#d91c1c]">
+                <Icon size={18} strokeWidth={1.65} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 break-words text-[12px] font-bold leading-4 tabular-nums theme-text-secondary" title={value}>
+                {value}
             </span>
         </div>
     );
 }
-
-const CalIcon = <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>;
-const OdoIcon = <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-const FuelIcon = <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3h10a2 2 0 012 2v1h1a2 2 0 012 2v2a2 2 0 01-2 2h-1v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 8h4" /></svg>;
-const GearIcon = <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="5" cy="6" r="2" strokeWidth={1.5} /><circle cx="12" cy="6" r="2" strokeWidth={1.5} /><circle cx="5" cy="18" r="2" strokeWidth={1.5} /><circle cx="12" cy="18" r="2" strokeWidth={1.5} /><line x1="5" y1="8" x2="5" y2="16" strokeWidth={1.5} strokeLinecap="round" /><line x1="12" y1="8" x2="12" y2="16" strokeWidth={1.5} strokeLinecap="round" /></svg>;
-const ArrowIcon = <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>;
 
 function ImageFallback() {
     return (
@@ -72,7 +69,7 @@ function SoldOverlay({ label }: { label: string }) {
     return (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center"
             style={{ background: "rgba(8,8,12,0.58)", backdropFilter: "saturate(0) brightness(0.7)" }}>
-            <span className="text-[11px] font-black uppercase tracking-[0.22em] px-4 py-2 rounded-full"
+            <span className="border border-white/25 bg-black/55 px-4 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-white"
                 style={{ background: "rgba(255,255,255,0.1)", color: "#f1f5f9", border: "1px solid rgba(255,255,255,0.18)" }}>
                 {label}
             </span>
@@ -82,7 +79,7 @@ function SoldOverlay({ label }: { label: string }) {
 
 function ReservedBadge({ label }: { label: string }) {
     return (
-        <div className="absolute top-3.5 right-3.5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.14em] backdrop-blur-md"
+        <div className="absolute right-3.5 top-3.5 z-10 flex items-center gap-1.5 border border-[#d4b678]/30 bg-[#171204]/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#d4b678]"
             style={{ background: "rgba(20,16,5,0.72)", color: "#d4b678", border: "1px solid rgba(212,182,120,0.25)" }}>
             <span className="w-1.5 h-1.5 rounded-full bg-[#d4b678] animate-pulse" />
             {label}
@@ -132,12 +129,8 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
             <Link
                 href={href}
                 prefetch={false}
-                className="group relative flex flex-row overflow-hidden transition-all duration-300 hover:-translate-y-1"
+                className="group relative flex flex-row overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-surface)] transition-colors duration-200 hover:border-[#a9a49c]"
                 style={{
-                    background: "var(--theme-surface)",
-                    border: "1px solid var(--theme-border)",
-                    borderRadius: "20px",
-                    boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
                     minHeight: "200px",
                 }}
                 onMouseEnter={() => setHovered(true)}
@@ -146,7 +139,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
             >
                 {/* Red hover accent bar */}
                 <div
-                    className="absolute left-0 inset-y-0 w-[3px] rounded-l-full transition-all duration-300 z-20"
+                    className="absolute inset-y-0 left-0 z-20 w-[3px] transition-all duration-300"
                     style={{ background: hovered ? "#d91c1c" : "transparent" }}
                 />
 
@@ -177,22 +170,11 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                             className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
                         />
                     )}
-                    <div
-                        aria-hidden="true"
-                        className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/2 z-[6]"
-                        style={{
-                            background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.16) 50%, transparent 100%)",
-                            mixBlendMode: "screen",
-                            opacity: hovered ? 1 : 0,
-                            transform: hovered ? "translateX(260%) skewX(-12deg)" : "translateX(-130%) skewX(-12deg)",
-                            transition: "transform 560ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease-out",
-                        }}
-                    />
                     {car.sold && <SoldOverlay label={commonDict.sold} />}
                     {!car.sold && car.reserved && <ReservedBadge label={commonDict.reserved} />}
                     {car.isNew && (
                         <div className="absolute top-3.5 left-3.5 z-10">
-                            <span className="text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1.5 rounded-full backdrop-blur-md"
+                            <span className="border border-white/20 bg-black/70 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white"
                                 style={{ background: "rgba(10,10,15,0.65)", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.12)" }}>
                                 {commonDict.newBadge}
                             </span>
@@ -205,8 +187,8 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                     {/* Brand + Price row */}
                     <div className="flex items-center justify-between gap-4 mb-2">
                         <span
-                            className="text-[10px] font-black uppercase tracking-[0.22em] px-2.5 py-1 rounded-full"
-                            style={{ background: "var(--theme-border-subtle)", color: "var(--theme-text-secondary)" }}
+                            className="border-l-2 border-[#d91c1c] pl-2 text-[10px] font-black uppercase tracking-[0.22em]"
+                            style={{ color: "var(--theme-text-secondary)" }}
                         >
                             {car.brand}
                         </span>
@@ -238,21 +220,19 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                     {/* Spec chips + CTA on same row */}
                     <div className="mt-auto flex items-center flex-wrap gap-2">
                         {[
-                            { icon: CalIcon, label: `${car.year}` },
-                            { icon: OdoIcon, label: `${car.mileage.toLocaleString("nl-BE")} km` },
-                            { icon: FuelIcon, label: car.fuel_type },
-                            ...(car.transmission ? [{ icon: GearIcon, label: car.transmission }] : []),
-                        ].map(({ icon, label }, i) => (
+                            { icon: CalendarDays, label: `${car.year}` },
+                            { icon: CircleGauge, label: `${car.mileage.toLocaleString("nl-BE")} km` },
+                            { icon: Fuel, label: car.fuel_type },
+                            ...(car.transmission ? [{ icon: Settings2, label: car.transmission }] : []),
+                        ].map(({ icon: Icon, label }, i) => (
                             <div
                                 key={i}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-semibold"
+                                className="flex items-center gap-1.5 border-r border-[var(--theme-border)] pr-3 text-[10px] font-semibold last:border-r-0"
                                 style={{
-                                    background: "var(--theme-bg, #f4f4f6)",
-                                    border: "1px solid var(--theme-border-subtle)",
                                     color: "var(--theme-text-secondary)",
                                 }}
                             >
-                                <span style={{ color: "var(--theme-text-faint)" }}>{icon}</span>
+                                <Icon size={14} strokeWidth={1.65} aria-hidden="true" />
                                 {label}
                             </div>
                         ))}
@@ -264,7 +244,7 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                         >
                             {commonDict.viewDetails}
                             <span className={`transition-transform duration-200 ${hovered ? "translate-x-1.5" : ""}`}>
-                                {ArrowIcon}
+                                <ArrowRight size={16} strokeWidth={1.75} aria-hidden="true" />
                             </span>
                         </div>
                     </div>
@@ -277,21 +257,15 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
         <Link
             href={href}
             prefetch={false}
-            className="group flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-[3px]"
-            style={{
-                background: "var(--theme-surface)",
-                border: "1px solid var(--theme-border)",
-                borderRadius: "18px",
-                boxShadow: "0 1px 8px rgba(0,0,0,0.04)",
-            }}
+            className="group flex flex-col overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-surface)] transition-colors duration-200 hover:border-[#8f8a83]"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             onClick={handleCardClick}
         >
             {/* Image */}
             <div
-                className="relative overflow-hidden"
-                style={{ height: "clamp(220px, 23vw, 300px)", background: "var(--theme-skeleton)", borderRadius: "18px 18px 0 0" }}
+                className="relative aspect-[16/10] overflow-hidden"
+                style={{ background: "var(--theme-skeleton)" }}
             >
                 {(!img1 || imgError) && <ImageFallback />}
 
@@ -324,75 +298,54 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                         className={`object-cover transition-opacity duration-700 ${hovered ? "opacity-100" : "opacity-0"}`}
                     />
                 )}
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/2 z-[6]"
-                    style={{
-                        background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.16) 50%, transparent 100%)",
-                        mixBlendMode: "screen",
-                        opacity: hovered ? 1 : 0,
-                        transform: hovered ? "translateX(260%) skewX(-12deg)" : "translateX(-130%) skewX(-12deg)",
-                        transition: "transform 560ms cubic-bezier(0.22, 1, 0.36, 1), opacity 160ms ease-out",
-                    }}
-                />
-
-                <div className="absolute inset-x-0 bottom-0 h-20 pointer-events-none"
-                    style={{ background: "linear-gradient(to top, rgba(0,0,0,0.18), transparent)" }} />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" />
 
                 {car.sold && <SoldOverlay label={commonDict.sold} />}
                 {!car.sold && car.reserved && <ReservedBadge label={commonDict.reserved} />}
 
                 <div className="absolute top-3.5 left-3.5 flex gap-2 z-10">
                     {car.isNew && (
-                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] px-2.5 py-1.5 rounded-full backdrop-blur-md"
-                            style={{ background: "rgba(10,10,15,0.65)", color: "#e2e8f0", border: "1px solid rgba(255,255,255,0.12)" }}>
+                        <span className="border-l-2 border-l-[#d91c1c] bg-black/70 px-3 py-2 text-[9px] font-bold uppercase tracking-[0.16em] text-white">
                             {commonDict.newBadge}
                         </span>
                     )}
                 </div>
 
-                {img2 && (
-                    <div className="absolute bottom-3 right-3 flex items-center gap-1.5 z-10">
-                        <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${!hovered ? "bg-white scale-100" : "bg-white/35 scale-75"}`} />
-                        <span className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${hovered ? "bg-white scale-100" : "bg-white/35 scale-75"}`} />
-                    </div>
-                )}
+                <div className="absolute bottom-4 left-4 z-10 border-l-2 border-[#d91c1c] pl-2 text-[9px] font-extrabold uppercase tracking-[0.2em] text-white/90">BHEN AUTO</div>
             </div>
 
             {/* Content */}
-            <div className="flex flex-col flex-1 px-5 pt-4 pb-4">
-                <div className="flex items-start justify-between gap-3 mb-1">
-                    <h3 className="text-[1.2rem] font-headings font-bold leading-tight group-hover:text-[#d91c1c] transition-colors duration-200 truncate flex-1 min-w-0"
+            <div className="flex flex-1 flex-col px-5 pb-0 pt-6 sm:px-6">
+                <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">{car.brand} / {car.year}</p>
+                <div className="mb-5 flex items-start justify-between gap-5">
+                    <h3 className="min-w-0 flex-1 font-headings text-[2rem] font-semibold uppercase leading-[0.9] transition-colors duration-200 group-hover:text-[#d91c1c]"
                         style={{ color: "var(--theme-text)" }}>
                         {car.brand} {car.model}
                     </h3>
-                    <div className="text-[0.95rem] font-black shrink-0 leading-none pt-0.5" style={{ color: "var(--theme-text)" }}>
+                    <div className="shrink-0 pt-0.5 font-headings text-2xl font-bold leading-none tabular-nums text-[#d91c1c]">
                         €{car.price.toLocaleString("nl-BE")}
                     </div>
                 </div>
 
-                <div className="mb-3">
-                    <p className="text-[12px] font-medium truncate" style={{ color: "var(--theme-text-muted)" }} title={car.title}>
+                <div className="mb-5">
+                    <p className="line-clamp-1 text-[12px] font-medium" style={{ color: "var(--theme-text-muted)" }} title={car.title}>
                         {car.title}
                     </p>
                 </div>
 
-                <div className="flex justify-between py-3"
-                    style={{ borderTop: "1px solid var(--theme-border-subtle)", borderBottom: "1px solid var(--theme-border-subtle)" }}>
-                    <SpecPill icon={CalIcon} label={`${car.year}`} />
-                    <SpecPill icon={OdoIcon} label={`${car.mileage.toLocaleString("nl-BE")} km`} />
-                    <SpecPill icon={FuelIcon} label={car.fuel_type} />
-                    <SpecPill icon={GearIcon} label={car.transmission || "–"} />
+                <div className="grid grid-cols-2 border-y border-[var(--theme-border)]">
+                    <SpecItem icon={CalendarDays} value={`${car.year}`} />
+                    <SpecItem icon={CircleGauge} value={`${car.mileage.toLocaleString("nl-BE")} km`} divided />
+                    <SpecItem icon={Fuel} value={car.fuel_type} lowerRow />
+                    <SpecItem icon={Settings2} value={car.transmission || "–"} divided lowerRow />
                 </div>
 
-                <div className="mt-4">
-                    <div className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group-hover:bg-[#d91c1c] group-hover:text-white group-hover:border-[#d91c1c]"
-                        style={{ background: "#ffffff", color: "var(--theme-text)", border: "1px solid #b3b3b3" }}>
+                <div className="mt-auto flex min-h-14 items-center justify-between border-t border-[var(--theme-border)] text-[10px] font-extrabold uppercase tracking-[0.16em] transition-colors duration-200 theme-text-faint group-hover:text-[#d91c1c]">
                         <span>{commonDict.viewDetails}</span>
-                        <span className={`transition-transform duration-200 ${hovered ? "translate-x-0.5" : ""}`}>
-                            {ArrowIcon}
+                        <span className="flex items-center gap-3 text-[#d91c1c]">
+                            <span className="h-px w-5 bg-current transition-[width] duration-200 group-hover:w-9" />
+                            <ArrowRight size={16} strokeWidth={1.75} aria-hidden="true" />
                         </span>
-                    </div>
                 </div>
             </div>
         </Link>

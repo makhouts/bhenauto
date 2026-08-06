@@ -1,4 +1,5 @@
 import { defaultLocale, locales, type Locale } from "@/lib/i18n";
+import socialImage from "@/assets/wallpaper.webp";
 
 function normalizeBaseUrl(value?: string) {
   return (value || "https://bhenauto.com").replace(/\/+$/, "");
@@ -16,6 +17,43 @@ export const ogLocales: Record<Locale, string> = {
   fr: "fr_BE",
   en: "en_GB",
 };
+
+export const defaultSocialImage = {
+  url: absoluteUrl(socialImage.src),
+  width: socialImage.width,
+  height: socialImage.height,
+  alt: "Premium voertuigen bij BhenAuto in Asse",
+};
+
+export function buildPageSocialMetadata({
+  locale,
+  path = "",
+  title,
+  description,
+}: {
+  locale: Locale;
+  path?: string;
+  title: string;
+  description: string;
+}) {
+  return {
+    openGraph: {
+      type: "website" as const,
+      url: localizedUrl(locale, path),
+      locale: ogLocales[locale],
+      siteName: "BhenAuto",
+      title,
+      description,
+      images: [defaultSocialImage],
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      title,
+      description,
+      images: [defaultSocialImage.url],
+    },
+  };
+}
 
 export function absoluteUrl(path = "") {
   return `${SITE_URL}${normalizePath(path)}`;

@@ -12,7 +12,7 @@ import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
 import { isValidLocale, type Locale } from "@/lib/i18n";
 import { localizeCarsForPublic } from "@/lib/autoscout24/public-presentation";
 import { businessJsonLd, jsonLdScriptContent } from "@/lib/business-schema";
-import { localizedAlternates, localizedUrl, ogLocales, SITE_URL } from "@/lib/site-seo";
+import { buildPageSocialMetadata, localizedAlternates, localizedUrl, SITE_URL } from "@/lib/site-seo";
 
 const HOMEPAGE_CAROUSEL_LIMIT = 12;
 
@@ -42,19 +42,11 @@ export async function generateMetadata({
       canonical: localizedUrl(locale),
       languages: localizedAlternates(),
     },
-    openGraph: {
-      type: "website",
-      url: localizedUrl(locale),
-      locale: ogLocales[locale],
-      siteName: "BhenAuto",
+    ...buildPageSocialMetadata({
+      locale,
       title: homepageTitle,
       description: dict.home.heroSubtitle,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: homepageTitle,
-      description: dict.home.heroSubtitle,
-    },
+    }),
   };
 }
 
@@ -115,11 +107,11 @@ function CarouselSkeleton() {
   return (
     <div className="py-24 theme-bg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="h-5 w-32 rounded mb-3 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-        <div className="h-10 w-64 rounded mb-14 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+        <div className="h-5 w-32 mb-3 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+        <div className="h-10 w-64 mb-14 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl overflow-hidden animate-pulse" style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}>
+            <div key={i} className="overflow-hidden animate-pulse" style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}>
               <div className="h-52 w-full" style={{ backgroundColor: "var(--theme-skeleton)" }} />
               <div className="p-6 space-y-3">
                 <div className="h-6 w-3/4 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
@@ -149,7 +141,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       />
 
       {/* Hero — renders immediately, no data dependency */}
-      <section className="relative h-screen flex items-center overflow-hidden bg-slate-900">
+      <section className="relative flex min-h-[760px] items-end overflow-hidden bg-[#111116] pb-16 pt-32 sm:min-h-[820px] sm:pb-20 lg:min-h-svh lg:items-center lg:pb-0">
         <div className="absolute inset-0 z-0">
           <Image
             src={heroBg}
@@ -157,14 +149,17 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             fill
             sizes="100vw"
             quality={70}
-            className="object-cover animate-slow-zoom"
+            className="object-cover object-center"
             priority
           />
-          <div className="absolute inset-0 bg-black/40"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,8,12,.9)_0%,rgba(8,8,12,.52)_48%,rgba(8,8,12,.12)_78%),linear-gradient(0deg,rgba(8,8,12,.72)_0%,transparent_48%)]"></div>
         </div>
 
-        <div className="relative z-10 px-4 sm:px-6 lg:px-12 w-full max-w-7xl mx-auto flex flex-col items-start animate-fade-in pt-20">
-          <h1 className="text-6xl md:text-8xl font-headings text-white mb-2 leading-tight tracking-tighter font-black">
+        <div className="relative z-10 mx-auto flex w-full max-w-[1600px] flex-col items-start px-4 sm:px-6 lg:px-10 xl:px-12">
+          <div className="mb-6 flex items-center gap-4 text-[10px] font-extrabold uppercase tracking-[0.24em] text-white/65">
+            <span className="h-[2px] w-9 bg-[#d91c1c]" /> BhenAuto · Asse
+          </div>
+          <h1 className="brand-display max-w-5xl text-white">
             {locale === "nl" ? (
               <>
                 Rijden in perfectie<br />
@@ -182,19 +177,19 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
               </>
             )}
           </h1>
-          <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-xl font-medium tracking-wide">
+          <p className="mb-9 mt-7 max-w-xl border-l border-white/30 pl-5 text-base font-medium leading-7 text-white/75 sm:text-lg">
             {h.heroSubtitle}
           </p>
-          <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
             <Link
               href={`/${locale}/inventory`}
-              className="px-8 py-3.5 bg-[#d91c1c] text-white font-bold rounded hover:bg-[#b91515] transition-colors w-full sm:w-auto text-center"
+              className="brand-button-primary w-full sm:w-auto"
             >
               {h.heroCta}
             </Link>
             <Link
               href={`/${locale}/werkplaats`}
-              className="px-8 py-3.5 bg-transparent text-white border border-white/50 backdrop-blur-sm font-bold rounded hover:bg-white hover:text-slate-900 hover:border-white transition-colors w-full sm:w-auto text-center"
+              className="brand-button-secondary w-full text-white hover:bg-white hover:text-[#111116] sm:w-auto"
             >
               {h.heroCtaSecondary}
             </Link>
@@ -211,15 +206,14 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
       {/* Reviews Section */}
       <ScrollReveal>
-        <section className="py-24 theme-bg">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-12">
-              <div className="flex flex-col items-center md:items-start text-center md:text-left">
-                <h2 className="text-3xl font-headings font-black theme-text inline-block border-b-2 border-[#d91c1c] pb-2 mb-3">
-                  {h.reviewsTitle}
-                </h2>
-                <div className="flex items-center gap-3">
-                  <span className="text-4xl font-black theme-text leading-none">5.0</span>
+        <section className="theme-bg py-20 sm:py-28">
+          <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10 xl:px-12">
+            <div className="grid gap-10 lg:grid-cols-12">
+              <div className="lg:col-span-3">
+                <p className="brand-kicker mb-5">Google</p>
+                <h2 className="brand-section-title theme-text">{h.reviewsTitle}</h2>
+                <div className="mt-7 border-t border-[var(--theme-border)] pt-5">
+                  <span className="font-headings text-6xl font-bold leading-none theme-text">5.0</span>
                   <div className="flex text-amber-500">
                     {Array(5).fill(0).map((_, j) => (
                       <svg key={j} className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -227,7 +221,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                       </svg>
                     ))}
                   </div>
-                  <div className="flex items-center gap-1 text-sm font-bold theme-text-muted">
+                  <div className="mt-2 flex items-center gap-1 text-xs font-bold uppercase tracking-wider theme-text-muted">
                     Google Reviews
                     <svg className="w-4 h-4 ml-1" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -236,21 +230,19 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                       <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                     </svg>
                   </div>
-                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 border-t border-l border-[var(--theme-border)] sm:grid-cols-2 lg:col-span-9 lg:grid-cols-2">
               {h.reviews.map((testimonial, i) => (
                 <div
                   key={i}
-                  className="theme-surface p-6 rounded-xl shadow-sm relative flex flex-col items-start hover:shadow-md transition-shadow"
-                  style={{ border: "1px solid var(--theme-border)" }}
+                  className="relative flex min-h-[260px] flex-col items-start border-b border-r border-[var(--theme-border)] p-6 sm:p-8"
                 >
                   <div className="flex gap-4 items-center mb-4">
                     <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center font-black text-lg"
-                      style={{ backgroundColor: "var(--theme-badge-bg)", color: "var(--theme-text-muted)" }}
+                      className="flex size-10 items-center justify-center border border-[var(--theme-border)] font-headings text-xl font-bold"
+                      style={{ color: "var(--theme-text-muted)" }}
                     >
                       {testimonial.name.charAt(0)}
                     </div>
@@ -266,7 +258,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                       </svg>
                     ))}
                   </div>
-                  <p className="theme-text-muted text-[13px] leading-relaxed mb-4 flex-grow">
+                  <p className="mb-4 flex-grow text-sm leading-7 theme-text-muted">
                     {testimonial.quote}
                   </p>
                   <div className="mt-auto w-4 h-4 opacity-50">
@@ -279,6 +271,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                   </div>
                 </div>
               ))}
+            </div>
             </div>
           </div>
         </section>

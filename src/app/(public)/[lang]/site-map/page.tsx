@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, type Locale } from "@/lib/i18n";
 import { MapPin, Car, Wrench, Phone, Globe, ChevronRight } from "lucide-react";
-import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
+import { buildPageSocialMetadata, localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 // Car list changes when admin manages inventory
 export const revalidate = 60;
@@ -33,13 +33,12 @@ export async function generateMetadata({
       canonical: localizedUrl(locale, "/site-map"),
       languages: localizedAlternates("/site-map"),
     },
-    openGraph: {
-      url: localizedUrl(locale, "/site-map"),
+    ...buildPageSocialMetadata({
+      locale,
+      path: "/site-map",
       title: titles[locale],
       description: descriptions[locale],
-      type: "website",
-      siteName: "BhenAuto",
-    },
+    }),
     robots: { index: false },
   };
 }
@@ -108,7 +107,7 @@ export default async function SitemapPage({
             <Globe size={12} />
             BhenAuto
           </div>
-          <h1 className="text-4xl md:text-5xl font-headings font-black theme-text tracking-tight mb-3">
+          <h1 className="brand-section-title mb-3 theme-text">
             {t.title}
           </h1>
           <p className="theme-text-muted text-lg font-medium max-w-xl">{t.subtitle}</p>
@@ -134,11 +133,11 @@ export default async function SitemapPage({
               <Link
                 key={page.href}
                 href={page.href}
-                className="group theme-surface rounded-xl p-5 flex items-center gap-4 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+                className="group flex items-center gap-4 border-l-2 border-l-[#d91c1c] p-5 transition-colors duration-200 theme-surface hover:bg-white"
                 style={{ border: "1px solid var(--theme-border)" }}
               >
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center text-[#d91c1c] shrink-0 transition-colors duration-300 group-hover:bg-[#d91c1c] group-hover:text-white"
+                  className="flex size-10 shrink-0 items-center justify-center border border-[var(--theme-border)] text-[#d91c1c] transition-colors duration-300 group-hover:border-[#d91c1c] group-hover:bg-[#d91c1c] group-hover:text-white"
                   style={{ background: "rgba(217,28,28,0.08)" }}
                 >
                   {page.icon === "home" && <MapPin size={18} />}

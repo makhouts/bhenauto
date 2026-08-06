@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { locales, isValidLocale, type Locale } from "@/lib/i18n";
 import LegalClient from "./LegalClient";
-import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
+import { buildPageSocialMetadata, localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 export const revalidate = 86400; // once per day
 
@@ -35,11 +35,12 @@ export async function generateMetadata({
       canonical: localizedUrl(locale, "/legal"),
       languages: localizedAlternates("/legal"),
     },
-    openGraph: {
-      url: localizedUrl(locale, "/legal"),
+    ...buildPageSocialMetadata({
+      locale,
+      path: "/legal",
       title: titles[locale],
       description: descriptions[locale],
-    },
+    }),
   };
 }
 

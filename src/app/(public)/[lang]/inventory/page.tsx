@@ -11,7 +11,7 @@ import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, type Locale } from "@/lib/i18n";
 import { translateFuelLabel, translateTransmissionLabel } from "@/lib/autoscout24/presentation-format";
 import { getLocalizedReferenceLabels } from "@/lib/autoscout24/public-presentation";
-import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
+import { buildPageSocialMetadata, localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 const PAGE_SIZE = 9;
 
@@ -54,13 +54,19 @@ export const revalidate = 60;
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
   const { lang } = await params;
+  const filters = await searchParams;
   const locale: Locale = isValidLocale(lang) ? lang : "fr";
   const dict = await getDictionary(locale);
   const inv = dict.inventory;
+  const hasActiveFilters = Object.values(filters).some((value) =>
+    Array.isArray(value) ? value.some(Boolean) : Boolean(value)
+  );
 
   return {
     title: inv.pageTitle,
@@ -69,11 +75,13 @@ export async function generateMetadata({
       canonical: localizedUrl(locale, "/inventory"),
       languages: localizedAlternates("/inventory"),
     },
-    openGraph: {
-      url: localizedUrl(locale, "/inventory"),
+    robots: hasActiveFilters ? { index: false, follow: true } : undefined,
+    ...buildPageSocialMetadata({
+      locale,
+      path: "/inventory",
       title: inv.pageTitle,
       description: inv.pageSubtitle,
-    },
+    }),
   };
 }
 
@@ -126,45 +134,52 @@ export default async function InventoryPage(props: {
   const filterParams = { brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel, transmission };
 
   const renderPersonalRequestBlock = (className: string) => (
-    <div className={`bg-[#d91c1c] rounded-xl p-8 text-white relative flex-col justify-center shadow-lg overflow-hidden group border border-[#d91c1c] ${className}`}>
+    <div className={`group relative flex-col justify-center overflow-hidden border-t-2 border-t-[#d91c1c] bg-[#111116] p-8 text-white ${className}`}>
       <div className="relative z-10">
-        <h3 className="font-headings font-black text-2xl mb-4 leading-tight">{inv.personalTitle}</h3>
-        <p className="text-red-100 text-sm mb-8 leading-relaxed">{inv.personalBody}</p>
+        <p className="mb-5 text-[10px] font-extrabold uppercase tracking-[0.24em] text-white/45">BHEN / SERVICE</p>
+        <h3 className="mb-4 font-headings text-3xl font-semibold uppercase leading-none">{inv.personalTitle}</h3>
+        <p className="mb-8 text-sm leading-7 text-white/60">{inv.personalBody}</p>
         <Link
           href={`/${locale}/contact`}
-          className="inline-block bg-white text-[#d91c1c] font-black px-6 py-3 text-sm rounded hover:bg-slate-100 transition-colors shadow-lg shadow-black/10"
+          className="inline-flex min-h-12 items-center border border-white/25 px-5 text-[11px] font-extrabold uppercase tracking-[0.16em] text-white transition-colors hover:border-white hover:bg-white hover:text-[#111116]"
         >
           {inv.personalCta}
         </Link>
       </div>
-      <svg className="absolute bottom-4 right-[-10%] w-64 h-64 opacity-10 text-white transform group-hover:scale-105 transition-transform duration-700 pointer-events-none" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19.1 10.9c-1.1-2.9-3.2-5.9-6.9-5.9H11.8c-3.7 0-5.8 3-6.9 5.9C3.6 11.2 2 12 2 13.5V19h2v2h2v-2h12v2h2v-2h2v-5.5c0-1.5-1.6-2.3-2.9-2.6zM6.5 17c-1.4 0-2.5-1.1-2.5-2.5S5.1 12 6.5 12 9 13.1 9 14.5 7.9 17 6.5 17zm11 0c-1.4 0-2.5-1.1-2.5-2.5s1.1-2.5 2.5-2.5 2.5 1.1 2.5 2.5S18.9 17 17.5 17z" />
-      </svg>
+      <span className="pointer-events-none absolute -bottom-8 right-4 font-headings text-[9rem] font-bold leading-none text-white/[0.035] transition-transform duration-500 group-hover:-translate-y-1">B</span>
     </div>
   );
 
   return (
-    <main className="min-h-screen theme-bg flex flex-col pt-2 md:pt-8">
+    <main className="flex min-h-screen flex-col theme-bg">
 
-      {/* Header Banner */}
-      <header className="theme-bg py-10 sm:py-16" style={{ borderBottom: "1px solid var(--theme-border)" }}>
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 text-xs font-bold theme-text-faint uppercase tracking-widest mb-4">
+      <header className="relative overflow-hidden bg-[#111116] pb-16 pt-16 text-white sm:pb-20 sm:pt-20 md:pt-[154px] lg:pb-24">
+        <div className="absolute inset-y-0 right-[18%] hidden w-px bg-white/10 lg:block" />
+        <div className="mx-auto grid max-w-[1720px] grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:px-10 xl:px-12">
+          <div className="lg:col-span-8">
+          <div className="mb-7 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/45">
             <Link href={`/${locale}`} className="hover:text-[#d91c1c]">
               {inv.breadcrumbHome}
             </Link>
-            <span>/</span>
-            <span className="theme-text">{inv.breadcrumbInventory}</span>
+            <span className="h-px w-8 bg-[#d91c1c]" />
+            <span className="text-white/80">{inv.breadcrumbInventory}</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-headings font-black theme-text mb-4">{inv.pageTitle}</h1>
-          <p className="theme-text-muted font-medium max-w-2xl text-lg">{inv.pageSubtitle}</p>
+          <h1 className="max-w-5xl font-headings text-[clamp(3.8rem,8vw,8.5rem)] font-semibold uppercase leading-[0.78] tracking-[-0.045em]">{inv.pageTitle}</h1>
+          </div>
+          <div className="flex flex-col justify-end border-l border-white/10 pl-0 lg:col-span-4 lg:pl-10">
+            <p className="max-w-md text-base leading-8 text-white/62">{inv.pageSubtitle}</p>
+            <div className="mt-9 flex items-end gap-4 border-t border-white/15 pt-6">
+              <span className="font-headings text-5xl font-semibold leading-none text-[#d91c1c] tabular-nums">{total}</span>
+              <span className="pb-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/50">{total === 1 ? inv.found : inv.foundPlural}</span>
+            </div>
+          </div>
         </div>
       </header>
 
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 flex flex-col lg:flex-row gap-8 w-full items-start">
+      <div className="mx-auto grid w-full max-w-[1720px] grid-cols-1 items-start gap-10 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-12 lg:px-10 xl:gap-14 xl:px-12">
 
         {/* Sidebar Filter */}
-        <aside className="w-full lg:w-80 shrink-0">
+        <aside className="w-full lg:col-span-3">
           <InventoryFilter
             availableBrands={availableBrands}
             fuelOptions={fuelOptions}
@@ -176,10 +191,10 @@ export default async function InventoryPage(props: {
 
         {/* Car Grid — Suspense only covers the client-interactive grid,
             which may suspend when InfiniteInventory fires a new filter fetch */}
-        <section className="flex-1 w-full min-w-0">
+        <section className="w-full min-w-0 lg:col-span-9">
           <Suspense
             fallback={
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-10 md:grid-cols-2 2xl:grid-cols-3">
                 {Array.from({ length: PAGE_SIZE }).map((_, i) => (
                   <CarCardSkeleton key={i} />
                 ))}

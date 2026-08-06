@@ -118,15 +118,15 @@ export default async function RelatedVehicles({
     if (related.length === 0) return null;
 
     return (
-        <section className="mt-16 mb-8">
-            <div className="flex items-baseline justify-between mb-8">
+        <section className="mb-8 mt-24 border-t border-[var(--theme-border)] pt-12 sm:mt-32 sm:pt-16">
+            <div className="mb-10 flex items-end justify-between">
                 <div>
-                    <p className="text-[10px] font-bold theme-text-faint uppercase tracking-widest mb-1">{dict.relatedLabel}</p>
-                    <h2 className="text-2xl md:text-3xl font-headings font-black theme-text">{dict.relatedTitle}</h2>
+                    <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">04 / {dict.relatedLabel}</p>
+                    <h2 className="font-headings text-4xl font-semibold uppercase leading-none theme-text sm:text-5xl">{dict.relatedTitle}</h2>
                 </div>
                 <Link
                     href={`/${lang}/inventory`}
-                    className="hidden sm:flex items-center gap-2 text-sm font-bold theme-text-muted hover:text-[#d91c1c] transition-colors"
+                    className="hidden min-h-11 items-center gap-3 border-b border-[var(--theme-border)] text-[10px] font-extrabold uppercase tracking-[0.16em] transition-colors theme-text-muted hover:border-[#d91c1c] hover:text-[#d91c1c] sm:flex"
                 >
                     {dict.relatedViewAll}
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +135,7 @@ export default async function RelatedVehicles({
                 </Link>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
                 {related.map((car) => {
                     const imgUrl = car.images[0]?.url ? getImageVariantUrl(car.images[0].url, "thumb") : null;
                     return (
@@ -143,10 +143,9 @@ export default async function RelatedVehicles({
                             key={car.id}
                             href={`/${lang}/cars/${car.slug}`}
                             prefetch={false}
-                            className="group theme-surface rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-                            style={{ border: '1px solid var(--theme-border)' }}
+                            className="group overflow-hidden border border-[var(--theme-border)] bg-transparent transition-colors duration-200 hover:border-[#8f8a83]"
                         >
-                            <div className="relative h-[180px] overflow-hidden" style={{ backgroundColor: 'var(--theme-skeleton)' }}>
+                            <div className="relative aspect-[16/10] overflow-hidden" style={{ backgroundColor: 'var(--theme-skeleton)' }}>
                                 {imgUrl && (
                                 <Image
                                     src={imgUrl}
@@ -159,18 +158,18 @@ export default async function RelatedVehicles({
                                 />
                                 )}
                                 {car.reserved && (
-                                    <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-md text-amber-600 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border border-amber-200/50">
+                                    <div className="absolute right-3 top-3 border border-amber-200/50 bg-white/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
                                         {dict.relatedReserved}
                                     </div>
                                 )}
                             </div>
-                            <div className="p-4">
-                                <p className="text-[10px] font-bold theme-text-faint uppercase tracking-widest mb-0.5">{car.brand}</p>
-                                <h3 className="text-base font-headings font-bold theme-text truncate mb-1 group-hover:text-[#d91c1c] transition-colors">{car.model}</h3>
-                                <div className="flex items-baseline justify-between">
-                                    <span className="text-lg font-black text-[#d91c1c]">€{car.price.toLocaleString("nl-BE")}</span>
-                                    <span className="text-[11px] theme-text-faint font-medium">
-                                        {car.year} · {car.mileage.toLocaleString("nl-BE")} km
+                            <div className="p-5">
+                                <p className="mb-3 text-[9px] font-bold uppercase tracking-[0.18em] theme-text-faint">{car.brand} / {car.year}</p>
+                                <h3 className="mb-5 truncate font-headings text-2xl font-semibold uppercase leading-none transition-colors theme-text group-hover:text-[#d91c1c]">{car.model}</h3>
+                                <div className="flex items-end justify-between border-t border-[var(--theme-border)] pt-4">
+                                    <span className="font-headings text-2xl font-bold tabular-nums text-[#d91c1c]">€{car.price.toLocaleString("nl-BE")}</span>
+                                    <span className="text-right text-[10px] font-semibold leading-4 theme-text-faint">
+                                        {car.mileage.toLocaleString("nl-BE")} km
                                     </span>
                                 </div>
                             </div>

@@ -130,13 +130,13 @@ function ActiveFilterChips({
     if (chips.length === 0) return null;
 
     return (
-        <div className="mb-5 flex flex-wrap items-center gap-2">
+        <div className="mb-7 flex flex-wrap items-center gap-2 border-b border-[var(--theme-border)] pb-5">
             {chips.map((chip) => (
                 <button
                     key={chip.key}
                     type="button"
                     onClick={chip.onRemove}
-                    className="inline-flex min-h-9 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold theme-text-secondary transition-colors hover:text-[#d91c1c] focus:outline-none focus:ring-2 focus:ring-[#d91c1c]/25"
+                    className="inline-flex min-h-11 items-center gap-2 border-l-2 border-l-[#d91c1c] px-3 py-1.5 text-xs font-bold transition-colors theme-text-secondary hover:text-[#d91c1c] focus:outline-none focus:ring-2 focus:ring-[#d91c1c]/25"
                     style={{ backgroundColor: "var(--theme-badge-bg)", border: "1px solid var(--theme-border)" }}
                     aria-label={`${chip.label} ${dict.clearFilters}`}
                 >
@@ -227,22 +227,25 @@ export default function InfiniteInventory({
     return (
         <>
             {/* Count + Sort + View toggle */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="theme-text-muted text-sm">
-                    <span className="font-black theme-text mr-1 text-base">{initialTotal}</span>
+            <div className="mb-8 flex flex-col gap-5 border-b border-[var(--theme-border)] pb-6 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">BHEN / STOCK</p>
+                    <div className="text-sm theme-text-muted">
+                    <span className="mr-1 font-headings text-4xl font-semibold leading-none tabular-nums theme-text">{initialTotal}</span>
                     {initialTotal === 1 ? dict.found : dict.foundPlural}
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-sm theme-text-muted">
-                        {dict.sort}:
+                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                    <div className="flex min-h-11 items-center gap-2 border border-[var(--theme-border)] px-4 text-sm theme-text-muted">
+                        <span className="text-[9px] font-extrabold uppercase tracking-[0.14em]">{dict.sort}</span>
                         <SortSelect dict={dict} />
                     </div>
                     {/* Grid / List toggle */}
-                    <div className="hidden sm:flex rounded overflow-hidden" style={{ border: '1px solid var(--theme-border)' }}>
+                    <div className="hidden overflow-hidden sm:flex" style={{ border: '1px solid var(--theme-border)' }}>
                         <button
                             onClick={() => setViewMode('grid')}
                             title="Kaartweergave"
-                            className={`p-2 transition-colors ${
+                            className={`flex size-11 items-center justify-center transition-colors ${
                                 viewMode === 'grid' ? 'bg-[#d91c1c] text-white' : 'theme-text-faint'
                             }`}
                             style={viewMode !== 'grid' ? { backgroundColor: 'transparent' } : {}}
@@ -257,7 +260,7 @@ export default function InfiniteInventory({
                         <button
                             onClick={() => setViewMode('list')}
                             title="Lijstweergave"
-                            className={`p-2 transition-colors ${
+                            className={`flex size-11 items-center justify-center transition-colors ${
                                 viewMode === 'list' ? 'bg-[#d91c1c] text-white' : 'theme-text-faint'
                             }`}
                             style={{ borderLeft: '1px solid var(--theme-border)', ...(viewMode !== 'list' ? { backgroundColor: 'transparent' } : {}) }}
@@ -280,8 +283,8 @@ export default function InfiniteInventory({
 
             {/* Grid / List */}
             <div className={viewMode === 'grid'
-                ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'
-                : 'flex flex-col gap-4'
+                ? 'grid grid-cols-1 gap-x-6 gap-y-10 md:grid-cols-2 2xl:grid-cols-3'
+                : 'flex flex-col gap-5'
             }>
                 {cars.map((car, index) => (
                     <CarCard

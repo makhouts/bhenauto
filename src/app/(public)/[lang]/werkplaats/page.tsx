@@ -5,7 +5,7 @@ import WerkplaatsHero from "@/components/WerkplaatsHero";
 import WerkplaatsServices from "@/components/WerkplaatsServices";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, type Locale } from "@/lib/i18n";
-import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
+import { buildPageSocialMetadata, localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 // Static content — revalidate once per hour
 export const revalidate = 3600;
@@ -27,11 +27,12 @@ export async function generateMetadata({
       canonical: localizedUrl(locale, "/werkplaats"),
       languages: localizedAlternates("/werkplaats"),
     },
-    openGraph: {
-      url: localizedUrl(locale, "/werkplaats"),
+    ...buildPageSocialMetadata({
+      locale,
+      path: "/werkplaats",
       title: w.heroTitle,
       description: w.heroSubtitle,
-    },
+    }),
   };
 }
 

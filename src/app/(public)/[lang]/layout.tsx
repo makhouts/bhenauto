@@ -4,8 +4,8 @@ import { locales, isValidLocale, type Locale } from "@/lib/i18n";
 import PublicAnalyticsTracker from "@/components/analytics/PublicAnalyticsTracker";
 import { LocaleProvider } from "@/components/LocaleContext";
 import ConditionalLayout from "@/components/ConditionalLayout";
-import { manrope } from "@/app/fonts";
-import { absoluteUrl, localizedAlternates, localizedUrl, ogLocales, SITE_URL } from "@/lib/site-seo";
+import { barlowCondensed, manrope } from "@/app/fonts";
+import { defaultSocialImage, localizedAlternates, localizedUrl, ogLocales, SITE_URL } from "@/lib/site-seo";
 import "../../globals.css";
 
 const imageHosts = (() => {
@@ -63,20 +63,13 @@ export async function generateMetadata({
       siteName: "BhenAuto",
       title: titles[locale],
       description: descriptions[locale],
-      images: [
-        {
-          url: absoluteUrl("/og-image.png"),
-          width: 1024,
-          height: 1024,
-          alt: "BhenAuto — Véhicules d'Occasion Premium",
-        },
-      ],
+      images: [defaultSocialImage],
     },
     twitter: {
       card: "summary_large_image",
       title: titles[locale],
       description: descriptions[locale],
-      images: [absoluteUrl("/og-image.png")],
+      images: [defaultSocialImage.url],
     },
   };
 }
@@ -110,7 +103,7 @@ export default async function LangLayout({
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="theme-color" content="#020214" />
       </head>
-      <body className={`${manrope.variable} antialiased min-h-screen flex flex-col`}>
+      <body className={`${manrope.variable} ${barlowCondensed.variable} public-site antialiased min-h-screen flex flex-col`}>
         <LocaleProvider locale={lang as Locale}>
           <PublicAnalyticsTracker locale={lang} />
           <ConditionalLayout locale={lang as Locale}>{children}</ConditionalLayout>

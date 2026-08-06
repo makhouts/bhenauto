@@ -45,7 +45,7 @@ function RangeBubble({
             className="absolute -top-3 z-40 -translate-x-1/2"
             style={{ left: `${leftPercent}%` }}
         >
-            <div className="relative rounded-lg bg-[#d91c1c] px-3 py-1.5 text-xs leading-none font-black text-white shadow-lg whitespace-nowrap tracking-tight [font-variant-numeric:tabular-nums]">
+            <div className="relative bg-[#d91c1c] px-3 py-1.5 text-xs font-black leading-none tracking-tight text-white shadow-lg whitespace-nowrap [font-variant-numeric:tabular-nums]">
                 {value}
                 <span className="absolute left-1/2 top-full h-2.5 w-2.5 -translate-x-1/2 -translate-y-[55%] rotate-45 bg-[#d91c1c]" />
             </div>
@@ -107,11 +107,11 @@ function DualRangeSlider({
         <div className="pt-10">
             <div className="relative h-10">
                 <div
-                    className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full"
+                    className="absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2"
                     style={{ backgroundColor: "var(--theme-border)" }}
                 />
                 <div
-                    className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[#d91c1c]"
+                    className="absolute top-1/2 h-1 -translate-y-1/2 bg-[#d91c1c]"
                     style={{
                         left: `${minPercent}%`,
                         width: `${Math.max(maxPercent - minPercent, 0)}%`,
@@ -289,24 +289,24 @@ export default function InventoryFilter({
     };
 
     return (
-        <div className="theme-surface rounded-lg p-6 shadow-sm font-sans flex flex-col gap-6 w-full" style={{ border: '1px solid var(--theme-border)' }}>
-            <div className="flex items-center justify-between">
-                <h3 className="font-headings font-black text-xl theme-text flex items-center gap-2">
+        <div className="flex w-full flex-col border border-[var(--theme-border)] font-sans theme-surface">
+            <div className="flex min-h-20 items-center justify-between border-b border-[var(--theme-border)] px-6">
+                <h3 className="flex items-center gap-2 font-headings text-2xl font-semibold uppercase theme-text">
                     {dict.filters}
                 </h3>
                 <button
                     onClick={clearFilters}
-                    className="text-[#d91c1c] text-sm font-bold hover:underline"
+                    className="min-h-11 text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#d91c1c] hover:underline"
                 >
                     {dict.resetFilters}
                 </button>
             </div>
 
             {/* Mobile Filter Toggle */}
-            <div className="lg:hidden">
+            <div className="p-4 lg:hidden">
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="w-full flex items-center justify-center py-3 text-sm font-bold uppercase tracking-wider theme-text-secondary rounded transition-colors"
+                    className="flex min-h-12 w-full items-center justify-center py-3 text-sm font-bold uppercase tracking-wider transition-colors theme-text-secondary"
                     style={{ border: '1px solid var(--theme-border)', backgroundColor: 'var(--theme-badge-bg)' }}
                 >
                     <span>{isOpen ? dict.hideFilters : dict.showFilters}</span>
@@ -320,11 +320,11 @@ export default function InventoryFilter({
             </div>
 
             {/* Filters Container */}
-            <div className={`flex flex-col gap-8 ${isOpen ? 'block' : 'hidden lg:flex'}`}>
+            <div className={`flex flex-col gap-8 px-6 pb-7 pt-6 ${isOpen ? 'block' : 'hidden lg:flex'}`}>
 
                 {/* Brand */}
                 <div>
-                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.brandLabel}</h4>
+                    <h4 className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.16em] theme-text-faint">{dict.brandLabel}</h4>
                     <div className="relative">
                         <label
                             htmlFor="filter-brand"
@@ -334,7 +334,7 @@ export default function InventoryFilter({
                         </label>
                         <select
                             id="filter-brand"
-                            className="w-full appearance-none rounded-md py-2.5 pl-4 pr-10 text-sm theme-text focus:outline-none focus:ring-1 focus:ring-[#d91c1c] focus:border-[#d91c1c] cursor-pointer"
+                            className="min-h-12 w-full cursor-pointer appearance-none py-2.5 pl-4 pr-10 text-sm theme-text focus:border-[#d91c1c] focus:outline-none focus:ring-1 focus:ring-[#d91c1c]"
                             style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}
                             value={currentBrand}
                             onChange={(e) =>
@@ -363,7 +363,7 @@ export default function InventoryFilter({
 
                 {/* Fuel Type */}
                 <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
-                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.fuelLabel}</h4>
+                    <h4 className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.16em] theme-text-faint">{dict.fuelLabel}</h4>
                     <div className="relative">
                         <label
                             htmlFor="filter-fuel"
@@ -373,7 +373,7 @@ export default function InventoryFilter({
                         </label>
                         <select
                             id="filter-fuel"
-                            className="w-full appearance-none rounded-md py-2.5 pl-4 pr-10 text-sm theme-text focus:outline-none focus:ring-1 focus:ring-[#d91c1c] focus:border-[#d91c1c] cursor-pointer"
+                            className="min-h-12 w-full cursor-pointer appearance-none py-2.5 pl-4 pr-10 text-sm theme-text focus:border-[#d91c1c] focus:outline-none focus:ring-1 focus:ring-[#d91c1c]"
                             style={{ backgroundColor: 'var(--theme-surface)', border: '1px solid var(--theme-border)' }}
                             value={currentFuel}
                             onChange={(e) =>
@@ -402,7 +402,7 @@ export default function InventoryFilter({
 
                 {/* Transmission */}
                 <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
-                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.transmissionLabel}</h4>
+                    <h4 className="mb-3 text-[10px] font-extrabold uppercase tracking-[0.16em] theme-text-faint">{dict.transmissionLabel}</h4>
                     <div className="relative">
                         <label
                             htmlFor="filter-transmission"
@@ -412,7 +412,7 @@ export default function InventoryFilter({
                         </label>
                         <select
                             id="filter-transmission"
-                            className="w-full appearance-none rounded-md py-2.5 pl-4 pr-10 text-sm theme-text focus:outline-none focus:ring-1 focus:ring-[#d91c1c] focus:border-[#d91c1c] cursor-pointer"
+                            className="min-h-12 w-full cursor-pointer appearance-none py-2.5 pl-4 pr-10 text-sm theme-text focus:border-[#d91c1c] focus:outline-none focus:ring-1 focus:ring-[#d91c1c]"
                             style={{ backgroundColor: 'var(--theme-surface)', border: '1px solid var(--theme-border)' }}
                             value={currentTransmission}
                             onChange={(e) =>
@@ -441,7 +441,7 @@ export default function InventoryFilter({
 
                 {/* Mileage Range */}
                 <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
-                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.mileageLabel}</h4>
+                    <h4 className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.16em] theme-text-faint">{dict.mileageLabel}</h4>
                     <DualRangeSlider
                         key={`mileage-${mileageRange.min}-${mileageRange.max}`}
                         initialMinValue={mileageRange.min}
@@ -463,7 +463,7 @@ export default function InventoryFilter({
 
                 {/* Price Range */}
                 <div className="pt-8" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
-                    <h4 className="font-bold theme-text mb-4 text-sm">{dict.priceLabel}</h4>
+                    <h4 className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.16em] theme-text-faint">{dict.priceLabel}</h4>
                     <DualRangeSlider
                         key={`price-${priceRange.min}-${priceRange.max}`}
                         initialMinValue={priceRange.min}

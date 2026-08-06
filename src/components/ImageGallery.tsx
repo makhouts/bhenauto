@@ -302,8 +302,8 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
 
     if (!activeImage) {
         return (
-            <div className="flex gap-3 h-[420px] md:h-[500px]">
-                <div className="flex-1 relative rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--theme-skeleton)' }}>
+            <div className="flex h-[420px] gap-3 md:h-[560px]">
+                <div className="relative flex flex-1 items-center justify-center" style={{ backgroundColor: 'var(--theme-skeleton)' }}>
                     <span className="theme-text-faint uppercase tracking-widest text-sm font-bold">Geen afbeeldingen beschikbaar</span>
                 </div>
             </div>
@@ -313,11 +313,11 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
     return (
         <>
             {/* ── GALLERY GRID ── */}
-            <div className="flex gap-2.5 h-[380px] md:h-[520px]">
+            <div className="flex h-[400px] gap-2.5 md:h-[600px]">
 
                 {/* ── Main Hero Image ── */}
                 <div
-                    className="relative flex-1 overflow-hidden rounded-2xl cursor-pointer group"
+                    className="group relative flex-1 cursor-pointer overflow-hidden bg-black"
                     onClick={openLightboxPreloaded}
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
@@ -336,7 +336,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                         >
                             {!showActiveImage && (
                                 <div
-                                    className="absolute inset-0 animate-pulse rounded-2xl"
+                                    className="absolute inset-0 animate-pulse"
                                     style={{
                                         background: "linear-gradient(90deg, var(--theme-skeleton-subtle) 0%, var(--theme-skeleton) 50%, var(--theme-skeleton-subtle) 100%)",
                                     }}
@@ -374,13 +374,13 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
 
                     {/* Zoom icon */}
-                    <div className="absolute top-4 right-4 z-20 bg-black/40 backdrop-blur-md text-white rounded-full p-2.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-100 scale-75">
+                    <div className="absolute right-4 top-4 z-20 flex size-11 items-center justify-center border border-white/25 bg-black/55 text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                         <Maximize2 size={18} strokeWidth={2.5} />
                     </div>
 
                     {/* Image counter pill */}
                     <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2">
-                        <span className="bg-black/50 backdrop-blur-md text-white text-xs font-bold px-3.5 py-2 rounded-full">
+                        <span className="border-l-2 border-[#d91c1c] bg-black/60 px-3.5 py-2 text-xs font-bold text-white">
                             {currentIndex + 1} / {resolvedImages.length}
                         </span>
                     </div>
@@ -393,7 +393,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 e.stopPropagation();
                                 goToPreloaded(currentIndex - 1, false);
                             }}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-slate-800 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
+                            className="absolute left-3 top-1/2 z-20 flex size-11 -translate-y-1/2 items-center justify-center border border-white/30 bg-black/60 text-white opacity-0 transition-colors duration-200 hover:bg-[#d91c1c] group-hover:opacity-100"
                             aria-label="Vorige foto"
                         >
                             <ChevronLeft size={20} strokeWidth={2.5} />
@@ -406,7 +406,7 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 e.stopPropagation();
                                 goToPreloaded(currentIndex + 1, false);
                             }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-white text-slate-800 rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
+                            className="absolute right-3 top-1/2 z-20 flex size-11 -translate-y-1/2 items-center justify-center border border-white/30 bg-black/60 text-white opacity-0 transition-colors duration-200 hover:bg-[#d91c1c] group-hover:opacity-100"
                             aria-label="Volgende foto"
                         >
                             <ChevronRight size={20} strokeWidth={2.5} />
@@ -428,8 +428,8 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                     onPointerDown={() => preloadSelectionWindow(preloadIndex, isLast)}
                                     onFocus={() => preloadSelectionWindow(preloadIndex, isLast)}
                                     onClick={() => isLast ? openLightboxPreloaded() : goToPreloaded(realIndex)}
-                                    className={`relative flex-1 overflow-hidden rounded-xl cursor-pointer transition-all duration-300 group/thumb bg-slate-100
-                                        ${currentIndex === realIndex && !isLast ? "ring-2 ring-[#d91c1c] ring-offset-2 shadow-lg" : "hover:ring-1 hover:ring-slate-300 hover:ring-offset-1"}`}
+                                    className={`group/thumb relative flex-1 cursor-pointer overflow-hidden border bg-slate-100 transition-colors duration-200
+                                        ${currentIndex === realIndex && !isLast ? "border-[#d91c1c]" : "border-transparent hover:border-white/60"}`}
                                 >
                                     <Image
                                         src={getThumbSrc(img)}
@@ -473,10 +473,10 @@ export default function ImageGallery({ images, title }: ImageGalleryProps) {
                                 onPointerDown={() => preloadSelectionWindow(i)}
                                 onFocus={() => preloadSelectionWindow(i)}
                                 onClick={() => goToPreloaded(i, false)}
-                                className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-300
+                                    className={`relative h-16 w-24 shrink-0 overflow-hidden border transition-all duration-200
                                     ${currentIndex === i
-                                        ? "border-[#d91c1c] opacity-100 shadow-md"
-                                        : "border-transparent opacity-50 hover:border-slate-300 hover:opacity-80"
+                                        ? "border-[#d91c1c] opacity-100"
+                                        : "border-transparent opacity-45 hover:border-white/50 hover:opacity-80"
                                     }`}
                             >
                                 <Image

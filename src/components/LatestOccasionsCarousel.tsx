@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, ArrowRight, CalendarDays, Gauge, Fuel } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { useLocale } from "@/components/LocaleContext";
 import type { CarouselDict, CommonDict, HomeDict } from "@/lib/dictionaries";
 import { shouldUseDirectImageDelivery } from "@/lib/image-url";
@@ -38,8 +38,10 @@ export default function LatestOccasionsCarousel({
   commonDict: CommonDict;
 }) {
   const { locale } = useLocale();
-  const [visible, setVisible] = useState(3);
-  const [gap, setGap] = useState(40);
+  // Desktop is the server snapshot. Responsive CSS below controls the actual
+  // first-paint card width, so hydration never changes 3 columns into 4.
+  const [visible, setVisible] = useState(4);
+  const [gap, setGap] = useState(28);
 
   useEffect(() => {
     const handleResize = () => {
@@ -115,23 +117,19 @@ export default function LatestOccasionsCarousel({
   if (!cars.length) return null;
 
   return (
-    <section className="py-16 sm:py-24 theme-bg overflow-hidden">
+    <section className="overflow-hidden border-y border-[var(--theme-border)] py-20 sm:py-28 theme-bg">
       {/* Standard boxed container to align with website layout */}
       <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-10 xl:px-12">
 
         {/* ── Header ── */}
         <div className="flex items-end justify-between mb-10 sm:mb-14">
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span
-                className="inline-block w-6 h-0.5 rounded-full"
-                style={{ backgroundColor: '#d91c1c' }}
-              />
-              <p className="text-[10px] sm:text-xs tracking-[0.3em] font-bold text-[#d91c1c] uppercase">
+            <div className="mb-4">
+              <p className="brand-kicker">
                 {homeDict.latestLabel}
               </p>
             </div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-headings font-black theme-text leading-none">
+            <h2 className="brand-section-title theme-text">
               {homeDict.latestTitle}
             </h2>
           </div>
@@ -149,7 +147,7 @@ export default function LatestOccasionsCarousel({
                   style={{
                     width: i === index ? 24 : 7,
                     height: 7,
-                    borderRadius: 4,
+                    borderRadius: 0,
                     backgroundColor: i === index ? '#d91c1c' : 'var(--theme-border)',
                   }}
                 >
@@ -172,7 +170,7 @@ export default function LatestOccasionsCarousel({
               <button
                 onClick={prev}
                 aria-label="Vorige"
-                className="group w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-[#d91c1c] hover:border-[#d91c1c] hover:text-white theme-text-muted"
+                className="group flex size-11 items-center justify-center border transition-colors duration-200 hover:border-[#d91c1c] hover:bg-[#d91c1c] hover:text-white theme-text-muted"
                 style={{ border: '1.5px solid var(--theme-border)' }}
               >
                 <ChevronLeft size={17} className="transition-transform group-hover:-translate-x-0.5" />
@@ -180,7 +178,7 @@ export default function LatestOccasionsCarousel({
               <button
                 onClick={next}
                 aria-label="Volgende"
-                className="group w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 hover:bg-[#d91c1c] hover:border-[#d91c1c] hover:text-white theme-text-muted"
+                className="group flex size-11 items-center justify-center border transition-colors duration-200 hover:border-[#d91c1c] hover:bg-[#d91c1c] hover:text-white theme-text-muted"
                 style={{ border: '1.5px solid var(--theme-border)' }}
               >
                 <ChevronRight size={17} className="transition-transform group-hover:translate-x-0.5" />
@@ -202,9 +200,8 @@ export default function LatestOccasionsCarousel({
         >
           <div
             ref={trackRef}
-            className="flex"
+            className="flex gap-5 md:gap-7"
             style={{
-              gap: gap,
               transform: `translateX(calc(-${index * (100 / visible)}% - ${index * (gap / visible)}px + ${dragging ? dragDelta : 0}px))`,
               transition: dragging ? 'none' : 'transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
               cursor: dragging ? 'grabbing' : 'grab',
@@ -216,29 +213,15 @@ export default function LatestOccasionsCarousel({
               return (
               <div
                 key={car.id}
-                className="shrink-0"
-                style={{
-                  width: `calc(${100 / visible}% - ${gap * ((visible - 1) / visible)}px)`,
-                  minWidth: 0,
-                }}
+                className="w-full min-w-0 shrink-0 md:w-[calc(50%-14px)] xl:w-[calc(25%-21px)]"
               >
                 <Link
                   href={`/${locale}/cars/${car.slug}`}
                   prefetch={false}
                   draggable={false}
-                  className="group block theme-surface rounded-2xl overflow-hidden transition-all duration-300"
+                  className="group flex h-full flex-col overflow-hidden border border-[var(--theme-border)] theme-surface transition-colors duration-200 hover:border-[#8f8a83]"
                   style={{
-                    border: '1px solid var(--theme-border)',
                     textDecoration: 'none',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(0,0,0,0.12)';
-                    (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)';
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
-                    (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
                   }}
                 >
                   {/* ── Image ── */}
@@ -271,84 +254,63 @@ export default function LatestOccasionsCarousel({
                     {/* Sold badge */}
                     {car.sold && (
                       <div
-                        className="absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase backdrop-blur-md"
+                        className="absolute right-3 top-3 border border-white/30 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white"
                         style={{ backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', border: '1px solid rgba(255,255,255,0.25)' }}
                       >
                         {commonDict.sold}
                       </div>
                     )}
 
-                    {/* Price */}
-                    <div className="absolute bottom-3 left-4">
-                      <span className="text-xl sm:text-2xl font-black text-white" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.6)' }}>
-                        €{car.price.toLocaleString('nl-BE')}
-                      </span>
+                    {/* BHEN selection marker */}
+                    <div className="absolute inset-x-0 bottom-0 flex items-end px-4 pb-3 text-white">
+                      <span className="border-l-2 border-[#d91c1c] pl-2 text-[9px] font-extrabold uppercase tracking-[0.22em]">BhenAuto</span>
                     </div>
                   </div>
 
                   {/* ── Card Body ── */}
-                  <div className="p-4 sm:p-4">
+                  <div className="flex flex-1 flex-col px-5 pb-0 pt-5">
 
-                    {/* Brand + Model */}
-                    <div className="mb-3">
-                      <h3 className="text-lg sm:text-[1.15rem] font-headings font-black theme-text leading-tight line-clamp-1">
+                    {/* Vehicle + price */}
+                    <div className="flex items-start justify-between gap-4">
+                      <h3 className="min-w-0 font-headings text-[1.65rem] font-semibold uppercase leading-[.9] theme-text line-clamp-2">
                         {car.brand} {car.model}
                       </h3>
+                      <span className="shrink-0 font-headings text-2xl font-bold leading-none tabular-nums text-[#d91c1c]">
+                        €{car.price.toLocaleString('nl-BE')}
+                      </span>
                     </div>
 
-                    {/* Specs — 3-column split */}
-                    <div
-                      className="flex items-stretch mb-3 rounded-xl overflow-hidden"
-                      style={{ border: '1px solid var(--theme-border)' }}
-                    >
+                    {/* Instrument-style data rail */}
+                    <div className="mt-5 grid grid-cols-3 border-y border-[var(--theme-border)]">
                       {[
-                        { icon: CalendarDays, label: dict.specYear, value: car.year.toString() },
-                        { icon: Gauge, label: dict.specMileage, value: `${car.mileage.toLocaleString('nl-BE')} km` },
-                        { icon: Fuel, label: dict.specFuel, value: car.fuel_type },
+                        { label: dict.specYear, value: car.year.toString() },
+                        { label: dict.specMileage, value: `${car.mileage.toLocaleString('nl-BE')} km` },
+                        { label: dict.specFuel, value: car.fuel_type },
                       ].map((spec, i) => (
                         <div
                           key={i}
-                          className="relative flex-1 flex flex-col items-center justify-center gap-1 px-2 py-2.5"
-                          style={{ backgroundColor: 'var(--theme-bg-alt)' }}
+                          className="relative min-w-0 py-4 pr-2 pl-3 first:pl-0 last:pr-0"
                         >
-                          {/* Divider between columns */}
                           {i > 0 && (
-                            <span
-                              className="absolute left-0 top-1/2 -translate-y-1/2 h-3/5 w-px"
-                              style={{ backgroundColor: 'var(--theme-border)' }}
-                            />
+                            <span className="absolute bottom-3 left-0 top-3 w-px bg-[var(--theme-border)]" />
                           )}
-                          {/* Label row with icon */}
-                          <div className="flex items-center gap-1">
-                            <spec.icon size={11} style={{ color: '#d91c1c' }} className="shrink-0" />
-                            <span
-                              className="text-[9px] font-bold uppercase tracking-widest leading-none"
-                              style={{ color: '#d91c1c' }}
-                            >
-                              {spec.label}
-                            </span>
-                          </div>
-                          {/* Value */}
-                          <span className="text-[13px] font-extrabold theme-text leading-none text-center">
+                          <span className="mb-2 block h-[2px] w-4 bg-[#d91c1c] transition-[width] duration-200 group-hover:w-7" />
+                          <span className="block text-[8px] font-extrabold uppercase leading-none tracking-[0.18em] theme-text-faint">{spec.label}</span>
+                          <span className="mt-1.5 block truncate text-[12px] font-extrabold leading-none theme-text" title={spec.value}>
                             {spec.value}
                           </span>
                         </div>
                       ))}
                     </div>
 
-                    {/* Divider */}
-                    <div className="mb-3 h-px w-full" style={{ backgroundColor: 'var(--theme-border)' }} />
-
                     {/* CTA */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold theme-text-faint uppercase tracking-widest group-hover:text-[#d91c1c] transition-colors duration-200">
+                    <div className="mt-auto flex min-h-14 items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] theme-text-faint transition-colors duration-200 group-hover:text-[#d91c1c]">
                         {dict.viewDetails}
                       </span>
-                      <span
-                        className="flex items-center justify-center w-7 h-7 rounded-full transition-all duration-200 group-hover:bg-[#d91c1c] group-hover:text-white theme-text-faint"
-                        style={{ border: '1px solid var(--theme-border)' }}
-                      >
-                        <ArrowRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+                      <span className="flex items-center gap-2 text-[#d91c1c]">
+                        <span className="h-px w-5 bg-current transition-[width] duration-200 group-hover:w-9" />
+                        <ArrowRight size={14} />
                       </span>
                     </div>
 
@@ -398,7 +360,7 @@ export default function LatestOccasionsCarousel({
         <div className="hidden sm:flex justify-center mt-12">
           <Link
             href={`/${locale}/inventory`}
-            className="group inline-flex items-center gap-3 px-8 py-3.5 font-bold text-sm uppercase tracking-widest theme-text-secondary hover:text-[#d91c1c] transition-colors rounded-xl"
+            className="brand-button-secondary group gap-3 theme-text-secondary hover:border-[#111116] hover:bg-[#111116] hover:text-white"
             style={{ border: '1.5px solid var(--theme-border)' }}
           >
             {dict.viewAll}

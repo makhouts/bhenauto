@@ -1,32 +1,31 @@
 export default function CarCardSkeleton() {
     return (
-        <div className="flex flex-col theme-surface overflow-hidden rounded-lg shadow-sm animate-pulse" style={{ border: '1px solid var(--theme-border)' }}>
+        <div className="flex flex-col overflow-hidden border border-[var(--theme-border)] animate-pulse theme-surface">
             {/* Image placeholder */}
-            <div className="h-[220px] md:h-[260px] w-full" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
+            <div className="aspect-[16/10] w-full" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
 
             {/* Content */}
-            <div className="px-5 pt-4 pb-4 flex flex-col flex-grow gap-3">
+            <div className="flex flex-grow flex-col gap-4 px-5 pb-0 pt-6 sm:px-6">
                 {/* Brand */}
-                <div className="h-3 w-20 rounded" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
+                <div className="h-3 w-20" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
 
                 {/* Model + Price row */}
                 <div className="flex justify-between items-start gap-4">
-                    <div className="h-6 w-36 rounded" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
-                    <div className="h-6 w-20 rounded" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
+                    <div className="h-10 w-40" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
+                    <div className="h-7 w-24" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
                 </div>
 
                 {/* Stats row */}
-                <div className="flex justify-between py-3 px-1 mt-auto gap-4" style={{ borderTop: '1px solid var(--theme-border-subtle)' }}>
+                <div className="mt-auto grid grid-cols-2 border-y border-[var(--theme-border)]">
                     {[...Array(4)].map((_, i) => (
-                        <div key={i} className="flex flex-col items-center gap-2">
-                            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
-                            <div className="w-12 h-3 rounded" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
+                        <div key={i} className={`flex min-h-12 items-center gap-2.5 px-3 py-2 ${i % 2 ? "border-l border-[var(--theme-border)]" : ""} ${i > 1 ? "border-t border-[var(--theme-border)]" : ""}`}>
+                            <div className="size-4" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
+                            <div className="h-3 w-20" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
                         </div>
                     ))}
                 </div>
 
-                {/* CTA button */}
-                <div className="h-10 w-full rounded-xl" style={{ backgroundColor: 'var(--theme-skeleton)' }} />
+                <div className="h-14 w-full border-t border-[var(--theme-border)]" />
             </div>
         </div>
     );

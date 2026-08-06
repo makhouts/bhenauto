@@ -1,19 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import type { WerkplaatsDict } from "@/lib/dictionaries";
 import mechanic from "@/assets/mechanic-wallpaper.webp";
 
 export default function WerkplaatsHero({ dict }: { dict: WerkplaatsDict }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 80);
-    return () => clearTimeout(t);
-  }, []);
-
   const scrollToWizard = () => {
     document.getElementById("afspraak-wizard")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -21,7 +13,7 @@ export default function WerkplaatsHero({ dict }: { dict: WerkplaatsDict }) {
   return (
     <div>
       {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <div className="relative w-full overflow-hidden" style={{ height: "clamp(480px, 65vh, 720px)" }}>
+      <div className="relative min-h-[680px] w-full overflow-hidden lg:min-h-[82svh]">
         {/* Background image */}
         <Image
           src={mechanic}
@@ -30,7 +22,7 @@ export default function WerkplaatsHero({ dict }: { dict: WerkplaatsDict }) {
           sizes="100vw"
           quality={70}
           className="object-cover"
-          style={{ filter: "grayscale(60%) brightness(0.45)" }}
+          style={{ filter: "grayscale(45%) brightness(0.48)" }}
           priority
         />
 
@@ -39,64 +31,38 @@ export default function WerkplaatsHero({ dict }: { dict: WerkplaatsDict }) {
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              "linear-gradient(to bottom, rgba(2,2,20,0.55) 0%, rgba(2,2,20,0.25) 50%, rgba(2,2,20,0.72) 100%)",
+              "linear-gradient(90deg, rgba(8,8,12,.9) 0%, rgba(8,8,12,.5) 52%, rgba(8,8,12,.2) 100%)",
           }}
         />
 
         {/* Content */}
-        <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-10 lg:px-20 max-w-5xl">
+        <div className="absolute inset-0 mx-auto flex w-full max-w-[1600px] flex-col justify-end px-4 pb-16 pt-32 sm:px-6 sm:pb-20 lg:justify-center lg:px-10 lg:pb-0 xl:px-12">
           {/* Label */}
           <p
-            className="text-[#d91c1c] font-black text-[10px] uppercase tracking-[0.22em] mb-5 transition-all duration-700"
-            style={{
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? "translateY(0)" : "translateY(10px)",
-              transitionDelay: "0ms",
-            }}
+            className="brand-kicker mb-6"
           >
             {dict.heroLabel}
           </p>
 
           {/* Headline */}
           <h1
-            className="font-headings font-black text-white leading-[1.05] tracking-tight mb-6"
-            style={{
-              fontSize: "clamp(2.2rem, 5.5vw, 4rem)",
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? "translateY(0)" : "translateY(18px)",
-              transition: "opacity 0.75s ease, transform 0.75s ease",
-              transitionDelay: "120ms",
-            }}
+            className="brand-display mb-7 max-w-4xl text-white"
           >
             {dict.heroTitle}
           </h1>
 
           {/* Subtitle */}
           <p
-            className="text-slate-300 font-medium max-w-md leading-relaxed mb-8"
-            style={{
-              fontSize: "clamp(0.9rem, 1.5vw, 1.05rem)",
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? "translateY(0)" : "translateY(14px)",
-              transition: "opacity 0.75s ease, transform 0.75s ease",
-              transitionDelay: "240ms",
-            }}
+            className="mb-8 max-w-lg border-l border-white/30 pl-5 text-base font-medium leading-7 text-white/70"
           >
             {dict.heroSubtitle}
           </p>
 
           {/* CTA */}
-          <div
-            style={{
-              opacity: mounted ? 1 : 0,
-              transform: mounted ? "translateY(0)" : "translateY(12px)",
-              transition: "opacity 0.7s ease, transform 0.7s ease",
-              transitionDelay: "360ms",
-            }}
-          >
+          <div>
             <button
               onClick={scrollToWizard}
-              className="group inline-flex items-center gap-3 bg-[#d91c1c] text-white font-bold px-7 py-3.5 rounded-lg text-sm uppercase tracking-widest hover:bg-[#b91515] transition-all duration-300 shadow-lg shadow-[#d91c1c]/30 hover:shadow-[#d91c1c]/50 hover:-translate-y-0.5 active:translate-y-0"
+              className="brand-button-primary group gap-3"
             >
               {dict.heroCta}
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform duration-300" />

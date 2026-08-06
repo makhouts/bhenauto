@@ -1,68 +1,67 @@
 export default function CarDetailLoading() {
   return (
     <div className="min-h-screen theme-bg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 md:pt-24 pb-20">
-        {/* Breadcrumb skeleton */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className="h-3 w-12 rounded animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-          <span className="theme-text-faint">/</span>
-          <div className="h-3 w-16 rounded animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-          <span className="theme-text-faint">/</span>
-          <div className="h-3 w-24 rounded animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-        </div>
+      <section className="bg-[#111116]">
+        <div className="mx-auto max-w-[1720px] px-4 pb-10 pt-10 sm:px-6 sm:pt-14 md:pt-[130px] lg:px-10 xl:px-12">
+          <div className="mb-10 h-3 w-64 animate-pulse bg-white/10" />
 
-        {/* Gallery skeleton */}
-        <div className="flex gap-2.5 h-[380px] md:h-[520px] mb-10">
-          <div className="flex-1 rounded-2xl animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-          <div className="hidden md:flex flex-col gap-2 w-[28%] shrink-0">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex-1 rounded-xl animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+          <div className="mb-9 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-end">
+            <div className="lg:col-span-8">
+              <div className="mb-5 h-3 w-40 animate-pulse bg-white/10" />
+              <div className="h-24 w-4/5 animate-pulse bg-white/10 sm:h-36" />
+              <div className="mt-6 h-4 w-2/3 animate-pulse bg-white/10" />
+            </div>
+            <div className="border-l border-white/10 lg:col-span-4 lg:pl-10">
+              <div className="mb-3 h-3 w-12 animate-pulse bg-white/10" />
+              <div className="h-14 w-44 animate-pulse bg-[#d91c1c]/20" />
+            </div>
+          </div>
+
+          <div className="flex h-[400px] gap-2.5 md:h-[600px]">
+            <div className="flex-1 animate-pulse bg-white/10" />
+            <div className="hidden w-[28%] shrink-0 flex-col gap-2 md:flex">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex-1 animate-pulse bg-white/10" />
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 border-y border-white/10 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="space-y-3 border-r border-white/10 px-5 py-5 last:border-r-0">
+                <div className="h-2 w-16 animate-pulse bg-white/10" />
+                <div className="h-4 w-24 animate-pulse bg-white/10" />
+              </div>
             ))}
           </div>
         </div>
+      </section>
 
-        {/* Content grid */}
-        <div className="flex flex-col lg:flex-row gap-10">
-          {/* Left: specs */}
-          <div className="flex-1 min-w-0 space-y-6">
-            <div className="h-9 w-3/4 rounded animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-            <div className="h-5 w-1/2 rounded animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-            <div className="h-10 w-32 rounded animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-
-            {/* Stats bar */}
-            <div className="grid grid-cols-4 rounded-xl overflow-hidden" style={{ border: "1px solid var(--theme-border)" }}>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="px-5 py-4 animate-pulse space-y-2" style={{ backgroundColor: "var(--theme-surface)" }}>
-                  <div className="h-3 w-12 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-                  <div className="h-4 w-16 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-                </div>
-              ))}
-            </div>
-
-            {/* Specs card */}
-            <div className="rounded-xl p-7 animate-pulse space-y-4" style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}>
-              <div className="h-6 w-36 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--theme-border-subtle)" }}>
-                  <div className="h-4 w-28 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-                  <div className="h-4 w-24 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+      <section className="theme-bg">
+        <div className="mx-auto grid max-w-[1720px] grid-cols-1 gap-14 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-12 lg:px-10 xl:gap-20 xl:px-12">
+          <div className="space-y-10 lg:col-span-8">
+            <div className="h-12 w-2/3 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+            <div className="grid grid-cols-1 gap-x-12 sm:grid-cols-2">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="flex h-16 items-center justify-between border-b border-[var(--theme-border)]">
+                  <div className="h-3 w-24 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+                  <div className="h-3 w-20 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Right: contact panel */}
-          <div className="w-full lg:w-[340px] xl:w-[380px] shrink-0">
-            <div className="rounded-[28px] p-8 animate-pulse space-y-6" style={{ backgroundColor: "var(--theme-surface)", border: "1px solid var(--theme-border)" }}>
-              <div className="h-8 w-40 rounded" style={{ backgroundColor: "var(--theme-skeleton)" }} />
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-16 rounded-2xl" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+          <aside className="lg:col-span-4">
+            <div className="space-y-5 border border-[var(--theme-border)] border-t-2 border-t-[#d91c1c] p-8">
+              <div className="h-12 w-44 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-20 animate-pulse" style={{ backgroundColor: "var(--theme-skeleton)" }} />
               ))}
-              <div className="h-14 w-full rounded-2xl" style={{ backgroundColor: "var(--theme-skeleton)" }} />
+              <div className="h-12 w-full animate-pulse bg-[#d91c1c]/20" />
             </div>
-          </div>
+          </aside>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
