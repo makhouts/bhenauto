@@ -255,13 +255,12 @@ export default async function CarDetailPage(
 
                         <div className="mb-9 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-end">
                             <div className="lg:col-span-8">
-                                <p className="mb-5 text-[10px] font-extrabold uppercase tracking-[0.22em] text-white/45">BHEN / {car.year} / {car.brand}</p>
                                 <h1 className="max-w-5xl break-words font-headings text-[clamp(3.4rem,7vw,7.5rem)] font-semibold uppercase leading-[0.78] tracking-[-0.04em]">
                                     {car.brand} {car.model}
                                 </h1>
                                 <p className="mt-6 max-w-3xl text-sm leading-7 text-white/55">{car.title}</p>
                             </div>
-                            <div className="border-l border-white/15 pl-0 lg:col-span-4 lg:pl-10">
+                            <div className="hidden lg:col-span-4 lg:block lg:border-l lg:border-white/15 lg:pl-10">
                                 <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.2em] text-white/40">EUR</p>
                                 <p className="font-headings text-5xl font-semibold leading-none text-[#d91c1c] tabular-nums sm:text-6xl">€{car.price.toLocaleString('nl-BE')}</p>
                                 <p className="mt-5 text-sm text-white/55">{car.color} · {transmissionLabel}</p>
@@ -283,16 +282,27 @@ export default async function CarDetailPage(
                             )}
                         </div>
 
-                        <div className="mt-6 grid grid-cols-2 border-y border-white/15 sm:grid-cols-4">
+                        <div id="car-detail-price-anchor" className="mt-6 border-y border-white/15 py-5 lg:hidden">
+                            <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.2em] text-white/40">EUR</p>
+                            <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+                                <p className="font-headings text-4xl font-semibold leading-none text-[#d91c1c] tabular-nums sm:text-5xl">€{car.price.toLocaleString('nl-BE')}</p>
+                                <p className="max-w-[50%] text-right text-sm leading-5 text-white/55">{car.color} · {transmissionLabel}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 border-b border-white/15 sm:grid-cols-4 lg:mt-6 lg:border-y">
                             {[
                                 { label: t.statMileage, value: `${car.mileage.toLocaleString('nl-BE')} km` },
                                 { label: t.statPower, value: `${car.horsepower} pk` },
                                 { label: t.statFuel, value: car.fuel_type },
                                 { label: t.statTransmission, value: transmissionLabel },
                             ].map((item, index) => (
-                                <div key={item.label} className={`min-w-0 border-white/15 py-5 pr-4 sm:border-l sm:px-6 sm:first:border-l-0 sm:first:pl-0 ${index % 2 ? 'border-l' : ''}`}>
+                                <div
+                                    key={item.label}
+                                    className={`flex min-h-28 min-w-0 flex-col justify-center border-white/15 py-5 sm:min-h-0 sm:border-l sm:border-t-0 sm:px-6 sm:first:border-l-0 sm:first:pl-0 ${index % 2 ? 'border-l pl-4' : 'pr-4'} ${index >= 2 ? 'border-t' : ''}`}
+                                >
                                     <p className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.16em] text-white/40">{item.label}</p>
-                                    <p className="truncate text-sm font-bold text-white/90" title={item.value}>{item.value}</p>
+                                    <p className="break-words text-[15px] font-bold leading-5 text-white/90">{item.value}</p>
                                 </div>
                             ))}
                         </div>

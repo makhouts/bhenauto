@@ -35,7 +35,7 @@ export default async function AdminCarsPage() {
     const dict = getAdminDictionary(await getAdminLocale());
     const last30dStart = subDays(getLocalDayStart(), 29);
 
-    const [cars, allTimeViewCounts, last30dViewCounts, uniqueLast30dRows] = await Promise.all([
+    const [cars, allTimeUniqueRows, last30dUniqueRows] = await Promise.all([
         prisma.car.findMany({
             orderBy: { createdAt: "desc" },
             include: {
@@ -45,27 +45,15 @@ export default async function AdminCarsPage() {
                 }
             }
         }),
-        prisma.analyticsEvent.groupBy({
-            by: ["carId"],
-            where: {
-                type: "car_detail_view",
-                carId: { not: null },
-            },
-            _count: {
-                _all: true,
-            },
-        }),
-        prisma.analyticsEvent.groupBy({
-            by: ["carId"],
-            where: {
-                type: "car_detail_view",
-                carId: { not: null },
-                createdAt: { gte: last30dStart },
-            },
-            _count: {
-                _all: true,
-            },
-        }),
+        prisma.$queryRaw<UniqueViewRow[]>`
+            SELECT
+                "carId",
+                COUNT(DISTINCT "visitorHash") AS "uniqueVisitors"
+            FROM "AnalyticsEvent"
+            WHERE "type" = 'car_detail_view'
+              AND "carId" IS NOT NULL
+            GROUP BY "carId"
+        `,
         prisma.$queryRaw<UniqueViewRow[]>`
             SELECT
                 "carId",
@@ -79,24 +67,16 @@ export default async function AdminCarsPage() {
     ]);
 
     const viewsByCarId = new Map(
-        allTimeViewCounts
-            .filter((row) => row.carId)
-            .map((row) => [row.carId as string, row._count._all])
+        allTimeUniqueRows.map((row) => [row.carId, toCount(row.uniqueVisitors)])
     );
     const viewsLast30dByCarId = new Map(
-        last30dViewCounts
-            .filter((row) => row.carId)
-            .map((row) => [row.carId as string, row._count._all])
-    );
-    const uniqueViewsLast30dByCarId = new Map(
-        uniqueLast30dRows.map((row) => [row.carId, toCount(row.uniqueVisitors)])
+        last30dUniqueRows.map((row) => [row.carId, toCount(row.uniqueVisitors)])
     );
 
     const carsWithViews = cars.map((car) => ({
         ...car,
         detailViewsCount: viewsByCarId.get(car.id) ?? 0,
         detailViewsLast30dCount: viewsLast30dByCarId.get(car.id) ?? 0,
-        uniqueViewersLast30dCount: uniqueViewsLast30dByCarId.get(car.id) ?? 0,
     }));
 
     return (

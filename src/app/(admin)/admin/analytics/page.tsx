@@ -19,8 +19,8 @@ import {
 export const metadata = { title: "Analytics | bhenauto" };
 
 type CountRow = { count: bigint | number | string };
-type TopCarRow = { carId: string; views: bigint | number | string; visitors: bigint | number | string };
-type TopPageRow = { path: string; views: bigint | number | string; visitors: bigint | number | string };
+type TopCarRow = { carId: string; views: bigint | number | string };
+type TopPageRow = { path: string; views: bigint | number | string };
 type ReferrerRow = { referrerHost: string | null; visitors: bigint | number | string };
 
 function toCount(value: bigint | number | string) {
@@ -40,18 +40,37 @@ async function getDistinctVisitorsSince(since: Date) {
   return toCount(row?.count ?? 0);
 }
 
+async function getUniquePageViewsSince(since: Date) {
+  const [row] = await prisma.$queryRaw<CountRow[]>`
+    SELECT COUNT(DISTINCT ("visitorHash", "path")) AS count
+    FROM "AnalyticsEvent"
+    WHERE "type" = 'page_view' AND "createdAt" >= ${since}
+  `;
+  return toCount(row?.count ?? 0);
+}
+
+async function getUniqueCarViewsSince(since: Date) {
+  const [row] = await prisma.$queryRaw<CountRow[]>`
+    SELECT COUNT(DISTINCT ("visitorHash", "carId")) AS count
+    FROM "AnalyticsEvent"
+    WHERE "type" = 'car_detail_view'
+      AND "carId" IS NOT NULL
+      AND "createdAt" >= ${since}
+  `;
+  return toCount(row?.count ?? 0);
+}
+
 async function getTopCarsSince(since: Date) {
   const rows = await prisma.$queryRaw<TopCarRow[]>`
     SELECT
       "carId",
-      COUNT(*) AS views,
-      COUNT(DISTINCT "visitorHash") AS visitors
+      COUNT(DISTINCT "visitorHash") AS views
     FROM "AnalyticsEvent"
     WHERE "type" = 'car_detail_view'
       AND "carId" IS NOT NULL
       AND "createdAt" >= ${since}
     GROUP BY "carId"
-    ORDER BY COUNT(*) DESC
+    ORDER BY COUNT(DISTINCT "visitorHash") DESC
     LIMIT 10
   `;
 
@@ -74,7 +93,6 @@ async function getTopCarsSince(since: Date) {
   return rows.map((row) => ({
     carId: row.carId,
     views: toCount(row.views),
-    visitors: toCount(row.visitors),
     clicks: 0,
     car: carMap.get(row.carId) ?? null,
   }));
@@ -84,8 +102,7 @@ async function getInventoryClicksSince(since: Date) {
   const rows = await prisma.$queryRaw<TopCarRow[]>`
     SELECT
       "carId",
-      COUNT(*) AS views,
-      COUNT(DISTINCT "visitorHash") AS visitors
+      COUNT(DISTINCT "visitorHash") AS views
     FROM "AnalyticsEvent"
     WHERE "type" = 'car_card_click'
       AND "carId" IS NOT NULL
@@ -107,10 +124,10 @@ export default async function AdminAnalyticsPage() {
   const last30dStart = subDays(todayStart, 29);
 
   const [
-    pageViewsToday,
-    pageViews7d,
-    pageViews30d,
-    carViews30d,
+    uniquePageViewsToday,
+    uniquePageViews7d,
+    uniquePageViews30d,
+    uniqueCarViews30d,
     appointmentSubmissions30d,
     contactSubmissions30d,
     visitorsToday,
@@ -121,10 +138,10 @@ export default async function AdminAnalyticsPage() {
     topPages,
     topReferrers,
   ] = await Promise.all([
-    prisma.analyticsEvent.count({ where: { type: "page_view", createdAt: { gte: todayStart } } }),
-    prisma.analyticsEvent.count({ where: { type: "page_view", createdAt: { gte: last7dStart } } }),
-    prisma.analyticsEvent.count({ where: { type: "page_view", createdAt: { gte: last30dStart } } }),
-    prisma.analyticsEvent.count({ where: { type: "car_detail_view", createdAt: { gte: last30dStart } } }),
+    getUniquePageViewsSince(todayStart),
+    getUniquePageViewsSince(last7dStart),
+    getUniquePageViewsSince(last30dStart),
+    getUniqueCarViewsSince(last30dStart),
     prisma.analyticsEvent.count({ where: { type: "appointment_submitted", createdAt: { gte: last30dStart } } }),
     prisma.analyticsEvent.count({ where: { type: "contact_submitted", createdAt: { gte: last30dStart } } }),
     getDistinctVisitorsSince(todayStart),
@@ -135,12 +152,11 @@ export default async function AdminAnalyticsPage() {
     prisma.$queryRaw<TopPageRow[]>`
       SELECT
         "path",
-        COUNT(*) AS views,
-        COUNT(DISTINCT "visitorHash") AS visitors
+        COUNT(DISTINCT "visitorHash") AS views
       FROM "AnalyticsEvent"
       WHERE "type" = 'page_view' AND "createdAt" >= ${last30dStart}
       GROUP BY "path"
-      ORDER BY COUNT(*) DESC
+      ORDER BY COUNT(DISTINCT "visitorHash") DESC
       LIMIT 10
     `,
     prisma.$queryRaw<ReferrerRow[]>`
@@ -190,14 +206,14 @@ export default async function AdminAnalyticsPage() {
         />
         <AdminMetricCard
           label={dict.analytics.cards.pageViews}
-          value={pageViews30d}
-          hint={`${pageViewsToday} ${dict.analytics.periods.today.toLowerCase()} · ${pageViews7d} ${dict.analytics.periods.last7d.toLowerCase()}`}
+          value={uniquePageViews30d}
+          hint={`${uniquePageViewsToday} ${dict.analytics.periods.today.toLowerCase()} · ${uniquePageViews7d} ${dict.analytics.periods.last7d.toLowerCase()}`}
           tone="violet"
           icon={<BarChart3 size={22} />}
         />
         <AdminMetricCard
           label={dict.analytics.cards.carViews}
-          value={carViews30d}
+          value={uniqueCarViews30d}
           hint={`${topCars.length} ${dict.layout.nav.cars.toLowerCase()}`}
           tone="red"
           icon={<Car size={22} />}
@@ -229,7 +245,6 @@ export default async function AdminAnalyticsPage() {
                   <tr>
                     <th className="px-6 py-3">{dict.layout.nav.cars}</th>
                     <th className="px-6 py-3">{dict.analytics.labels.detailViews}</th>
-                    <th className="px-6 py-3">{dict.analytics.labels.unique}</th>
                     <th className="px-6 py-3">{dict.analytics.labels.inventoryClicks}</th>
                   </tr>
                 </thead>
@@ -247,7 +262,6 @@ export default async function AdminAnalyticsPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 font-black text-slate-900">{row.views}</td>
-                      <td className="px-6 py-4 font-semibold text-slate-600">{row.visitors}</td>
                       <td className="px-6 py-4 font-semibold text-slate-600">{row.clicks}</td>
                     </tr>
                   ))}
@@ -315,7 +329,6 @@ export default async function AdminAnalyticsPage() {
                 <tr>
                   <th className="px-6 py-3">Path</th>
                   <th className="px-6 py-3">{dict.analytics.labels.views}</th>
-                  <th className="px-6 py-3">{dict.analytics.labels.visitors}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -323,7 +336,6 @@ export default async function AdminAnalyticsPage() {
                   <tr key={row.path}>
                     <td className="px-6 py-4 font-semibold text-slate-700">{row.path}</td>
                     <td className="px-6 py-4 font-black text-slate-950">{toCount(row.views)}</td>
-                    <td className="px-6 py-4 font-semibold text-slate-600">{toCount(row.visitors)}</td>
                   </tr>
                 ))}
               </tbody>

@@ -63,6 +63,9 @@ export async function trackAnalyticsEvent(
   headerStore: HeadersLike,
   input: TrackAnalyticsEventInput
 ): Promise<void> {
+  // Local development and automated previews must never pollute real traffic data.
+  if (env.NODE_ENV !== "production") return;
+
   const userAgent = headerStore.get("user-agent");
   if (isBotRequest(userAgent)) return;
 

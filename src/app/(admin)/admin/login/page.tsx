@@ -52,9 +52,9 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
+        <div className="flex min-h-screen bg-[#efeee9]">
             {/* Left side: Premium Image */}
-            <div className="hidden lg:flex w-1/2 relative" aria-hidden="true">
+            <div className="relative hidden w-[58%] lg:flex" aria-hidden="true">
                 <Image
                     src={wallpaper}
                     alt=""
@@ -64,23 +64,24 @@ export default function LoginPage() {
                     className="object-cover"
                     priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-[#d91c1c]/30 flex items-center justify-center p-12 text-center">
+                <div className="absolute inset-0 flex items-end bg-black/65 p-14 xl:p-20">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.8, delay: 0.3 }}
+                        transition={{ duration: 0.45, delay: 0.15 }}
+                        className="max-w-xl border-l-2 border-[#d91c1c] pl-8 text-left"
                     >
-                        <div className="flex items-center justify-center mb-6">
+                        <div className="mb-7">
                             <Image
                                 src={logo}
                                 alt="BhenAuto"
                                 width={180}
                                 height={60}
-                                className="object-contain drop-shadow-lg"
+                                className="object-contain"
                                 priority
                             />
                         </div>
-                        <p className="text-white/60 font-medium max-w-md mx-auto text-sm leading-relaxed">
+                        <p className="max-w-md text-sm font-medium uppercase leading-7 tracking-[0.12em] text-white/55">
                             {dict.login.eyebrow}
                         </p>
                     </motion.div>
@@ -88,42 +89,33 @@ export default function LoginPage() {
             </div>
 
             {/* Right side: Login Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 relative overflow-hidden bg-white">
-                {/* Subtle decorative gradient */}
-                <div className="absolute -top-32 -right-32 w-96 h-96 bg-[#d91c1c]/5 blur-3xl rounded-full pointer-events-none" />
-                <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-slate-200/50 blur-3xl rounded-full pointer-events-none" />
+            <div className="relative flex w-full items-center justify-center p-6 sm:p-12 lg:w-[42%]">
+                <div className="absolute right-6 top-6 sm:right-10 sm:top-10">
+                    <AdminLocaleSwitcher compact />
+                </div>
 
                 <motion.div
-                    className="w-full max-w-sm relative z-10"
-                    initial={{ opacity: 0, y: 30 }}
+                    className="relative z-10 w-full max-w-sm"
+                    initial={{ opacity: 0, y: 18 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
                 >
-                    {/* Icon */}
-                    <motion.div
-                        className="flex justify-center mb-8"
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.5, delay: 0.2, type: "spring", stiffness: 200 }}
-                    >
-                        <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center shadow-xl">
-                            <ShieldCheck size={28} className="text-[#d91c1c]" />
+                    <div className="mb-8 flex items-center gap-4">
+                        <div className="flex h-11 w-11 items-center justify-center border border-[#c9c7c0] bg-white text-[#d91c1c]">
+                            <ShieldCheck size={20} />
                         </div>
-                    </motion.div>
-
-                    <div className="mb-6 flex justify-center">
-                        <AdminLocaleSwitcher compact />
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">BhenAuto / Admin</p>
                     </div>
 
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.3 }}
+                        transition={{ duration: 0.35, delay: 0.1 }}
                     >
-                        <h1 className="text-3xl font-headings font-black text-slate-900 text-center mb-2">
+                        <h1 className="mb-3 text-4xl font-black uppercase leading-none tracking-[-0.04em] text-[#111116]">
                             {dict.login.title}
                         </h1>
-                        <p className="text-slate-500 text-center mb-10 text-sm">
+                        <p className="mb-10 border-b border-[#c9c7c0] pb-7 text-sm leading-6 text-slate-600">
                             {dict.login.subtitle}
                         </p>
                     </motion.div>
@@ -133,7 +125,7 @@ export default function LoginPage() {
                         className="space-y-6"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5, delay: 0.4 }}
+                        transition={{ duration: 0.35, delay: 0.15 }}
                     >
                         {error && (
                             <motion.div
@@ -141,14 +133,14 @@ export default function LoginPage() {
                                 aria-live="assertive"
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className="p-4 bg-red-50 border border-red-200 text-red-600 text-sm text-center rounded-lg font-medium"
+                                className="border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700"
                             >
                                 {error}
                             </motion.div>
                         )}
 
                         <div>
-                            <label htmlFor="password" className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                            <label htmlFor="password" className="mb-3 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
                                 {dict.login.passwordLabel}
                             </label>
                             <input
@@ -157,7 +149,7 @@ export default function LoginPage() {
                                 name="password"
                                 required
                                 disabled={isSubmitting}
-                                className="w-full bg-slate-50 border border-slate-200 text-slate-900 px-4 py-3.5 rounded-lg focus:outline-none focus:border-[#d91c1c] focus:ring-2 focus:ring-[#d91c1c]/20 transition-all disabled:opacity-50 tracking-widest placeholder:text-slate-300"
+                                className="min-h-12 w-full border border-[#c9c7c0] bg-white px-4 py-3.5 tracking-widest text-slate-900 transition-colors placeholder:text-slate-300 focus:border-[#d91c1c] focus:outline-none focus:ring-2 focus:ring-[#d91c1c]/10 disabled:opacity-50"
                                 placeholder="••••••••"
                             />
                         </div>
@@ -165,9 +157,8 @@ export default function LoginPage() {
                         <motion.button
                             type="submit"
                             disabled={isSubmitting}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="w-full bg-[#d91c1c] hover:bg-[#b91515] text-white py-4 font-bold uppercase tracking-widest text-sm flex justify-center items-center rounded-lg transition-colors duration-300 shadow-lg shadow-[#d91c1c]/20 disabled:opacity-70 group"
+                            whileTap={{ scale: 0.99 }}
+                            className="group flex min-h-12 w-full items-center justify-center bg-[#d91c1c] py-4 text-xs font-black uppercase tracking-[0.16em] text-white transition-colors duration-200 hover:bg-[#b91515] disabled:opacity-70"
                         >
                             {isSubmitting ? (
                                 <>
@@ -184,14 +175,14 @@ export default function LoginPage() {
                     </motion.form>
 
                     <motion.div
-                        className="mt-10 text-center"
+                        className="mt-10"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5, delay: 0.6 }}
+                        transition={{ duration: 0.35, delay: 0.2 }}
                     >
                         <Link
                             href="/"
-                            className="text-xs text-slate-400 hover:text-[#d91c1c] transition-colors uppercase tracking-widest font-bold py-2 inline-block"
+                            className="inline-block border-b border-transparent py-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 transition-colors hover:border-[#d91c1c] hover:text-[#d91c1c]"
                         >
                             {dict.login.backToWebsite}
                         </Link>

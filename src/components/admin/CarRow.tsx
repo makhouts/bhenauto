@@ -37,7 +37,6 @@ export type AdminCarRow = {
     autoscoutSyncError?: string | null;
     detailViewsCount?: number;
     detailViewsLast30dCount?: number;
-    uniqueViewersLast30dCount?: number;
     images?: { url: string }[];
 };
 
@@ -495,12 +494,6 @@ export default function CarRow({
                                 <span className="font-medium text-slate-500">{dict.analytics.periods.last30d}</span>
                                 <span className="font-black text-slate-900">
                                     {(rowCar.detailViewsLast30dCount ?? 0).toLocaleString(locale === "fr" ? "fr-BE" : "nl-BE")}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between gap-3 text-[11px]">
-                                <span className="font-medium text-slate-500">{dict.analytics.labels.unique}</span>
-                                <span className="font-black text-slate-900">
-                                    {(rowCar.uniqueViewersLast30dCount ?? 0).toLocaleString(locale === "fr" ? "fr-BE" : "nl-BE")}
                                 </span>
                             </div>
                         </div>

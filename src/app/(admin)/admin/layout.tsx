@@ -5,7 +5,7 @@ import { isValidSession } from "@/lib/session";
 import { manrope } from "@/app/fonts";
 import Link from "next/link";
 import Image from "next/image";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Toaster } from "sonner";
 import prisma from "@/lib/prisma";
 import logo from "@/assets/logo.webp";
@@ -81,95 +81,66 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     return (
         <AdminDocument locale={locale}>
             <AdminI18nProvider locale={locale} dict={dict}>
-                <div className="min-h-screen bg-[#f3f5f8] text-slate-900 lg:flex">
-                    <aside className="hidden w-[292px] shrink-0 border-r border-slate-200/70 bg-[#f8fafc] lg:flex lg:h-screen lg:flex-col lg:sticky lg:top-0">
-                        <div className="px-6 pb-6 pt-7">
+                <div className="min-h-screen bg-[#efeee9] text-[#17171b] lg:flex">
+                    <aside className="hidden w-[272px] shrink-0 border-r border-white/10 bg-[#111116] text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col">
+                        <div className="border-b border-white/10 px-8 py-8">
                             <Link
                                 href="/admin"
-                                className="flex items-center gap-4 rounded-[28px] border border-slate-200/80 bg-white px-5 py-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]"
+                                className="group flex items-center justify-between gap-5"
                             >
-                                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#020214] shadow-lg shadow-slate-950/10">
+                                <div className="border-l-2 border-[#d91c1c] pl-5">
                                     <Image
                                         src={logo}
                                         alt="BhenAuto"
-                                        height={34}
-                                        style={{ width: "auto", height: "34px" }}
+                                        height={30}
+                                        style={{ width: "auto", height: "30px" }}
                                         priority
                                     />
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
-                                        BhenAuto
-                                    </p>
-                                    <p className="mt-1 text-lg font-black text-slate-950">
-                                        Admin
-                                    </p>
-                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-[0.24em] text-white/35 transition-colors group-hover:text-white/60">Admin</span>
                             </Link>
                         </div>
 
-                        <div className="flex-1 px-5 pb-5">
-                            <div className="flex h-full flex-col rounded-[32px] border border-slate-200/80 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
-                                <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-[#d91c1c]">
-                                            <Shield size={18} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900">
-                                                BhenAuto Admin
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div className="flex flex-1 flex-col px-5 py-7">
+                            <AdminSidebarNav items={navItems} />
 
-                                <AdminSidebarNav items={navItems} />
-
-                                <div className="mt-auto border-t border-slate-100 pt-4">
-                                    <div className="mb-3 flex items-center justify-center rounded-2xl border border-slate-200 px-4 py-3">
-                                        <AdminLocaleSwitcher compact />
-                                    </div>
-                                    <form>
-                                        <button
-                                            formAction={async () => {
-                                                "use server";
-                                                const { logout } = await import("@/app/actions/auth");
-                                                await logout();
-                                            }}
-                                            className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold text-rose-600 transition-colors hover:bg-rose-50"
-                                        >
-                                            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-rose-100 bg-rose-50 text-rose-500">
-                                                <LogOut size={18} className="shrink-0" />
-                                            </span>
-                                            {dict.layout.logout}
-                                        </button>
-                                    </form>
+                            <div className="mt-auto border-t border-white/10 pt-6">
+                                <div className="mb-5 px-3">
+                                    <AdminLocaleSwitcher />
                                 </div>
+                                <form>
+                                    <button
+                                        formAction={async () => {
+                                            "use server";
+                                            const { logout } = await import("@/app/actions/auth");
+                                            await logout();
+                                        }}
+                                        className="group flex min-h-12 w-full items-center gap-3 border border-transparent px-3 text-sm font-bold text-white/50 transition-colors hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
+                                    >
+                                        <LogOut size={17} className="shrink-0 text-[#d91c1c]" />
+                                        {dict.layout.logout}
+                                    </button>
+                                </form>
                             </div>
                         </div>
                     </aside>
 
                     <div className="flex min-w-0 flex-1 flex-col">
-                        <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/92 backdrop-blur lg:hidden">
+                        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#111116]/95 text-white backdrop-blur lg:hidden">
                             <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
                                 <Link href="/admin" className="flex items-center gap-3">
-                                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#020214]">
+                                    <div className="border-l-2 border-[#d91c1c] pl-3">
                                         <Image
                                             src={logo}
                                             alt="BhenAuto"
-                                            height={24}
-                                            style={{ width: "auto", height: "24px" }}
+                                            height={22}
+                                            style={{ width: "auto", height: "22px" }}
                                             priority
                                         />
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
-                                            BhenAuto
-                                        </p>
-                                        <p className="text-base font-black text-slate-950">Admin</p>
-                                    </div>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.22em] text-white/40">Admin</span>
                                 </Link>
-                                <AdminLocaleSwitcher compact />
+                                <AdminLocaleSwitcher />
                             </div>
                             <AdminSidebarNav items={navItems} mobile />
                         </header>
@@ -177,7 +148,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                         <main className="min-h-0 flex-1">
                             <div
                                 data-admin-scroll-container
-                                className="min-h-screen px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
+                                className="min-h-screen px-4 py-6 sm:px-7 sm:py-8 lg:px-10 lg:py-10 2xl:px-14"
                             >
                                 {children}
                             </div>
@@ -189,7 +160,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
                         toastOptions={{
                             style: {
                                 fontFamily: "var(--font-manrope)",
-                                borderRadius: "16px",
+                                borderRadius: "2px",
                                 fontSize: "13px",
                                 fontWeight: "600",
                             },

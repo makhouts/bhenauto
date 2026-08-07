@@ -125,7 +125,7 @@ export default async function AdminDashboardPage() {
     ];
 
     return (
-        <AdminPage className="max-w-[1400px] space-y-8">
+        <AdminPage className="max-w-[1400px]">
 
             {/* ── Header ── */}
             <AdminPageHeader
@@ -149,18 +149,17 @@ export default async function AdminDashboardPage() {
             </AdminMetricGrid>
 
             {/* ── Week Calendar + Upcoming ── */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
 
                 {/* Calendar */}
                 <div
-                    className="xl:col-span-2 rounded-2xl overflow-hidden"
-                    style={{ background: "#ffffff", border: "1px solid #e8edf4", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}
+                    className="overflow-hidden rounded-[3px] border border-[#d7d5cf] bg-white shadow-[0_12px_30px_rgba(17,17,22,0.045)] xl:col-span-2"
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between px-7 py-5" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <div className="flex items-center justify-between border-b border-[#e4e2dc] px-6 py-5">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#fff1f2" }}>
-                                <CalendarCheck size={20} style={{ color: "#d91c1c" }} />
+                            <div className="flex h-10 w-10 items-center justify-center border border-[#d7d5cf] bg-[#f7f6f2] text-[#d91c1c]">
+                                <CalendarCheck size={19} />
                             </div>
                             <div>
                                 <p className="font-black text-slate-900 text-base leading-tight">{dict.dashboard.calendar.title}</p>
@@ -216,7 +215,7 @@ export default async function AdminDashboardPage() {
                                             apts.slice(0, 4).map((apt) => (
                                                 <div
                                                     key={apt.id}
-                                                    className="rounded-lg px-2.5 py-2 border-l-[3px]"
+                                                    className="rounded-[2px] border-l-[3px] px-2.5 py-2"
                                                     style={getAppointmentChipStyle(apt)}
                                                 >
                                                     <p className="text-[12px] font-black text-slate-800 truncate leading-tight">{apt.timeSlot} {getAppointmentTitle(apt)}</p>
@@ -234,7 +233,7 @@ export default async function AdminDashboardPage() {
                     </div>
 
                     {/* Legend */}
-                    <div className="flex items-center gap-5 px-7 py-4" style={{ borderTop: "1px solid #f1f5f9", background: "#fafbfc" }}>
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#e4e2dc] bg-[#f7f6f2] px-6 py-4">
                         <div className="flex items-center gap-2">
                             <span className="w-3 h-2 rounded-sm" style={{ background: "#f59e0b" }} />
                             <span className="text-[12px] text-slate-400 font-medium">{dict.dashboard.calendar.pending}</span>
@@ -252,12 +251,11 @@ export default async function AdminDashboardPage() {
 
                 {/* Upcoming appointments feed */}
                 <div
-                    className="rounded-2xl overflow-hidden"
-                    style={{ background: "#ffffff", border: "1px solid #e8edf4", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}
+                    className="overflow-hidden rounded-[3px] border border-[#d7d5cf] bg-white shadow-[0_12px_30px_rgba(17,17,22,0.045)]"
                 >
-                    <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <div className="flex items-center justify-between border-b border-[#e4e2dc] px-6 py-5">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#f1f5f9" }}>
+                            <div className="flex h-10 w-10 items-center justify-center border border-[#d7d5cf] bg-[#f7f6f2]">
                                 <Clock size={18} className="text-slate-500" />
                             </div>
                             <p className="font-black text-slate-900 text-base">{dict.dashboard.upcoming.title}</p>
@@ -273,8 +271,8 @@ export default async function AdminDashboardPage() {
                                 <p className="text-[13px] text-slate-400 font-medium">{dict.dashboard.upcoming.empty}</p>
                             </div>
                         ) : upcomingAppointments.map((apt) => (
-                            <div key={apt.id} className="px-6 py-4 flex items-start gap-4 hover:bg-slate-50 transition-colors">
-                                <div className="shrink-0 text-center bg-slate-100 rounded-xl px-3 py-2 min-w-[52px]">
+                            <div key={apt.id} className="flex items-start gap-4 px-6 py-4 transition-colors hover:bg-[#faf9f6]">
+                                <div className="min-w-[52px] shrink-0 border border-[#dedcd6] bg-[#f7f6f2] px-3 py-2 text-center">
                                     <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{format(apt.date, "MMM", { locale: dateLocale })}</p>
                                     <p className="text-xl font-black text-slate-900 leading-tight">{format(apt.date, "d")}</p>
                                 </div>
@@ -292,17 +290,16 @@ export default async function AdminDashboardPage() {
             </div>
 
             {/* ── Bottom row: inventory breakdown + recent contacts ── */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
 
                 {/* Inventory breakdown */}
                 <div
-                    className="rounded-2xl overflow-hidden"
-                    style={{ background: "#ffffff", border: "1px solid #e8edf4", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}
+                    className="overflow-hidden rounded-[3px] border border-[#d7d5cf] bg-white shadow-[0_12px_30px_rgba(17,17,22,0.045)]"
                 >
-                    <div className="flex items-center justify-between px-7 py-5" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <div className="flex items-center justify-between border-b border-[#e4e2dc] px-6 py-5">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#eff6ff" }}>
-                                <TrendingUp size={18} style={{ color: "#3b82f6" }} />
+                            <div className="flex h-10 w-10 items-center justify-center border border-[#d7d5cf] bg-[#f7f6f2] text-sky-700">
+                                <TrendingUp size={18} />
                             </div>
                             <p className="font-black text-slate-900 text-base">{dict.dashboard.inventory.title}</p>
                         </div>
@@ -345,13 +342,12 @@ export default async function AdminDashboardPage() {
 
                 {/* Recent unread contacts */}
                 <div
-                    className="rounded-2xl overflow-hidden"
-                    style={{ background: "#ffffff", border: "1px solid #e8edf4", boxShadow: "0 1px 6px rgba(0,0,0,0.04)" }}
+                    className="overflow-hidden rounded-[3px] border border-[#d7d5cf] bg-white shadow-[0_12px_30px_rgba(17,17,22,0.045)]"
                 >
-                    <div className="flex items-center justify-between px-7 py-5" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <div className="flex items-center justify-between border-b border-[#e4e2dc] px-6 py-5">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "#f5f3ff" }}>
-                                <Inbox size={18} style={{ color: "#8b5cf6" }} />
+                            <div className="flex h-10 w-10 items-center justify-center border border-[#d7d5cf] bg-[#f7f6f2] text-violet-700">
+                                <Inbox size={18} />
                             </div>
                             <div>
                                 <p className="font-black text-slate-900 text-base leading-tight">{dict.dashboard.contacts.title}</p>
@@ -371,8 +367,8 @@ export default async function AdminDashboardPage() {
                                 <p className="text-[13px] text-slate-400 font-medium">{dict.dashboard.contacts.empty}</p>
                             </div>
                         ) : recentContacts.map((c) => (
-                            <Link key={c.id} href="/admin/contacts" className="flex items-start gap-4 px-7 py-4 hover:bg-slate-50 transition-colors">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: "#ede9fe" }}>
+                            <Link key={c.id} href="/admin/contacts" className="flex items-start gap-4 px-7 py-4 transition-colors hover:bg-[#faf9f6]">
+                                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center border border-violet-200 bg-violet-50">
                                     <span className="text-[13px] font-black" style={{ color: "#8b5cf6" }}>
                                         {c.name.trim()[0].toUpperCase()}
                                     </span>
