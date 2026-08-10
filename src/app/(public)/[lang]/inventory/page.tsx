@@ -157,12 +157,12 @@ export default async function InventoryPage(props: {
         <div className="absolute inset-y-0 right-[18%] hidden w-px bg-white/10 lg:block" />
         <div className="mx-auto grid max-w-[1720px] grid-cols-1 gap-10 px-4 sm:px-6 lg:grid-cols-12 lg:px-10 xl:px-12">
           <div className="lg:col-span-8">
-          <div className="mb-7 flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/45">
-            <Link href={`/${locale}`} className="hover:text-[#d91c1c]">
+          <div className="mb-7 flex min-h-11 items-center gap-2 text-[10px] font-extrabold uppercase leading-none tracking-[0.2em] text-white/45">
+            <Link href={`/${locale}`} className="flex h-11 items-center transition-colors hover:text-[#d91c1c]">
               {inv.breadcrumbHome}
             </Link>
             <span className="h-px w-8 bg-[#d91c1c]" />
-            <span className="text-white/80">{inv.breadcrumbInventory}</span>
+            <span className="flex h-11 items-center text-white/80">{inv.breadcrumbInventory}</span>
           </div>
           <h1 className="max-w-5xl font-headings text-[clamp(3.8rem,8vw,8.5rem)] font-semibold uppercase leading-[0.78] tracking-[-0.045em]">{inv.pageTitle}</h1>
           </div>

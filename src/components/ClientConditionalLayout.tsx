@@ -34,8 +34,6 @@ export default function ClientConditionalLayout({
   const strippedPath = stripLocale(pathname);
 
   const isAdminRoute = pathname?.startsWith("/admin");
-  const isHome = strippedPath === "/";
-  const isTransparentRoute = isHome || strippedPath === "/werkplaats";
   // On car detail pages, hide the global WhatsApp button — the page renders its own
   // car-specific one with the vehicle title pre-filled in the message.
   const isCarDetailPage = /^\/cars\/[^/]+/.test(strippedPath);
@@ -43,7 +41,7 @@ export default function ClientConditionalLayout({
   return (
     <>
       {!isAdminRoute && header}
-      <div className={`flex-grow ${!isAdminRoute && !isTransparentRoute ? "pt-8 md:pt-20" : ""}`}>
+      <div className="flex-grow">
         {children}
       </div>
       {!isAdminRoute && footer}

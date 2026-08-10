@@ -337,7 +337,7 @@ export default function ImageGallery({ images, title, closeLabel, zoomInLabel, z
 
                 {/* ── Main Hero Image ── */}
                 <div
-                    className="group relative flex-1 cursor-pointer overflow-hidden bg-black"
+                    className="group relative min-w-0 flex-1 touch-pan-y cursor-pointer overflow-hidden bg-black"
                     onClick={openLightboxPreloaded}
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
@@ -567,7 +567,7 @@ export default function ImageGallery({ images, title, closeLabel, zoomInLabel, z
 
                         {/* ── Main Image Area ── */}
                         <div
-                            className="flex-1 relative flex items-center justify-center px-4 sm:px-16 overflow-hidden"
+                            className="relative flex flex-1 touch-pan-y items-center justify-center overflow-hidden px-4 sm:px-16"
                             onClick={e => e.stopPropagation()}
                             onTouchStart={handleTouchStart}
                             onTouchEnd={handleTouchEnd}

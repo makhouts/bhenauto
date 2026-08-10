@@ -232,12 +232,12 @@ export default async function CarDetailPage(
             <main>
                 <section className="bg-[#111116] text-white">
                     <div className="mx-auto max-w-[1720px] px-4 pb-10 pt-10 sm:px-6 sm:pt-14 md:pt-[130px] lg:px-10 xl:px-12">
-                        <nav aria-label="Breadcrumb" className="mb-10 flex flex-wrap items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/45">
-                            <Link href={`/${lang}`} className="min-h-11 py-3 transition-colors hover:text-[#d91c1c]">Home</Link>
+                        <nav aria-label="Breadcrumb" className="mb-10 flex min-h-11 flex-wrap items-center gap-x-2 gap-y-0 text-[10px] font-extrabold uppercase leading-none tracking-[0.18em] text-white/45">
+                            <Link href={`/${lang}`} className="flex h-11 items-center transition-colors hover:text-[#d91c1c]">Home</Link>
                             <span className="h-px w-6 bg-[#d91c1c]" />
-                            <Link href={`/${lang}/inventory`} className="min-h-11 py-3 transition-colors hover:text-[#d91c1c]">{t.breadcrumbStock}</Link>
-                            <span>/</span>
-                            <span className="text-white/75">{car.brand} {car.model}</span>
+                            <Link href={`/${lang}/inventory`} className="flex h-11 items-center transition-colors hover:text-[#d91c1c]">{t.breadcrumbStock}</Link>
+                            <span className="flex h-11 items-center" aria-hidden="true">/</span>
+                            <span className="flex min-h-11 items-center py-3 text-white/75">{car.brand} {car.model}</span>
                         </nav>
 
                         {car.sold && (
@@ -316,7 +316,7 @@ export default async function CarDetailPage(
                                 <div className="mb-16 flex flex-col gap-8 border-b border-[var(--theme-border)] pb-10 sm:flex-row sm:items-end sm:justify-between">
                                     <div>
                                         <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">01 / {t.specsTitle}</p>
-                                        <h2 className="font-headings text-4xl font-semibold uppercase leading-none theme-text sm:text-5xl">{t.specsTitle}</h2>
+                                        <h2 className="font-headings text-4xl font-semibold uppercase leading-none [overflow-wrap:anywhere] theme-text sm:text-5xl">{t.specsTitle}</h2>
                                     </div>
                                     {car.carpass_url && (
                                         <a href={car.carpass_url} target="_blank" rel="noopener noreferrer" title="Car-Pass" className="shrink-0 transition-opacity hover:opacity-70">
@@ -345,7 +345,7 @@ export default async function CarDetailPage(
 
                                 <section className="mb-20 border-t border-[var(--theme-border)] pt-10">
                                     <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">02 / {t.descriptionTitle}</p>
-                                    <h2 className="mb-8 font-headings text-4xl font-semibold uppercase leading-none theme-text sm:text-5xl">{t.descriptionTitle}</h2>
+                                    <h2 className="mb-8 font-headings text-4xl font-semibold uppercase leading-none [overflow-wrap:anywhere] theme-text sm:text-5xl">{t.descriptionTitle}</h2>
                                     <div className="max-w-3xl border-l-2 border-[#d91c1c] pl-6 sm:pl-8">
                                         <ExpandableDescription
                                             description={car.description}
@@ -358,7 +358,7 @@ export default async function CarDetailPage(
                                 {translatedFeatures.length > 0 && (
                                     <section className="border-t border-[var(--theme-border)] pt-10">
                                         <p className="mb-3 text-[9px] font-extrabold uppercase tracking-[0.2em] theme-text-faint">03 / {t.featuresTitle}</p>
-                                        <h2 className="mb-8 font-headings text-4xl font-semibold uppercase leading-none theme-text sm:text-5xl">{t.featuresTitle}</h2>
+                                        <h2 className="mb-8 font-headings text-4xl font-semibold uppercase leading-none [overflow-wrap:anywhere] theme-text sm:text-5xl">{t.featuresTitle}</h2>
                                         <ExpandableFeatures
                                             features={translatedFeatures}
                                             showMoreLabel={t.featuresShowMore}
