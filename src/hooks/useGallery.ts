@@ -111,13 +111,15 @@ export function useGallery(imageCount: number, options?: UseGalleryOptions) {
         return () => { document.body.style.overflow = ""; };
     }, [lightboxOpen]);
 
-    // Auto-scroll active thumbnail into view
+    // Keep the active thumbnail centered without moving the document itself.
     useEffect(() => {
         const ref = lightboxOpen ? lightboxThumbRef : thumbStripRef;
-        if (ref.current) {
-            const activeThumb = ref.current.children[activeIndex] as HTMLElement;
+        const strip = ref.current;
+        if (strip) {
+            const activeThumb = strip.children[activeIndex] as HTMLElement;
             if (activeThumb) {
-                activeThumb.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+                const left = activeThumb.offsetLeft - (strip.clientWidth - activeThumb.clientWidth) / 2;
+                strip.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
             }
         }
     }, [activeIndex, lightboxOpen]);
