@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { locales, isValidLocale, type Locale } from "@/lib/i18n";
-import PublicAnalyticsTracker from "@/components/analytics/PublicAnalyticsTracker";
 import { LocaleProvider } from "@/components/LocaleContext";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import { barlowCondensed, manrope } from "@/app/fonts";
@@ -105,7 +104,6 @@ export default async function LangLayout({
       </head>
       <body className={`${manrope.variable} ${barlowCondensed.variable} public-site antialiased min-h-screen flex flex-col`}>
         <LocaleProvider locale={lang as Locale}>
-          <PublicAnalyticsTracker locale={lang} />
           <ConditionalLayout locale={lang as Locale}>{children}</ConditionalLayout>
         </LocaleProvider>
       </body>

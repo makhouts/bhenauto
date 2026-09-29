@@ -4,7 +4,14 @@ import { PrismaClient } from "@/generated/prisma/client";
 import "@/lib/env";
 
 const prismaClientSingleton = () => {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+  const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL!,
+    max: 5,
+    // This is a long-running Coolify server: reuse connections across quiet
+    // periods instead of repeatedly fetching PostgreSQL type metadata.
+    idleTimeoutMillis: 300_000,
+    connectionTimeoutMillis: 10_000,
+  });
   return new PrismaClient({ adapter });
 };
 
@@ -16,4 +23,4 @@ const prisma = globalThis.prismaGlobal ?? prismaClientSingleton();
 
 export default prisma;
 
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobal = prisma;
+globalThis.prismaGlobal = prisma;

@@ -6,8 +6,13 @@
 - Configure every required value from `.env.example` in the deployment platform.
 - Set `NEXT_PUBLIC_SITE_URL=https://bhenauto.com` and configure a permanent `www.bhenauto.com` redirect at the proxy or DNS layer.
 - Generate unique production secrets; never reuse the example values.
-- Run `npm ci`, `npm run db:migrate:deploy`, `npm run build`, and `npm run test:autoscout24`.
+- Run `npm ci`, `npm run db:migrate:deploy`, `npm run build`, and `npm test`.
 - Confirm the database has automated backups and a tested restore procedure.
+
+For the September 2026 egress update, follow the application-first rollout in
+[database-egress.md](docs/database-egress.md): stop old instances before applying
+the migration that permanently removes historical analytics events. That guide
+also covers cache hosting, invalidation, and measured query-payload reductions.
 
 ## Integration checks
 

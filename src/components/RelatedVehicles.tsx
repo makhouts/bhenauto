@@ -1,6 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import prisma from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+import { withCardImages } from "@/lib/cars/card-data";
+import { INVENTORY_CACHE_OPTIONS } from "@/lib/cars/cache-policy";
 import { getImageVariantUrl, shouldUseDirectImageDelivery } from "@/lib/image-url";
 import type { CarDetailDict } from "@/lib/dictionaries";
 import type { Prisma } from "@/generated/prisma/client";
@@ -21,6 +24,11 @@ interface RelatedVehiclesProps {
 
 const RELATED_LIMIT = 4;
 const CANDIDATE_LIMIT = 48;
+const relatedCarSelect = {
+    id: true, slug: true, title: true, brand: true, model: true, price: true,
+    year: true, mileage: true, fuel_type: true, transmission: true,
+    bodyType: true, vehicleType: true, reserved: true, createdAt: true,
+} satisfies Prisma.CarSelect;
 const PRICE_MIN_FACTOR = 0.6;
 const PRICE_MAX_FACTOR = 1.5;
 
@@ -58,19 +66,9 @@ function scoreRelatedCar(car: {
     return score;
 }
 
-export default async function RelatedVehicles({
-    currentCarId,
-    brand,
-    priceRange,
-    bodyType,
-    vehicleType,
-    fuelType,
-    transmission,
-    year,
-    mileage,
-    lang,
-    dict,
-}: RelatedVehiclesProps) {
+const getRelatedCars = unstable_cache(async ({
+    currentCarId, brand, priceRange, bodyType, vehicleType, fuelType, transmission, year, mileage,
+}: Omit<RelatedVehiclesProps, "lang" | "dict">) => {
     const priceMin = Math.max(0, priceRange * PRICE_MIN_FACTOR);
     const priceMax = Math.max(priceMin, priceRange * PRICE_MAX_FACTOR);
     const similarityFilters: Prisma.CarWhereInput[] = [
@@ -90,7 +88,7 @@ export default async function RelatedVehicles({
         },
         take: CANDIDATE_LIMIT,
         orderBy: { createdAt: "desc" },
-        include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
+        select: relatedCarSelect,
     });
 
     let related = candidates
@@ -110,10 +108,30 @@ export default async function RelatedVehicles({
             },
             take: RELATED_LIMIT - related.length,
             orderBy: { createdAt: "desc" },
-            include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
+            select: relatedCarSelect,
         });
         related = [...related, ...fallback];
     }
+
+    return withCardImages(related, 1);
+}, ["related-cars-v2"], INVENTORY_CACHE_OPTIONS);
+
+export default async function RelatedVehicles({
+    currentCarId,
+    brand,
+    priceRange,
+    bodyType,
+    vehicleType,
+    fuelType,
+    transmission,
+    year,
+    mileage,
+    lang,
+    dict,
+}: RelatedVehiclesProps) {
+    const related = await getRelatedCars({
+        currentCarId, brand, priceRange, bodyType, vehicleType, fuelType, transmission, year, mileage,
+    });
 
     if (related.length === 0) return null;
 

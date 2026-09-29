@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { runManualAutoScoutImport } from "@/app/actions/cars";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
+import { startVisiblePolling } from "@/lib/visible-polling";
 import { toast } from "sonner";
 
 export default function AutoScoutImportButton() {
@@ -18,68 +19,33 @@ export default function AutoScoutImportButton() {
     const pollNowRef = useRef<(() => void) | null>(null);
 
     useEffect(() => {
-        let cancelled = false;
-        let timeoutId: ReturnType<typeof setTimeout> | undefined;
-        const scheduleNextPoll = (delayMs: number) => {
-            if (timeoutId) clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => {
-                void pollImportStatus();
-            }, delayMs);
-        };
-
-        const pollImportStatus = async () => {
-            try {
-                const response = await fetch("/api/admin/autoscout-import/status", {
-                    cache: "no-store",
-                    credentials: "same-origin",
-                });
-
-                if (!response.ok) {
-                    if (!cancelled) timeoutId = setTimeout(pollImportStatus, 10000);
-                    return;
-                }
-
-                const next = await response.json() as {
-                    running?: boolean;
-                    configured?: boolean;
-                    lastCompletedAt?: string | null;
-                    lastError?: string | null;
-                };
-                const running = Boolean(next.running);
-
-                if (!cancelled) {
-                    setIsRunning(running);
-                    setIsConfigured(next.configured !== false);
-                    setLastCompletedAt(next.lastCompletedAt ?? null);
-
-                    if (importWasRunning.current && !running) {
-                        if (next.lastError) {
-                            toast.error(dict.carsTable.manualSyncFailed);
-                        } else {
-                            toast.success(dict.carsTable.manualSyncCompleted);
-                        }
-                        router.refresh();
-                    }
-
-                    importWasRunning.current = running;
-                    scheduleNextPoll(running ? 3000 : 60000);
-                }
-            } catch {
-                if (!cancelled) scheduleNextPoll(10000);
+        const poller = startVisiblePolling(async (signal) => {
+            const response = await fetch("/api/admin/autoscout-import/status", {
+                cache: "no-store", credentials: "same-origin", signal,
+            });
+            if (response.status === 401 || response.status === 403) return null;
+            if (!response.ok) return 30_000;
+            const next = await response.json() as {
+                running?: boolean; configured?: boolean;
+                lastCompletedAt?: string | null; lastError?: string | null;
+            };
+            if (signal.aborted) return null;
+            const running = Boolean(next.running);
+            setIsRunning(running);
+            setIsConfigured(next.configured !== false);
+            setLastCompletedAt(next.lastCompletedAt ?? null);
+            if (importWasRunning.current && !running) {
+                if (next.lastError) toast.error(dict.carsTable.manualSyncFailed);
+                else toast.success(dict.carsTable.manualSyncCompleted);
+                router.refresh();
             }
-        };
-
-        pollNowRef.current = () => {
-            if (timeoutId) clearTimeout(timeoutId);
-            void pollImportStatus();
-        };
-
-        void pollImportStatus();
-
+            importWasRunning.current = running;
+            return running ? 3000 : 60000;
+        });
+        pollNowRef.current = poller.refresh;
         return () => {
-            cancelled = true;
             pollNowRef.current = null;
-            if (timeoutId) clearTimeout(timeoutId);
+            poller.stop();
         };
     }, [dict.carsTable.manualSyncCompleted, dict.carsTable.manualSyncFailed, router]);
 

@@ -5,6 +5,7 @@ import { importAutoScoutImageToR2, deleteR2ObjectsForImageUrls } from "./images"
 import { mapAutoScoutListingToCar, slugify } from "./mapper";
 import { buildReferenceIndex, IMPORT_REFERENCE_TYPES } from "./references";
 import { AUTOSCOUT_SOURCE_OF_TRUTH, isAutoScoutSourceOfTruth } from "./source-of-truth";
+import { diffImportedImages, type ImportedImage } from "./image-diff";
 import type {
   AutoScoutListing,
   AutoScoutListingSummary,
@@ -331,13 +332,16 @@ async function mapWithConcurrency<T, R>(
 async function getImportedCars() {
   return prisma.car.findMany({
     where: { externalSource: SOURCE },
-    include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
+    select: {
+      id: true, slug: true, autoscoutListingId: true, sourceOfTruth: true,
+      sourcePayloadUpdatedAt: true, sold: true, soldAt: true,
+    },
   });
 }
 
 async function getAllCarsForReset() {
   return prisma.car.findMany({
-    include: { images: true },
+    select: { id: true, title: true, images: { select: { url: true } } },
   });
 }
 
@@ -386,9 +390,10 @@ function toPrismaCarData(data: AutoScoutMappedCar["data"]): Prisma.CarUncheckedC
   };
 }
 
-function findReusableImage(existingCar: ExistingImportedCar | undefined, image: AutoScoutMappedImage) {
-  if (!existingCar) return null;
-  return existingCar.images.find((existing) => {
+type ReusableImage = { url: string; sourceUrl: string | null; autoscoutImageId: string | null; sourceMd5: string | null };
+
+function findReusableImage(existingImages: ReusableImage[], image: AutoScoutMappedImage) {
+  return existingImages.find((existing) => {
     if (image.autoscoutImageId && existing.autoscoutImageId === image.autoscoutImageId) {
       return !image.sourceMd5 || !existing.sourceMd5 || existing.sourceMd5 === image.sourceMd5;
     }
@@ -401,11 +406,17 @@ async function prepareImages(input: {
   existingCar?: ExistingImportedCar;
   summary: AutoScoutImportSummary;
 }) {
+  // Unchanged listings never need their images transferred from the database.
+  const existingImages = input.existingCar ? await prisma.image.findMany({
+    where: { carId: input.existingCar.id },
+    select: { id: true, url: true, sortOrder: true, sourceUrl: true, autoscoutImageId: true, sourceMd5: true },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+  }) : [];
   const uploadedKeys: string[] = [];
-  const nextImages: Prisma.ImageUncheckedCreateWithoutCarInput[] = [];
+  const nextImages: ImportedImage[] = [];
 
   for (const image of input.mapped.images) {
-    const reusable = findReusableImage(input.existingCar, image);
+    const reusable = findReusableImage(existingImages, image);
     if (reusable) {
       nextImages.push({
         url: reusable.url,
@@ -429,7 +440,7 @@ async function prepareImages(input: {
     });
   }
 
-  return { nextImages, uploadedKeys };
+  return { nextImages, uploadedKeys, existingImages };
 }
 
 async function cleanupUploadedImages(uploadedKeys: string[], summary: AutoScoutImportSummary) {
@@ -455,6 +466,7 @@ async function markInactiveImportedCarSold(input: {
   if (input.dryRun) return;
 
   await prisma.car.update({
+    select: { id: true },
     where: { id: input.existingCar.id },
     data: {
       sourceOfTruth: AUTOSCOUT_SOURCE_OF_TRUTH,
@@ -490,20 +502,18 @@ async function upsertMappedCar(input: {
 
     if (existingCar) {
       await prisma.car.update({
+        select: { id: true },
         where: { id: existingCar.id },
         data: {
           ...carData,
           autoscoutSyncStatus: "synced",
           autoscoutSyncError: null,
-          images: {
-            deleteMany: {},
-            create: imageResult.nextImages,
-          },
+          images: diffImportedImages(imageResult.existingImages, imageResult.nextImages),
         },
       });
 
       const nextUrls = new Set(imageResult.nextImages.map((image) => image.url));
-      const oldUrlsToDelete = existingCar.images
+      const oldUrlsToDelete = imageResult.existingImages
         .map((image) => image.url)
         .filter((url) => !nextUrls.has(url));
       summary.deletedImages += await deleteR2ObjectsForImageUrls(oldUrlsToDelete);
@@ -511,6 +521,7 @@ async function upsertMappedCar(input: {
       summary.actions.push(`updated ${mapped.autoscoutListingId} (${mapped.data.title})`);
     } else {
       await prisma.car.create({
+        select: { id: true },
         data: {
           ...carData,
           autoscoutSyncStatus: "synced",
@@ -605,6 +616,7 @@ async function markMissingListingsSold(input: {
     if (input.dryRun) continue;
 
     await prisma.car.update({
+      select: { id: true },
       where: { id: car.id },
       data: {
         sourceOfTruth: AUTOSCOUT_SOURCE_OF_TRUTH,
@@ -633,7 +645,7 @@ async function cleanupSoldCars(input: {
       sold: true,
       soldAt: { lte: cutoff },
     },
-    include: { images: true },
+    select: { id: true, title: true, images: { select: { url: true } } },
   });
 
   input.summary.deletedSoldCars = carsToDelete.length;

@@ -1,8 +1,13 @@
 import prisma from "@/lib/prisma";
+import { withCardImages } from "@/lib/cars/card-data";
 import type { Metadata } from "next";
 import Link from "next/link";
 import AppointmentsClient from "@/components/admin/AppointmentsClient";
-import { getBlocks } from "@/app/actions/admin-appointments";
+import { getAdminAppointmentData } from "@/app/actions/admin-appointment-data";
+import { calendarWeek } from "@/lib/appointment-window";
+import { formatInTimeZone } from "date-fns-tz";
+import { parseISO } from "date-fns";
+import { APPOINTMENT_CONFIG } from "@/lib/appointmentConfig";
 import { requireAdmin } from "@/lib/auth-guard";
 import { getAdminDictionary } from "@/lib/admin-i18n";
 import { getAdminLocale } from "@/lib/admin-i18n.server";
@@ -20,15 +25,10 @@ export default async function AppointmentsAdminPage() {
     await requireAdmin();
     const dict = getAdminDictionary(await getAdminLocale());
     const workshopAccessPath = getWorkshopAccessPath();
-    const [appointments, blocks, inventoryCars] = await Promise.all([
-        prisma.appointment.findMany({
-            orderBy: [
-                { status: "asc" },
-                { date: "asc" },
-                { timeSlot: "asc" },
-            ],
-        }),
-        getBlocks(),
+    const initialDay = formatInTimeZone(new Date(), APPOINTMENT_CONFIG.timezone, "yyyy-MM-dd");
+    const initialRequest = { ranges: [calendarWeek(parseISO(initialDay))], pendingPage: 1 };
+    const [initialData, inventoryCars] = await Promise.all([
+        getAdminAppointmentData(initialRequest),
         prisma.car.findMany({
             where: { sold: false },
             orderBy: [
@@ -44,16 +44,9 @@ export default async function AppointmentsAdminPage() {
                 year: true,
                 referenceNumber: true,
                 reserved: true,
-                images: {
-                    orderBy: [
-                        { sortOrder: "asc" },
-                        { createdAt: "asc" },
-                    ],
-                    take: 1,
-                    select: { url: true },
-                },
+
             },
-        }),
+        }).then((cars) => withCardImages(cars, 1)),
     ]);
 
     return (
@@ -75,7 +68,7 @@ export default async function AppointmentsAdminPage() {
             />
 
             <AdminSurface padded={false}>
-                <AppointmentsClient appointments={appointments} blocks={blocks} inventoryCars={inventoryCars} />
+                <AppointmentsClient initialData={initialData} initialDay={initialDay} initialRequest={initialRequest} inventoryCars={inventoryCars} />
             </AdminSurface>
         </AdminPage>
     );

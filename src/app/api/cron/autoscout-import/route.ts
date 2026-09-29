@@ -4,6 +4,7 @@ import {
   AutoScoutImportPartialFailureError,
   runAutoScoutImport,
 } from "@/lib/autoscout24/importer";
+import { revalidateInventory } from "@/lib/revalidate";
 import { requireCronAuth } from "@/lib/cron-auth";
 
 export const runtime = "nodejs";
@@ -19,6 +20,8 @@ async function handleAutoScoutImport(request: NextRequest) {
       overwriteFromAutoscout: true,
       cleanupSold: true,
     });
+
+    if (summary.created + summary.updated + summary.markedSold + summary.deletedSoldCars > 0) revalidateInventory();
 
     return NextResponse.json({
       ok: true,
@@ -36,6 +39,7 @@ async function handleAutoScoutImport(request: NextRequest) {
       );
     }
     if (error instanceof AutoScoutImportPartialFailureError) {
+      revalidateInventory();
       return NextResponse.json(
         { error: error.message, summary: error.summary },
         { status: 502, headers: { "Cache-Control": "no-store" } },

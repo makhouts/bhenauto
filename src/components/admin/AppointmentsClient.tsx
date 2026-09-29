@@ -18,11 +18,13 @@ import {
     useAppointmentsReducer,
     type Appointment,
     type AptForm,
-    type BlockedDateEntry,
 } from "@/hooks/useAppointmentsReducer";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 import { getAdminDateFnsLocale, getAdminServiceLabel, getAdminServiceOptions, tpl } from "@/lib/admin-i18n";
 import { getThumbnailImageUrl } from "@/lib/image-url";
+import { getAdminAppointmentData, type AdminAppointmentData } from "@/app/actions/admin-appointment-data";
+import { calendarWeek, calendarMonth, calendarDay, canonicalRanges, type AppointmentWindowRequest } from "@/lib/appointment-window";
+import AdminPagination from "./AdminPagination";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -148,11 +150,19 @@ function DragHandle({ apt, maxExtra, onResize }: {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AppointmentsClient({
-    appointments: init, blocks: initBlocks, inventoryCars,
-}: { appointments: Appointment[]; blocks: BlockedDateEntry[]; inventoryCars: InventoryCarOption[] }) {
+    initialData, initialDay, initialRequest, inventoryCars,
+}: { initialData: AdminAppointmentData; initialDay: string; initialRequest: AppointmentWindowRequest; inventoryCars: InventoryCarOption[] }) {
     const { locale, dict } = useAdminI18n();
     const dateLocale = getAdminDateFnsLocale(locale);
     const serviceOptions = getAdminServiceOptions(locale);
+    const [revision, setRevision] = useState(0);
+    const refreshData = useCallback(() => setRevision((value) => value + 1), []);
+    const [pendingPage, setPendingPage] = useState(initialRequest.pendingPage);
+    const [remote, setRemote] = useState(() => ({
+        key: JSON.stringify({ request: initialRequest, revision: 0 }),
+        data: initialData,
+        error: false,
+    }));
     const statusLabels: Record<string, string> = {
       pending: dict.appointments.statuses.pending,
       confirmed: dict.appointments.statuses.confirmed,
@@ -168,7 +178,7 @@ export default function AppointmentsClient({
         confirmSub,
         derived: {
             today, weekStart, weekEnd, weekDays,
-            pendingApts, calData, appointmentsByDay, blockedDays, blockedSlots,
+            calData, appointmentsByDay, blockedDays, blockedSlots,
             weekTotal, availCreate, availEdit,
             getBlockId,
         },
@@ -178,13 +188,13 @@ export default function AppointmentsClient({
             handleCreateSubmit, handleEditSubmit, handleBlockSubmit,
             handleUnblock, handleResizeDrag,
         },
-    } = useAppointmentsReducer(init, initBlocks);
+    } = useAppointmentsReducer(initialData.appointments, initialData.blocks, parseISO(initialDay), refreshData);
 
     const [monthOverlay, setMonthOverlay] = useState(false);
     const [overlayView, setOverlayView] = useState<"month"|"week"|"day">("month");
-    const [overlayMonth, setOverlayMonth] = useState(() => new Date());
-    const [overlayWeekAnchor, setOverlayWeekAnchor] = useState(() => new Date());
-    const [overlayDay, setOverlayDay] = useState(() => new Date());
+    const [overlayMonth, setOverlayMonth] = useState(() => parseISO(initialDay));
+    const [overlayWeekAnchor, setOverlayWeekAnchor] = useState(() => parseISO(initialDay));
+    const [overlayDay, setOverlayDay] = useState(() => parseISO(initialDay));
 
     const {
         appointments, popoverId, slotPopover,
@@ -194,24 +204,66 @@ export default function AppointmentsClient({
         confirmModalId, confirmDuration,
     } = state;
 
-    // ── Render ────────────────────────────────────────────────────────────────
-    const confirmedCount = appointments.filter(a => a.status === "confirmed").length;
-    const totalCount = appointments.length;
+    // Modal dates are separate windows: moving a booking far into the future
+    // must never fetch all the intervening appointment history.
+    const ranges = [calendarWeek(state.weekAnchor)];
+    if (monthOverlay) ranges.push(overlayView === "month" ? calendarMonth(overlayMonth)
+        : overlayView === "week" ? calendarWeek(overlayWeekAnchor) : calendarDay(overlayDay));
+    if (createOpen) {
+        ranges.push(calendarMonth(createMonth));
+        if (createForm.dateStr) ranges.push(calendarDay(parseISO(createForm.dateStr)));
+    }
+    if (editOpen) {
+        ranges.push(calendarMonth(editMonth));
+        if (editForm.dateStr) ranges.push(calendarDay(parseISO(editForm.dateStr)));
+    }
+    if (blockOpen) ranges.push(calendarMonth(blockMonth));
+    const confirming = confirmModalId ? appointments.find((appointment) => appointment.id === confirmModalId) : undefined;
+    if (confirming) ranges.push(calendarDay(confirming.date));
+    const requestKey = JSON.stringify({ request: { ranges: canonicalRanges(ranges), pendingPage }, revision });
+    const loadingData = remote.key !== requestKey;
+
+    useEffect(() => {
+        if (remote.key === requestKey) return;
+        let current = true;
+        const { request } = JSON.parse(requestKey) as { request: AppointmentWindowRequest };
+        getAdminAppointmentData(request).then((data) => {
+            if (!current) return;
+            dispatch({ type: "SET_APPOINTMENTS", appointments: data.appointments });
+            dispatch({ type: "SET_BLOCKS", blocks: data.blocks });
+            setRemote({ key: requestKey, data, error: false });
+        }).catch(() => {
+            if (current) setRemote((previous) => ({ ...previous, key: requestKey, error: true }));
+        });
+        return () => { current = false; };
+    }, [requestKey, remote.key, dispatch]);
+
+    const pendingIds = new Set(remote.data.pendingIds);
+    const pendingApts = appointments.filter((appointment) => pendingIds.has(appointment.id) && appointment.status === "pending")
+        .sort((a, b) => a.date.getTime() - b.date.getTime() || a.timeSlot.localeCompare(b.timeSlot) || a.id.localeCompare(b.id));
+    const pendingCount = remote.data.counts.pending;
+    const confirmedCount = remote.data.counts.confirmed;
+    const totalCount = remote.data.counts.total;
 
     return (
-    <div className="space-y-6 px-5 py-5 sm:px-6 sm:py-6">
+    <div aria-busy={loadingData}>
+    {(loadingData || remote.error) && <div role={remote.error ? "alert" : "status"} className="fixed left-1/2 top-20 z-[100] flex -translate-x-1/2 items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold shadow-lg">
+      {loadingData ? <><Loader2 size={16} className="animate-spin" />{dict.common.loading}</>
+        : <>{locale === "fr" ? "Impossible de charger le calendrier." : "De kalender kon niet geladen worden."}<button type="button" onClick={refreshData} className="underline">{locale === "fr" ? "Réessayer" : "Opnieuw proberen"}</button></>}
+    </div>}
+    <div inert={loadingData || remote.error} className="space-y-6 px-5 py-5 sm:px-6 sm:py-6">
 
       {/* ── Stats bar ──────────────────────────────────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className={`rounded-2xl px-5 py-4 flex items-center gap-4 border ${pendingApts.length > 0 ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"}`}>
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${pendingApts.length > 0 ? "bg-amber-100" : "bg-slate-100"}`}>
-            <Inbox size={18} className={pendingApts.length > 0 ? "text-amber-600" : "text-slate-400"} />
+        <div className={`rounded-2xl px-5 py-4 flex items-center gap-4 border ${pendingCount > 0 ? "bg-amber-50 border-amber-200" : "bg-white border-slate-200"}`}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${pendingCount > 0 ? "bg-amber-100" : "bg-slate-100"}`}>
+            <Inbox size={18} className={pendingCount > 0 ? "text-amber-600" : "text-slate-400"} />
           </div>
           <div>
-            <p className={`text-2xl font-black leading-none ${pendingApts.length > 0 ? "text-amber-700" : "text-slate-300"}`}>{pendingApts.length}</p>
-            <p className={`text-xs font-bold mt-0.5 ${pendingApts.length > 0 ? "text-amber-600" : "text-slate-400"}`}>{dict.appointments.stats.pending}</p>
+            <p className={`text-2xl font-black leading-none ${pendingCount > 0 ? "text-amber-700" : "text-slate-300"}`}>{pendingCount}</p>
+            <p className={`text-xs font-bold mt-0.5 ${pendingCount > 0 ? "text-amber-600" : "text-slate-400"}`}>{dict.appointments.stats.pending}</p>
           </div>
-          {pendingApts.length > 0 && <span className="ml-auto w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />}
+          {pendingCount > 0 && <span className="ml-auto w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />}
         </div>
         <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
@@ -394,20 +446,20 @@ export default function AppointmentsClient({
 
         {/* ── RIGHT: Pending sidebar ────────────────────────────────────────── */}
         <div className="w-full shrink-0 xl:sticky xl:top-6 xl:w-80">
-          <div className={`rounded-2xl px-4 py-3 mb-3 flex items-center gap-3 ${pendingApts.length > 0 ? "bg-amber-500" : "bg-slate-200"}`}>
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${pendingApts.length > 0 ? "bg-white/20" : "bg-white/60"}`}>
-              <Inbox size={16} className={pendingApts.length > 0 ? "text-white" : "text-slate-500"} />
+          <div className={`rounded-2xl px-4 py-3 mb-3 flex items-center gap-3 ${pendingCount > 0 ? "bg-amber-500" : "bg-slate-200"}`}>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${pendingCount > 0 ? "bg-white/20" : "bg-white/60"}`}>
+              <Inbox size={16} className={pendingCount > 0 ? "text-white" : "text-slate-500"} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-[10px] font-black uppercase tracking-wider ${pendingApts.length > 0 ? "text-amber-100" : "text-slate-400"}`}>{dict.appointments.sidebar.waiting}</p>
-              <p className={`text-sm font-black leading-tight ${pendingApts.length > 0 ? "text-white" : "text-slate-400"}`}>
-                {pendingApts.length === 0 ? dict.appointments.sidebar.allHandled : `${pendingApts.length} ${pendingApts.length === 1 ? dict.appointments.sidebar.request : dict.appointments.sidebar.requests}`}
+              <p className={`text-[10px] font-black uppercase tracking-wider ${pendingCount > 0 ? "text-amber-100" : "text-slate-400"}`}>{dict.appointments.sidebar.waiting}</p>
+              <p className={`text-sm font-black leading-tight ${pendingCount > 0 ? "text-white" : "text-slate-400"}`}>
+                {pendingCount === 0 ? dict.appointments.sidebar.allHandled : `${pendingCount} ${pendingCount === 1 ? dict.appointments.sidebar.request : dict.appointments.sidebar.requests}`}
               </p>
             </div>
-            {pendingApts.length > 0 && <span className="w-3 h-3 rounded-full bg-white/40 animate-pulse shrink-0" />}
+            {pendingCount > 0 && <span className="w-3 h-3 rounded-full bg-white/40 animate-pulse shrink-0" />}
           </div>
 
-          {pendingApts.length === 0 ? (
+          {pendingCount === 0 ? (
             <div className="bg-white border border-slate-200 rounded-2xl px-5 py-8 text-center">
               <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-3">
                 <CheckCircle size={22} className="text-green-400" />
@@ -449,6 +501,7 @@ export default function AppointmentsClient({
               ))}
             </div>
           )}
+          <AdminPagination {...remote.data.pendingPagination} onPage={setPendingPage} disabled={loadingData} />
         </div>
 
       </div>
@@ -862,6 +915,7 @@ export default function AppointmentsClient({
           </div>
         </div>
       )}
+    </div>
     </div>
     );
 }

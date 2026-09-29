@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowRight, CalendarDays, CircleGauge, Fuel, Settings2, type LucideIcon } from "lucide-react";
-import { trackClientAnalyticsEvent } from "@/lib/analytics-client";
 import type { CommonDict } from "@/lib/dictionaries";
 import { getImageUrl, getImageVariantUrl, shouldUseDirectImageDelivery } from "@/lib/image-url";
 
@@ -22,7 +21,6 @@ interface CarWithImages {
     transmission: string;
     price: number;
     horsepower: number;
-    color: string;
     description: string;
     featured: boolean;
     sold: boolean;
@@ -89,6 +87,8 @@ function ReservedBadge({ label }: { label: string }) {
 
 export default function CarCard({ car, listView = false, commonDict, locale, priorityImage = false }: CarCardProps) {
     const [hovered, setHovered] = useState(false);
+    const [loadHoverImage, setLoadHoverImage] = useState(false);
+    const [hoverImageLoaded, setHoverImageLoaded] = useState(false);
     const [imgError, setImgError] = useState(false);
     const [failedVariantUrls, setFailedVariantUrls] = useState<Set<string>>(() => new Set());
 
@@ -101,17 +101,6 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
     const img1Unoptimized = img1 ? shouldUseDirectImageDelivery(img1) : false;
     const img2Unoptimized = img2 ? shouldUseDirectImageDelivery(img2) : false;
     const href = `/${locale}/cars/${car.slug}`;
-    const handleCardClick = () => {
-        trackClientAnalyticsEvent({
-            type: "car_card_click",
-            path: href,
-            locale,
-            carId: car.id,
-            meta: {
-                layout: listView ? "list" : "grid",
-            },
-        });
-    };
     const handleImageError = (variantUrl: string | null, sourceUrl: string | null, isPrimary = false) => {
         if (variantUrl && sourceUrl && variantUrl !== sourceUrl && !failedVariantUrls.has(variantUrl)) {
             setFailedVariantUrls((current) => {
@@ -133,9 +122,8 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                 style={{
                     minHeight: "200px",
                 }}
-                onMouseEnter={() => setHovered(true)}
+                onMouseEnter={() => { setHovered(true); setLoadHoverImage(true); }}
                 onMouseLeave={() => setHovered(false)}
-                onClick={handleCardClick}
             >
                 {/* Red hover accent bar */}
                 <div
@@ -156,11 +144,12 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                             fetchPriority={priorityImage ? "high" : "auto"}
                             loading={priorityImage ? "eager" : "lazy"}
                             onError={() => handleImageError(img1Variant, img1Source, true)}
-                            className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.05]" : "scale-100"} ${hovered && img2 ? "opacity-0" : "opacity-100"}`}
+                            className={`object-cover transition-all duration-700 ${hovered ? "scale-[1.05]" : "scale-100"} ${hovered && img2 && hoverImageLoaded ? "opacity-0" : "opacity-100"}`}
                         />
                     )}
-                    {img1 && img2 && (
+                    {loadHoverImage && img1 && img2 && (
                         <Image
+                            onLoad={() => setHoverImageLoaded(true)}
                             src={img2} alt={`${car.title} – 2`} fill
                             sizes="(max-width: 768px) 100vw, 46vw"
                             quality={75}
@@ -258,9 +247,8 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
             href={href}
             prefetch={false}
             className="group flex flex-col overflow-hidden border border-[var(--theme-border)] bg-[var(--theme-surface)] transition-colors duration-200 hover:border-[#8f8a83]"
-            onMouseEnter={() => setHovered(true)}
+            onMouseEnter={() => { setHovered(true); setLoadHoverImage(true); }}
             onMouseLeave={() => setHovered(false)}
-            onClick={handleCardClick}
         >
             {/* Image */}
             <div
@@ -281,12 +269,13 @@ export default function CarCard({ car, listView = false, commonDict, locale, pri
                         fetchPriority={priorityImage ? "high" : "auto"}
                         loading={priorityImage ? "eager" : "lazy"}
                         onError={() => handleImageError(img1Variant, img1Source, true)}
-                        className={`object-cover transition-all duration-700 ${hovered && img2 ? "opacity-0" : "opacity-100"} ${hovered ? "scale-[1.04]" : "scale-100"}`}
+                        className={`object-cover transition-all duration-700 ${hovered && img2 && hoverImageLoaded ? "opacity-0" : "opacity-100"} ${hovered ? "scale-[1.04]" : "scale-100"}`}
                     />
                 )}
 
-                {img1 && img2 && (
+                {loadHoverImage && img1 && img2 && (
                     <Image
+                        onLoad={() => setHoverImageLoaded(true)}
                         src={img2}
                         alt={`${car.title} – 2`}
                         fill

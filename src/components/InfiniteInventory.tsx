@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useTransition } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import CarCard from "@/components/CarCard";
@@ -162,65 +162,73 @@ export default function InfiniteInventory({
     const [cars, setCars] = useState<CarWithImages[]>(initialCars);
     const [hasMore, setHasMore] = useState(initialHasMore);
     const [page, setPage] = useState(2);
-    const [isPending, startTransition] = useTransition();
+    const [isPending, setIsPending] = useState(false);
+    const [loadError, setLoadError] = useState(false);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const sentinelRef = useRef<HTMLDivElement>(null);
     const loadingRef = useRef(false);
+    const mountedRef = useRef(false);
 
     // Serialize searchParams to a stable string — prevents new object references
     // on every render from causing loadMore to be recreated, which was causing
     // the IntersectionObserver to fire in an infinite loop.
     const searchParamsKey = JSON.stringify(searchParams);
 
-    // Reset when filters change (triggered by stable serialized key, not array ref)
+    // The server keys this component by locale and filters, so an old request
+    // cannot append its results to a newly selected inventory.
     useEffect(() => {
-        setCars(initialCars);
-        setHasMore(initialHasMore);
-        setPage(2);
-        loadingRef.current = false;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParamsKey, initialHasMore]);
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
 
-    const loadMore = useCallback(() => {
+    const loadMore = useCallback(async () => {
         if (loadingRef.current || !hasMore) return;
         loadingRef.current = true;
-
-        const params = JSON.parse(searchParamsKey);
-        startTransition(async () => {
+        setIsPending(true);
+        setLoadError(false);
+        try {
             const result = await fetchCarsPaginated({
-                page,
-                pageSize: PAGE_SIZE,
-                locale,
-                ...params,
+                ...JSON.parse(searchParamsKey), page, pageSize: PAGE_SIZE, locale,
             });
+            if (!mountedRef.current) return;
             setCars(prev => {
                 const ids = new Set(prev.map(c => c.id));
-                const fresh = result.cars.filter(c => !ids.has(c.id));
-                return [...prev, ...fresh];
+                return [...prev, ...result.cars.filter(c => !ids.has(c.id))];
             });
             setHasMore(result.hasMore);
             setPage(p => p + 1);
+        } catch {
+            if (mountedRef.current) setLoadError(true);
+        } finally {
             loadingRef.current = false;
-        });
+            if (mountedRef.current) setIsPending(false);
+        }
     }, [hasMore, locale, page, searchParamsKey]);
 
-    // IntersectionObserver to trigger loadMore
     useEffect(() => {
         const sentinel = sentinelRef.current;
-        if (!sentinel) return;
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    loadMore();
-                }
-            },
-            { rootMargin: "200px" }
-        );
-
+        if (!sentinel || !hasMore || loadError || !("IntersectionObserver" in window)) return;
+        let visible = false;
+        let lastLoadScrollY = window.scrollY;
+        const onScroll = () => {
+            // Do not drain every page just because the sentinel remains visible
+            // on a large screen. Another automatic load requires scrolling down.
+            if (visible && window.scrollY > lastLoadScrollY && !loadingRef.current) {
+                lastLoadScrollY = window.scrollY;
+                void loadMore();
+            }
+        };
+        const observer = new IntersectionObserver(([entry]) => {
+            visible = entry.isIntersecting;
+            onScroll();
+        }, { rootMargin: "200px" });
         observer.observe(sentinel);
-        return () => observer.disconnect();
-    }, [loadMore]);
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => {
+            observer.disconnect();
+            window.removeEventListener("scroll", onScroll);
+        };
+    }, [hasMore, loadError, loadMore]);
 
     const SKELETON_COUNT = Math.min(PAGE_SIZE, initialTotal - cars.length);
 
@@ -307,7 +315,13 @@ export default function InfiniteInventory({
 
             {/* Sentinel element — triggers loadMore when visible */}
             {hasMore && (
-                <div ref={sentinelRef} className="h-16 flex items-center justify-center mt-8">
+                <div ref={sentinelRef} className="min-h-16 flex flex-col items-center justify-center gap-3 mt-8">
+                    {loadError && <p role="alert" className="text-sm theme-text-muted">{dict.loadError}</p>}
+                    {!isPending && (
+                        <button type="button" onClick={() => void loadMore()} className="brand-button-secondary min-h-11 px-6">
+                            {loadError ? dict.retry : dict.loadMore}
+                        </button>
+                    )}
                     {isPending && (
                         <div className="flex items-center gap-3 theme-text-faint text-sm font-medium">
                             <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">

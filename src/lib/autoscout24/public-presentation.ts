@@ -1,6 +1,6 @@
 import "server-only";
 
-import prisma from "@/lib/prisma";
+import { getPublicReferences } from "./public-references";
 import type { Locale } from "@/lib/i18n";
 import {
   normalizeVehicleDescription,
@@ -16,11 +16,11 @@ type PublicCarPresentationInput = {
   fuelCategory?: string | null;
   transmission: string;
   transmissionCode?: string | null;
-  color: string;
+  color?: string;
   exteriorColor?: string | null;
   exteriorColorCode?: string | null;
   manufacturerColorName?: string | null;
-  description: string;
+  description?: string;
 };
 
 function localizedName(
@@ -44,18 +44,9 @@ export async function getLocalizedReferenceLabels(
   const uniqueReferenceIds = uniqueCodes(referenceIds);
   if (uniqueReferenceIds.length === 0) return new Map<string, string>();
 
-  const references = await prisma.autoScoutReference.findMany({
-    where: {
-      referenceType,
-      referenceId: { in: uniqueReferenceIds },
-    },
-    select: {
-      referenceId: true,
-      nameNl: true,
-      nameFr: true,
-      nameEn: true,
-    },
-  });
+  const ids = new Set(uniqueReferenceIds);
+  const references = (await getPublicReferences()).filter((reference) =>
+    reference.referenceType === referenceType && ids.has(reference.referenceId));
 
   return new Map(references.flatMap((reference) => {
     const localized = localizedName(reference, locale);
@@ -69,29 +60,7 @@ export async function localizeCarsForPublic<T extends PublicCarPresentationInput
 ): Promise<T[]> {
   if (cars.length === 0) return cars;
 
-  const fuelCodes = uniqueCodes(cars.map((car) => car.fuelTypeCode));
-  const fuelCategoryCodes = uniqueCodes(cars.map((car) => car.fuelCategory));
-  const transmissionCodes = uniqueCodes(cars.map((car) => car.transmissionCode));
-  const colorCodes = uniqueCodes(cars.map((car) => car.exteriorColorCode));
-  const referenceFilters = [
-    ...(fuelCodes.length > 0 ? [{ referenceType: "FuelType", referenceId: { in: fuelCodes } }] : []),
-    ...(fuelCategoryCodes.length > 0 ? [{ referenceType: "FuelCategory", referenceId: { in: fuelCategoryCodes } }] : []),
-    ...(transmissionCodes.length > 0 ? [{ referenceType: "Transmission", referenceId: { in: transmissionCodes } }] : []),
-    ...(colorCodes.length > 0 ? [{ referenceType: "BodyColor", referenceId: { in: colorCodes } }] : []),
-  ];
-
-  const references = referenceFilters.length === 0
-    ? []
-    : await prisma.autoScoutReference.findMany({
-        where: { OR: referenceFilters },
-        select: {
-          referenceType: true,
-          referenceId: true,
-          nameNl: true,
-          nameFr: true,
-          nameEn: true,
-        },
-      });
+  const references = await getPublicReferences();
 
   const labels = new Map<string, string>();
   for (const reference of references) {
@@ -125,8 +94,8 @@ export async function localizeCarsForPublic<T extends PublicCarPresentationInput
       ...car,
       fuel_type: translatedFuel,
       transmission: translatedTransmission,
-      color: translatedColor,
-      description: normalizeVehicleDescription(car.description),
+      ...(car.color !== undefined ? { color: translatedColor } : {}),
+      ...(car.description !== undefined ? { description: normalizeVehicleDescription(car.description) } : {}),
     };
   });
 }

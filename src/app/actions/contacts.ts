@@ -11,6 +11,7 @@ export async function markContactRead(id: string, read: boolean) {
     const dict = getAdminDictionary(await getAdminLocale());
     try {
         await prisma.contact.update({
+            select: { id: true },
             where: { id },
             data: { read },
         });
@@ -26,7 +27,7 @@ export async function deleteContact(id: string) {
     await requireAdmin();
     const dict = getAdminDictionary(await getAdminLocale());
     try {
-        await prisma.contact.delete({ where: { id } });
+        await prisma.contact.delete({ where: { id }, select: { id: true } });
         revalidatePath("/admin/contacts");
         return { success: true };
     } catch (error) {

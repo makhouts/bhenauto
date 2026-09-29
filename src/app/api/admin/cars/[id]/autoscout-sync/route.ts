@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { getCarSyncStatuses } from "@/lib/autoscout24/sync-status";
 import { isValidSession } from "@/lib/session";
 
 export async function GET(
@@ -12,55 +12,13 @@ export async function GET(
     }
 
     const { id } = await props.params;
-    const [car, latestJob, latestLog] = await Promise.all([
-        prisma.car.findUnique({
-            where: { id },
-            select: {
-                id: true,
-                sold: true,
-                reserved: true,
-                sourceOfTruth: true,
-                autoscoutListingId: true,
-                autoscoutSyncStatus: true,
-                autoscoutSyncError: true,
-                autoscoutLastPushedAt: true,
-                publicationStatus: true,
-            },
-        }),
-        prisma.autoScoutSyncJob.findFirst({
-            where: { carId: id },
-            orderBy: { updatedAt: "desc" },
-            select: {
-                id: true,
-                action: true,
-                status: true,
-                attempts: true,
-                maxAttempts: true,
-                nextRunAt: true,
-                lastError: true,
-                finishedAt: true,
-            },
-        }),
-        prisma.autoScoutSyncLog.findFirst({
-            where: { carId: id },
-            orderBy: { createdAt: "desc" },
-            select: {
-                status: true,
-                message: true,
-                createdAt: true,
-            },
-        }),
-    ]);
+    const [car] = await getCarSyncStatuses([id]);
 
     if (!car) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json({
-        ...car,
-        autoscoutLatestJob: latestJob,
-        autoscoutLatestLog: latestLog,
-    }, {
+    return NextResponse.json(car, {
         headers: {
             "Cache-Control": "no-store",
         },

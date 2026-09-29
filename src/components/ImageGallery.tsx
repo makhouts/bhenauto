@@ -25,10 +25,8 @@ const MAIN_GALLERY_HOVER_TRANSITION = { duration: 0.46, ease: [0.22, 1, 0.36, 1]
 const LIGHTBOX_GALLERY_TRANSITION = { duration: 0.28, ease: [0.22, 1, 0.36, 1] as const };
 const THUMBNAIL_IMAGE_QUALITY = 50;
 const PRELOAD_BEHIND = 1;
-const PRELOAD_AHEAD = 2;
-const LIGHTBOX_PRELOAD_AHEAD = 4;
-const INITIAL_GALLERY_WARMUP_COUNT = 8;
-const IDLE_WARMUP_TIMEOUT_MS = 250;
+const PRELOAD_AHEAD = 1;
+const LIGHTBOX_PRELOAD_AHEAD = 1;
 type ImageFetchPriority = "high" | "low" | "auto";
 type GalleryImage = {
     id: string;
@@ -37,11 +35,6 @@ type GalleryImage = {
     galleryUrl: string;
     lightboxUrl: string;
 };
-type IdleWindow = Window & typeof globalThis & {
-    requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-    cancelIdleCallback?: (handle: number) => void;
-};
-
 function getGalleryPreloadKey(image: GalleryImage, src: string) {
     return `gallery:${image.id}:${src}`;
 }
@@ -87,8 +80,6 @@ export default function ImageGallery({ images, title, closeLabel, zoomInLabel, z
         [images]
     );
 
-    useEffect(() => setPortalMounted(true), []);
-
     const getVariantFailureKey = useCallback((image: GalleryImage, variant: "thumb" | "gallery" | "lightbox") => `${variant}:${image.id}`, []);
     const getThumbSrc = useCallback((image: GalleryImage) => (
         failedVariantKeys.has(getVariantFailureKey(image, "thumb")) ? image.url : image.thumbUrl
@@ -129,12 +120,6 @@ export default function ImageGallery({ images, title, closeLabel, zoomInLabel, z
                 candidate < resolvedImages.length &&
                 array.indexOf(candidate) === position
             )
-    ), [resolvedImages.length]);
-    const initialGalleryWarmupIndexes = useMemo(() => (
-        Array.from(
-            { length: Math.min(resolvedImages.length, INITIAL_GALLERY_WARMUP_COUNT) },
-            (_, index) => index
-        )
     ), [resolvedImages.length]);
     const preloadFullSizeAt = useCallback((index: number, fetchPriority: ImageFetchPriority = "low") => {
         const image = resolvedImages[index];
@@ -229,6 +214,7 @@ export default function ImageGallery({ images, title, closeLabel, zoomInLabel, z
         goTo(targetIndex);
     };
     const openLightboxPreloaded = () => {
+        setPortalMounted(true);
         previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         preloadSelectionWindow(currentIndex, true);
         openLightbox();
@@ -255,23 +241,6 @@ export default function ImageGallery({ images, title, closeLabel, zoomInLabel, z
             preloadFullSizeAt(index);
         }
     }, [adjacentPreloadIndexes, preloadFullSizeAt]);
-
-    useEffect(() => {
-        if (initialGalleryWarmupIndexes.length === 0) return;
-
-        const idleWindow = window as IdleWindow;
-        const warmGallery = () => {
-            initialGalleryWarmupIndexes.forEach((index) => preloadFullSizeAt(index));
-        };
-
-        if (idleWindow.requestIdleCallback) {
-            const handle = idleWindow.requestIdleCallback(warmGallery, { timeout: IDLE_WARMUP_TIMEOUT_MS });
-            return () => idleWindow.cancelIdleCallback?.(handle);
-        }
-
-        const timeoutHandle = window.setTimeout(warmGallery, IDLE_WARMUP_TIMEOUT_MS);
-        return () => window.clearTimeout(timeoutHandle);
-    }, [initialGalleryWarmupIndexes, preloadFullSizeAt]);
 
     useEffect(() => {
         if (!lightboxOpen) return;
@@ -459,7 +428,7 @@ export default function ImageGallery({ images, title, closeLabel, zoomInLabel, z
                                         sizes="20vw"
                                         quality={THUMBNAIL_IMAGE_QUALITY}
                                         unoptimized={shouldUseDirectImageDelivery(getThumbSrc(img))}
-                                        loading="eager"
+                                        loading="lazy"
                                         fetchPriority="low"
                                         decoding="async"
                                         onError={() => markVariantFailed(img, "thumb")}
@@ -507,7 +476,7 @@ export default function ImageGallery({ images, title, closeLabel, zoomInLabel, z
                                     sizes="96px"
                                     quality={THUMBNAIL_IMAGE_QUALITY}
                                     unoptimized={shouldUseDirectImageDelivery(getThumbSrc(img))}
-                                    loading="eager"
+                                    loading="lazy"
                                     fetchPriority="low"
                                     decoding="async"
                                     onError={() => markVariantFailed(img, "thumb")}
@@ -668,7 +637,7 @@ export default function ImageGallery({ images, title, closeLabel, zoomInLabel, z
                                                 sizes="80px"
                                                 quality={THUMBNAIL_IMAGE_QUALITY}
                                                 unoptimized={shouldUseDirectImageDelivery(getThumbSrc(img))}
-                                                loading="eager"
+                                                loading="lazy"
                                                 fetchPriority="low"
                                                 decoding="async"
                                                 onError={() => markVariantFailed(img, "thumb")}

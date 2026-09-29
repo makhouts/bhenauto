@@ -276,13 +276,15 @@ const ALL_SLOTS = generateDaySlots();
 
 export function useAppointmentsReducer(
     init: Appointment[],
-    initBlocks: BlockedDateEntry[]
+    initBlocks: BlockedDateEntry[],
+    initialDay: Date,
+    onDataChange: () => void,
 ) {
     const { dict } = useAdminI18n();
     const [state, dispatch] = useReducer(reducer, {
         appointments: init,
         blocks: initBlocks,
-        weekAnchor: new Date(),
+        weekAnchor: initialDay,
         popoverId: null,
         slotPopover: null,
         createOpen: false,
@@ -427,17 +429,19 @@ export function useAppointmentsReducer(
 
         startConfirm(async () => {
             const r = await confirmAppointment(capturedId, capturedDuration);
+            onDataChange();
             if ("error" in r) { toast.error(r.error); return; }
             dispatch({ type: "UPDATE_APPOINTMENT", id: capturedId, updates: { status: "confirmed", durationHours: capturedDuration } });
             dispatch({ type: "CLOSE_CONFIRM" });
             toast.success(tpl(dict.appointments.toasts.confirmed, { duration: capturedDuration > 1 ? ` · ${capturedDuration}u` : "" }));
         });
-    }, [dict, state.confirmModalId, state.confirmDuration]);
+    }, [dict, state.confirmModalId, state.confirmDuration, onDataChange]);
 
     const handleCancel = useCallback((id: string) => startT(async () => {
         // Capture appointment info before deletion for block cleanup
         const apt = state.appointments.find(a => a.id === id);
         const r = await cancelAppointment(id);
+        onDataChange();
         if ("error" in r) toast.error(r.error);
         else {
             dispatch({ type: "REMOVE_APPOINTMENT", id });
@@ -453,7 +457,7 @@ export function useAppointmentsReducer(
             }
             toast.success(dict.appointments.toasts.deleted);
         }
-    }), [dict, state.appointments, state.blocks]);
+    }), [dict, state.appointments, state.blocks, onDataChange]);
 
     const openCreate = useCallback((dateStr = "", slot = "") => {
         dispatch({ type: "OPEN_CREATE", dateStr, slot });
@@ -504,6 +508,7 @@ export function useAppointmentsReducer(
                 sendConfirmation: state.createForm.sendConfirmation,
                 emailLocale: state.createForm.emailLocale,
             });
+            onDataChange();
             if ("error" in r) { dispatch({ type: "SET_CREATE_ERROR", error: r.error }); return; }
             const [y, m, d] = state.createForm.dateStr.split("-").map(Number);
             const newDate = new Date(y, m - 1, d);
@@ -539,7 +544,7 @@ export function useAppointmentsReducer(
             dispatch({ type: "CLOSE_CREATE" });
             toast.success(tpl(dict.appointments.toasts.created, { duration: dur > 1 ? ` · ${dur}u` : "" }));
         });
-    }, [dict, state.createForm, validate]);
+    }, [dict, state.createForm, validate, onDataChange]);
 
     const handleEditSubmit = useCallback((ev: React.FormEvent) => {
         ev.preventDefault();
@@ -561,6 +566,7 @@ export function useAppointmentsReducer(
                 sendConfirmation: state.editForm.sendConfirmation,
                 emailLocale: state.editForm.emailLocale,
             });
+            onDataChange();
             if ("error" in r) { dispatch({ type: "SET_EDIT_ERROR", error: r.error }); return; }
             const [y, m, d] = state.editForm.dateStr.split("-").map(Number);
             dispatch({
@@ -586,7 +592,7 @@ export function useAppointmentsReducer(
             dispatch({ type: "CLOSE_EDIT" });
             toast.success(dict.appointments.toasts.updated);
         });
-    }, [dict, state.editId, state.editForm, validate]);
+    }, [dict, state.editId, state.editForm, validate, onDataChange]);
 
     const handleBlockSubmit = useCallback((ev: React.FormEvent) => {
         ev.preventDefault();
@@ -599,6 +605,7 @@ export function useAppointmentsReducer(
                 timeSlot: state.blockForm.slot || null,
                 reason: state.blockForm.reason,
             });
+            onDataChange();
             if ("error" in r) { dispatch({ type: "SET_BLOCK_ERROR", error: r.error }); return; }
             const [y, m, d] = state.blockForm.dateStr.split("-").map(Number);
             dispatch({
@@ -611,30 +618,32 @@ export function useAppointmentsReducer(
             dispatch({ type: "CLOSE_BLOCK" });
             toast.success(state.blockForm.slot ? dict.appointments.toasts.slotBlocked : dict.appointments.toasts.dayBlocked);
         });
-    }, [dict, state.blockForm]);
+    }, [dict, state.blockForm, onDataChange]);
 
     const handleUnblock = useCallback((id: string) => startT(async () => {
         const r = await unblockSlot(id);
+        onDataChange();
         if ("error" in r) toast.error(r.error);
         else {
             dispatch({ type: "REMOVE_BLOCK", id });
             toast.success(dict.appointments.toasts.blockRemoved);
         }
-    }), [dict]);
+    }), [dict, onDataChange]);
 
     const handleResizeDrag = useCallback((aptId: string, newDuration: number) => {
         // Optimistic update
         dispatch({ type: "UPDATE_APPOINTMENT", id: aptId, updates: { durationHours: newDuration } });
         startT(async () => {
             const r = await updateAppointmentDuration(aptId, newDuration);
+            onDataChange();
             if ("error" in r) {
                 toast.error(r.error);
-                // Revert — reload from DB would require a full refresh, so just notify
+                // The window refresh above also rolls back an optimistic resize.
             } else {
                 toast.success(tpl(dict.appointments.toasts.durationUpdated, { hours: newDuration }));
             }
         });
-    }, [dict]);
+    }, [dict, onDataChange]);
 
     return {
         state,

@@ -1,5 +1,6 @@
 import { addWeeks, startOfWeek, endOfWeek } from "date-fns";
 import prisma from "@/lib/prisma";
+import { withCardImages } from "@/lib/cars/card-data";
 
 export async function getWorkshopBoardData() {
     const now = new Date();
@@ -25,15 +26,7 @@ export async function getWorkshopBoardData() {
                 durationHours: true,
                 internalCarLabel: true,
                 internalKeyNumber: true,
-                internalCar: {
-                    select: {
-                        images: {
-                            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-                            take: 1,
-                            select: { url: true },
-                        },
-                    },
-                },
+                internalCarId: true,
             },
         }),
         prisma.blockedDate.findMany({
@@ -48,8 +41,16 @@ export async function getWorkshopBoardData() {
         }),
     ]);
 
+    const carIds = [...new Set(appointments.flatMap((appointment) =>
+        appointment.internalCarId ? [appointment.internalCarId] : []))];
+    const cars = await withCardImages(carIds.map((id) => ({ id })), 1);
+    const imagesByCar = new Map(cars.map((car) => [car.id, car.images]));
+
     return {
-        appointments,
+        appointments: appointments.map(({ internalCarId, ...appointment }) => ({
+            ...appointment,
+            internalCar: internalCarId ? { images: imagesByCar.get(internalCarId) ?? [] } : null,
+        })),
         blocks,
         nowIso: now.toISOString(),
     };

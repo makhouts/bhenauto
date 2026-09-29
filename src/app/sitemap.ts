@@ -1,7 +1,10 @@
 import { MetadataRoute } from "next";
-import prisma from "@/lib/prisma";
+import { getSitemapCars } from "@/lib/cars/public-data";
+
 import { locales } from "@/lib/i18n";
 import { localizedAlternates, localizedUrl } from "@/lib/site-seo";
+
+export const revalidate = 300;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const entries: MetadataRoute.Sitemap = [];
@@ -27,11 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     // Dynamic car pages — one per locale per car
-    const cars = await prisma.car.findMany({
-        where: { sold: false },
-        select: { slug: true, updatedAt: true },
-        orderBy: { updatedAt: "desc" },
-    });
+    const cars = (await getSitemapCars()).filter((car) => !car.sold);
 
     for (const car of cars) {
         for (const locale of locales) {
@@ -39,7 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
             entries.push({
                 url: localizedUrl(locale, path),
-                lastModified: car.updatedAt,
+                lastModified: new Date(car.updatedAt),
                 changeFrequency: "weekly" as const,
                 priority: 0.8,
                 alternates: { languages: localizedAlternates(path) },

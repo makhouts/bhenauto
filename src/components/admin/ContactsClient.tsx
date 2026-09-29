@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
+import Form from "next/form";
+import AdminPagination from "./AdminPagination";
 import { Mail, Phone, Calendar, CheckCheck, RotateCcw, Trash2, Car, Loader2, Search, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { markContactRead, deleteContact } from "@/app/actions/contacts";
@@ -27,38 +30,27 @@ type DeleteTarget = {
     name: string;
 } | null;
 
-export default function ContactsClient({ contacts }: { contacts: AdminContact[] }) {
+export default function ContactsClient({ contacts, activeTab, query, counts, pagination }: {
+    contacts: AdminContact[]; activeTab: Tab; query: string;
+    counts: { nieuw: number; behandeld: number };
+    pagination: { page: number; pages: number; total: number };
+}) {
     const { locale, dict } = useAdminI18n();
     const dateLocale = getAdminDateFnsLocale(locale);
-    const [activeTab, setActiveTab] = useState<Tab>("nieuw");
-    const [query, setQuery] = useState("");
     const [isPending, startTransition] = useTransition();
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
-    const nieuw = contacts.filter((c) => !c.read);
-    const behandeld = contacts.filter((c) => c.read);
-
-    const scoped =
-        activeTab === "nieuw" ? nieuw :
-        activeTab === "behandeld" ? behandeld :
-        contacts;
-
-    const visible = scoped.filter((contact) => {
-        if (!query.trim()) return true;
-        const lower = query.toLowerCase();
-        return [
-            contact.name,
-            contact.email,
-            contact.phone,
-            contact.message,
-            contact.car_reference ?? "",
-        ].some((value) => value.toLowerCase().includes(lower));
-    });
+    const visible = contacts;
+    const listHref = (page: number, tab: Tab = activeTab) => {
+        const params = new URLSearchParams({ tab, page: String(page) });
+        if (query) params.set("q", query);
+        return `/admin/contacts?${params}`;
+    };
 
     const tabs: { id: Tab; label: string; count: number; dot?: boolean }[] = [
-        { id: "nieuw", label: dict.contacts.tabs.new, count: nieuw.length, dot: nieuw.length > 0 },
-        { id: "behandeld", label: dict.contacts.tabs.handled, count: behandeld.length },
-        { id: "alle", label: dict.contacts.tabs.all, count: contacts.length },
+        { id: "nieuw", label: dict.contacts.tabs.new, count: counts.nieuw, dot: counts.nieuw > 0 },
+        { id: "behandeld", label: dict.contacts.tabs.handled, count: counts.behandeld },
+        { id: "alle", label: dict.contacts.tabs.all, count: counts.nieuw + counts.behandeld },
     ];
 
     const handleMarkRead = (id: string, read: boolean) => {
@@ -109,9 +101,9 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
                     <div className="flex min-w-0 flex-1 flex-col gap-3">
                         <div className="flex flex-wrap gap-2">
                             {tabs.map((tab) => (
-                                <button
+                                <Link
                                     key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
+                                    href={listHref(1, tab.id)} prefetch={false} scroll={false}
                                     className={`relative flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-bold transition-all ${
                                         activeTab === tab.id
                                             ? "border-slate-900 bg-slate-900 text-white shadow-sm"
@@ -129,29 +121,32 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
                                     }`}>
                                         {tab.count}
                                     </span>
-                                </button>
+                                </Link>
                             ))}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <AdminBadge tone={nieuw.length > 0 ? "red" : "neutral"}>
-                                {tpl(nieuw.length === 1 ? dict.contactsPage.badgeSingular : dict.contactsPage.badgePlural, { count: nieuw.length })}
+                            <AdminBadge tone={counts.nieuw > 0 ? "red" : "neutral"}>
+                                {tpl(counts.nieuw === 1 ? dict.contactsPage.badgeSingular : dict.contactsPage.badgePlural, { count: counts.nieuw })}
                             </AdminBadge>
                             <AdminBadge tone="green">
-                                {behandeld.length} {dict.contacts.tabs.handled.toLowerCase()}
+                                {counts.behandeld} {dict.contacts.tabs.handled.toLowerCase()}
                             </AdminBadge>
                         </div>
                     </div>
 
-                    <AdminInputWrap className="w-full md:max-w-sm">
+                    <Form action="/admin/contacts" prefetch={false} className="w-full md:max-w-sm">
+                    <input type="hidden" name="tab" value={activeTab} />
+                    <AdminInputWrap>
                         <Search size={18} className="shrink-0 text-slate-400" />
                         <input
                             type="text"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
+                            name="q" key={query} defaultValue={query} maxLength={120}
                             placeholder={dict.contacts.searchPlaceholder}
                             className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
                         />
+                        <button type="submit" className="text-sm font-bold text-slate-700">{locale === "fr" ? "Chercher" : "Zoeken"}</button>
                     </AdminInputWrap>
+                    </Form>
                 </AdminToolbar>
             </div>
 
@@ -255,6 +250,8 @@ export default function ContactsClient({ contacts }: { contacts: AdminContact[] 
                     ))}
                 </div>
             )}
+
+            <AdminPagination {...pagination} href={listHref} />
 
             {deleteTarget && (
                 <div

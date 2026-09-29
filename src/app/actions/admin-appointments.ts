@@ -491,14 +491,6 @@ export type BlockedDateEntry = {
   reason: string | null;
 };
 
-export async function getBlocks(): Promise<BlockedDateEntry[]> {
-  await requireAdmin();
-  return prisma.blockedDate.findMany({
-    orderBy: [{ date: "asc" }, { timeSlot: "asc" }],
-    select: { id: true, date: true, timeSlot: true, reason: true },
-  });
-}
-
 /** Block an entire day (timeSlot = null) or a specific slot */
 export async function blockSlot(input: {
   dateStr: string;   // "YYYY-MM-DD"

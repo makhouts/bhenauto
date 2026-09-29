@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import prisma from "@/lib/prisma";
+import { getSitemapCars } from "@/lib/cars/public-data";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, type Locale } from "@/lib/i18n";
 import { MapPin, Car, Wrench, Phone, Globe, ChevronRight } from "lucide-react";
 import { buildPageSocialMetadata, localizedAlternates, localizedUrl } from "@/lib/site-seo";
 
 // Car list changes when admin manages inventory
-export const revalidate = 60;
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,
@@ -54,10 +54,7 @@ export default async function SitemapPage({
 
   type CarEntry = { slug: string; title: string; brand: string; model: string; year: number | null; sold: boolean };
 
-  const cars: CarEntry[] = await prisma.car.findMany({
-    select: { slug: true, title: true, brand: true, model: true, year: true, sold: true },
-    orderBy: [{ brand: "asc" }, { model: "asc" }],
-  });
+  const cars: CarEntry[] = await getSitemapCars();
 
   const staticPages = [
     { href: `/${locale}`, label: dict.nav.home, icon: "home" },
@@ -179,6 +176,7 @@ export default async function SitemapPage({
                     <Link
                       key={car.slug}
                       href={`/${locale}/cars/${car.slug}`}
+                      prefetch={false}
                       className="group flex items-center gap-2.5 px-4 py-2.5 rounded-lg transition-all duration-200 hover:bg-[rgba(217,28,28,0.06)]"
                       style={{ border: "1px solid transparent" }}
                     >

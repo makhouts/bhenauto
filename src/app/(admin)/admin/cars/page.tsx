@@ -1,27 +1,12 @@
 import prisma from "@/lib/prisma";
 import type { Metadata } from "next";
-import { startOfDay, subDays } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import CarsTableClient from "@/components/admin/CarsTableClient";
 import AutoScoutImportButton from "@/components/admin/AutoScoutImportButton";
 import { requireAdmin } from "@/lib/auth-guard";
 import { getAdminDictionary } from "@/lib/admin-i18n";
 import { getAdminLocale } from "@/lib/admin-i18n.server";
 import { AdminPage, AdminPageHeader, AdminSurface } from "@/components/admin/admin-ui";
-import { APPOINTMENT_CONFIG } from "@/lib/appointmentConfig";
-
-type UniqueViewRow = {
-    carId: string;
-    uniqueVisitors: bigint | number | string;
-};
-
-function getLocalDayStart(now = new Date()) {
-    return fromZonedTime(startOfDay(toZonedTime(now, APPOINTMENT_CONFIG.timezone)), APPOINTMENT_CONFIG.timezone);
-}
-
-function toCount(value: bigint | number | string) {
-    return typeof value === "bigint" ? Number(value) : Number(value || 0);
-}
+import { withCardImages } from "@/lib/cars/card-data";
 
 export async function generateMetadata(): Promise<Metadata> {
     const dict = getAdminDictionary(await getAdminLocale());
@@ -33,51 +18,15 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AdminCarsPage() {
     await requireAdmin();
     const dict = getAdminDictionary(await getAdminLocale());
-    const last30dStart = subDays(getLocalDayStart(), 29);
-
-    const [cars, allTimeUniqueRows, last30dUniqueRows] = await Promise.all([
-        prisma.car.findMany({
-            orderBy: { createdAt: "desc" },
-            include: {
-                images: {
-                    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-                    take: 1,
-                }
-            }
-        }),
-        prisma.$queryRaw<UniqueViewRow[]>`
-            SELECT
-                "carId",
-                COUNT(DISTINCT "visitorHash") AS "uniqueVisitors"
-            FROM "AnalyticsEvent"
-            WHERE "type" = 'car_detail_view'
-              AND "carId" IS NOT NULL
-            GROUP BY "carId"
-        `,
-        prisma.$queryRaw<UniqueViewRow[]>`
-            SELECT
-                "carId",
-                COUNT(DISTINCT "visitorHash") AS "uniqueVisitors"
-            FROM "AnalyticsEvent"
-            WHERE "type" = 'car_detail_view'
-              AND "carId" IS NOT NULL
-              AND "createdAt" >= ${last30dStart}
-            GROUP BY "carId"
-        `,
-    ]);
-
-    const viewsByCarId = new Map(
-        allTimeUniqueRows.map((row) => [row.carId, toCount(row.uniqueVisitors)])
-    );
-    const viewsLast30dByCarId = new Map(
-        last30dUniqueRows.map((row) => [row.carId, toCount(row.uniqueVisitors)])
-    );
-
-    const carsWithViews = cars.map((car) => ({
-        ...car,
-        detailViewsCount: viewsByCarId.get(car.id) ?? 0,
-        detailViewsLast30dCount: viewsLast30dByCarId.get(car.id) ?? 0,
-    }));
+    const cars = await withCardImages(await prisma.car.findMany({
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+        select: {
+            id: true, slug: true, createdAt: true, brand: true, model: true,
+            year: true, mileage: true, price: true, fuel_type: true, color: true,
+            featured: true, sold: true, reserved: true, sourceOfTruth: true,
+            autoscoutListingId: true, autoscoutSyncStatus: true, autoscoutSyncError: true,
+        },
+    }), 1);
 
     return (
         <AdminPage>
@@ -96,7 +45,7 @@ export default async function AdminCarsPage() {
             />
 
             <AdminSurface padded={false}>
-                <CarsTableClient cars={carsWithViews} />
+                <CarsTableClient cars={cars} />
             </AdminSurface>
         </AdminPage>
     );

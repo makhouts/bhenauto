@@ -1,6 +1,8 @@
 import CarForm from "@/components/admin/CarForm";
 import type { Metadata } from "next";
 import prisma from "@/lib/prisma";
+import { withCardImages } from "@/lib/cars/card-data";
+import { requireAdmin } from "@/lib/auth-guard";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -23,12 +25,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function EditCarPage(
     props: { params: Promise<{ id: string }> }
 ) {
+    await requireAdmin();
     const locale = await getAdminLocale();
     const dict = getAdminDictionary(locale);
     const params = await props.params;
     const car = await prisma.car.findUnique({
         where: { id: params.id },
-        include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
+        select: { id: true, sourceOfTruth: true, year: true, brand: true, model: true,
+            title: true, price: true, mileage: true, sold: true, reserved: true, autoscoutUrl: true },
     });
 
     if (!car) {
@@ -36,7 +40,8 @@ export default async function EditCarPage(
     }
 
     const autoScoutManaged = isAutoScoutSourceOfTruth(car.sourceOfTruth);
-    const primaryImage = car.images[0]?.url ?? null;
+    const [preview] = await withCardImages([car], 1);
+    const primaryImage = preview.images[0]?.url ?? null;
     const previewImageUrl = primaryImage ? getThumbnailImageUrl(primaryImage) : null;
     const formattedPrice = new Intl.NumberFormat(locale === "fr" ? "fr-BE" : "nl-BE", {
         style: "currency",
@@ -48,12 +53,6 @@ export default async function EditCarPage(
         : car.reserved
             ? dict.carRow.statuses.reserved
             : dict.carRow.statuses.available;
-    const [autoscoutOptions, translatedFeatures] = autoScoutManaged
-        ? [null, car.features]
-        : await Promise.all([
-            getAutoScoutFormOptions(locale),
-            getTranslatedEquipmentOptions(car.equipmentCodes, locale, car.features),
-        ]);
 
     return (
         <AdminPage>
@@ -162,8 +161,39 @@ export default async function EditCarPage(
                     </div>
                 </AdminSurface>
             ) : (
-                <CarForm initialData={{ ...car, features: translatedFeatures }} autoscoutOptions={autoscoutOptions!} />
+                <EditableCarForm id={car.id} locale={locale} />
             )}
         </AdminPage>
     );
+}
+
+// Imported cars never enter this branch or load form fields/import payloads.
+async function EditableCarForm({ id, locale }: { id: string; locale: Awaited<ReturnType<typeof getAdminLocale>> }) {
+    const [car, autoscoutOptions] = await Promise.all([
+        prisma.car.findFirst({
+            where: { id, sourceOfTruth: { not: "autoscout24" } },
+            select: {
+                id: true, slug: true, title: true, brand: true,
+                model: true, year: true, mileage: true, price: true,
+                horsepower: true, fuel_type: true, transmission: true, color: true,
+                description: true, featured: true, sold: true, carpass_url: true,
+                features: true, equipmentCodes: true, makeCode: true, modelCode: true,
+                offerTypeCode: true, availabilityTypeCode: true, vin: true, referenceNumber: true,
+                crossReferenceId: true, licencePlate: true, version: true, bodyTypeCode: true,
+                vehicleTypeCode: true, fuelTypeCode: true, fuelCategory: true, additionalFuelTypeCodes: true,
+                isPluginHybrid: true, transmissionCode: true, drivetrainCode: true, powerKw: true,
+                engineSize: true, cylinderCount: true, firstRegistrationRaw: true, constructionYear: true,
+                doors: true, seats: true, exteriorColorCode: true, manufacturerColorName: true,
+                interiorColorCode: true, upholsteryCode: true, emissionClassCode: true, co2Emissions: true,
+                consumptionCombined: true, priceCurrency: true, netPrice: true, vatRate: true,
+                vatDeductible: true, priceNegotiable: true, warrantyMonths: true, hasWarranty: true,
+                autoscoutSyncStatus: true, autoscoutSyncError: true,
+                images: { select: { id: true, url: true, sortOrder: true }, orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }] },
+            },
+        }),
+        getAutoScoutFormOptions(locale),
+    ]);
+    if (!car) notFound();
+    const features = await getTranslatedEquipmentOptions(car.equipmentCodes, locale, car.features);
+    return <CarForm initialData={{ ...car, features }} autoscoutOptions={autoscoutOptions} />;
 }

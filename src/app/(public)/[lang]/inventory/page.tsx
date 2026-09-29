@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -7,6 +8,7 @@ import InfiniteInventory from "@/components/InfiniteInventory";
 import CarCardSkeleton from "@/components/CarCardSkeleton";
 import { fetchCarsPaginated } from "@/app/actions/fetchCars";
 import prisma from "@/lib/prisma";
+import { INVENTORY_CACHE_OPTIONS } from "@/lib/cars/cache-policy";
 import { getDictionary } from "@/lib/dictionaries";
 import { isValidLocale, type Locale } from "@/lib/i18n";
 import { translateFuelLabel, translateTransmissionLabel } from "@/lib/autoscout24/presentation-format";
@@ -18,11 +20,11 @@ const PAGE_SIZE = 9;
 const getInventoryReferenceData = unstable_cache(
   async () => {
     const [availableBrands, fuelCategoryRows, fuelTypeRows, transmissionRows] = await Promise.all([
-      prisma.car.findMany({ select: { brand: true }, distinct: ["brand"] })
+      prisma.car.groupBy({ by: ["brand"] })
         .then(rows => rows.map(r => r.brand).filter(Boolean).sort() as string[]),
-      prisma.car.findMany({ select: { fuelCategory: true }, distinct: ["fuelCategory"] }),
-      prisma.car.findMany({ select: { fuel_type: true }, distinct: ["fuel_type"] }),
-      prisma.car.findMany({ select: { transmission: true }, distinct: ["transmission"] }),
+      prisma.car.groupBy({ by: ["fuelCategory"] }),
+      prisma.car.groupBy({ by: ["fuel_type"] }),
+      prisma.car.groupBy({ by: ["transmission"] }),
     ]);
 
     return {
@@ -33,7 +35,7 @@ const getInventoryReferenceData = unstable_cache(
     };
   },
   ["inventory-reference-data"],
-  { revalidate: 3600 }
+  INVENTORY_CACHE_OPTIONS
 );
 
 type FilterOption = {
@@ -49,8 +51,8 @@ function sortFilterOptions(options: FilterOption[]) {
   return options.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }));
 }
 
-// ISR: rebuild at most every 60 seconds; admin actions call revalidatePath to bust sooner
-export const revalidate = 60;
+// Search-param pages are dynamic; the actual database reads are cached separately.
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,
@@ -95,13 +97,14 @@ export default async function InventoryPage(props: {
   const dict = await getDictionary(locale);
   const inv = dict.inventory;
 
-  const query = searchParams.query as string | undefined;
+  const firstParam = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
+  const query = firstParam(searchParams.query);
   const brand = searchParams.brand as string | string[] | undefined;
-  const sort = searchParams.sort as string | undefined;
-  const minPrice = searchParams.minPrice as string | undefined;
-  const maxPrice = searchParams.maxPrice as string | undefined;
-  const minMileage = searchParams.minMileage as string | undefined;
-  const maxMileage = searchParams.maxMileage as string | undefined;
+  const sort = firstParam(searchParams.sort);
+  const minPrice = firstParam(searchParams.minPrice);
+  const maxPrice = firstParam(searchParams.maxPrice);
+  const minMileage = firstParam(searchParams.minMileage);
+  const maxMileage = firstParam(searchParams.maxMileage);
   const fuel = searchParams.fuel as string | string[] | undefined;
   const transmission = searchParams.transmission as string | string[] | undefined;
 
@@ -132,6 +135,11 @@ export default async function InventoryPage(props: {
   })));
 
   const filterParams = { brand, query, sort, minPrice, maxPrice, minMileage, maxMileage, fuel, transmission };
+  // A router refresh with changed data must reset the client list as well as
+  // filter/locale changes. Avoid sending a duplicate serialized page as its key.
+  const inventoryKey = createHash("sha256")
+    .update(JSON.stringify([locale, filterParams, initialCars, total]))
+    .digest("hex");
 
   const renderPersonalRequestBlock = (className: string) => (
     <div className={`group relative flex-col justify-center overflow-hidden border-t-2 border-t-[#d91c1c] bg-[#111116] p-8 text-white ${className}`}>
@@ -202,6 +210,7 @@ export default async function InventoryPage(props: {
             }
           >
             <InfiniteInventory
+                key={inventoryKey}
               initialCars={initialCars}
               initialHasMore={initialHasMore}
               initialTotal={total}

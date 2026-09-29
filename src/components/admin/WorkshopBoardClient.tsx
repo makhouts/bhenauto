@@ -26,6 +26,7 @@ import {
 import { APPOINTMENT_CONFIG } from "@/lib/appointmentConfig";
 import { getAdminDateFnsLocale, getAdminServiceLabel, tpl } from "@/lib/admin-i18n";
 import { getThumbnailImageUrl } from "@/lib/image-url";
+import { startVisiblePolling } from "@/lib/visible-polling";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
 
 type WorkshopAppointment = {
@@ -334,19 +335,20 @@ export default function WorkshopBoardClient({
 
     useEffect(() => {
         const clockInterval = window.setInterval(() => {
-            setNow(new Date());
+            if (!document.hidden) setNow(new Date());
         }, 1_000);
 
-        const refreshInterval = window.setInterval(() => {
+        const poller = startVisiblePolling(async () => {
             setNow(new Date());
             startTransition(() => {
                 router.refresh();
             });
+            return 60_000;
         }, 60_000);
 
         return () => {
             window.clearInterval(clockInterval);
-            window.clearInterval(refreshInterval);
+            poller.stop();
         };
     }, [router, startTransition]);
 

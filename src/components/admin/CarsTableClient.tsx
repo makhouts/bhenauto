@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, CarFront, CheckCircle2, Search, ShieldAlert, Star } from "lucide-react";
-import CarRow, { getAutoScoutSyncState, type AdminCarRow } from "@/components/admin/CarRow";
+import CarRow, { getAutoScoutSyncState, isAutoScoutPending, type AdminCarRow } from "@/components/admin/CarRow";
 import { useAdminI18n } from "@/components/admin/AdminI18nProvider";
+import { startVisiblePolling } from "@/lib/visible-polling";
 import { tpl } from "@/lib/admin-i18n";
 import { AdminBadge, AdminInputWrap, AdminToolbar } from "@/components/admin/admin-ui";
 
-type SortKey = "vehicle" | "price" | "visibility" | "status" | "online" | "views" | "autoscout";
+type SortKey = "vehicle" | "price" | "visibility" | "status" | "online" | "autoscout";
+type CarSyncStatus = Pick<AdminCarRow,
+    "id" | "sold" | "reserved" | "sourceOfTruth" | "autoscoutListingId" | "autoscoutSyncStatus" | "autoscoutSyncError">;
 type SortDirection = "asc" | "desc";
 type QuickFilter = "all" | "available" | "sold" | "featured" | "autoscout-problem";
 
@@ -53,6 +56,41 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
         setRows(cars);
     }, [cars]);
 
+    const pendingIdsKey = JSON.stringify(rows.filter((car) => isAutoScoutPending(car.autoscoutSyncStatus))
+        .map((car) => car.id).sort());
+
+    useEffect(() => {
+        const ids: string[] = JSON.parse(pendingIdsKey);
+        if (ids.length === 0) return;
+        const poller = startVisiblePolling(async (signal) => {
+            const updates: CarSyncStatus[] = [];
+            // A single query handles normal inventories. Bound larger requests
+            // in chunks rather than starting a timer and three queries per car.
+            for (let offset = 0; offset < ids.length; offset += 100) {
+                const query = new URLSearchParams(ids.slice(offset, offset + 100).map((id) => ["id", id]));
+                const response = await fetch(`/api/admin/cars/autoscout-sync?${query}`, {
+                    cache: "no-store", credentials: "same-origin", signal,
+                });
+                if (response.status === 401 || response.status === 403) return null;
+                if (!response.ok) return 30_000;
+                const result = await response.json() as { cars: CarSyncStatus[] };
+                updates.push(...result.cars);
+            }
+            if (signal.aborted) return null;
+            const byId = new Map(updates.map((car) => [car.id, car]));
+            const requestedIds = new Set(ids);
+            setRows((current) => current
+                .filter((car) => !requestedIds.has(car.id) || byId.has(car.id))
+                .map((car) => {
+                    const patch = byId.get(car.id);
+                    if (!patch || Object.entries(patch).every(([key, value]) => car[key as keyof AdminCarRow] === value)) return car;
+                    return { ...car, ...patch };
+                }));
+            return updates.some((car) => isAutoScoutPending(car.autoscoutSyncStatus)) ? 3000 : null;
+        }, 1500);
+        return poller.stop;
+    }, [pendingIdsKey]);
+
     const updateRow = useCallback((id: string, patch: Partial<AdminCarRow>) => {
         setRows((current) => current.map((car) => (
             car.id === id ? { ...car, ...patch } : car
@@ -90,8 +128,6 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                 return (getStatusPriority(a) - getStatusPriority(b)) * direction;
             case "online":
                 return (getCreatedAtTime(a.createdAt) - getCreatedAtTime(b.createdAt)) * direction;
-            case "views":
-                return (((a.detailViewsCount ?? 0) - (b.detailViewsCount ?? 0)) * direction);
             case "autoscout":
                 return (getAutoScoutPriority(a) - getAutoScoutPriority(b)) * direction;
             default:
@@ -240,7 +276,6 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                             {renderSortButton("visibility", dict.carsTable.columns.visibility)}
                             {renderSortButton("status", dict.carsTable.columns.status)}
                             {renderSortButton("online", dict.carsTable.columns.online)}
-                            {renderSortButton("views", dict.carsTable.columns.views)}
                             {renderSortButton("autoscout", dict.carsTable.columns.autoscout)}
                             <th className="px-5 py-4 font-semibold text-right" scope="col">{dict.carsTable.columns.actions}</th>
                         </tr>
@@ -248,7 +283,7 @@ export default function CarsTableClient({ cars }: { cars: AdminCarRow[] }) {
                     <tbody key={`${quickFilter}:${query}`} className="motion-safe:animate-[fadeIn_220ms_ease-out]">
                         {filtered.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="px-6 py-16 text-center text-slate-500 font-medium">
+                                <td colSpan={7} className="px-6 py-16 text-center text-slate-500 font-medium">
                                     {query ? (
                                         <p>{tpl(dict.carsTable.noMatch, { query })}</p>
                                     ) : (

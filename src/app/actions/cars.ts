@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
-import { revalidateLocalizedPath } from "@/lib/revalidate";
+import { revalidateInventory } from "@/lib/revalidate";
 import { requireAdmin } from "@/lib/auth-guard";
 import { z } from "zod";
 import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
@@ -74,10 +74,11 @@ async function deleteR2Keys(keys: string[]) {
 function runAfterResponse(label: string, task: () => Promise<void>) {
     after(async () => {
         try {
-            await task();
-            revalidatePath("/admin/cars");
-            revalidateLocalizedPath("");
-            revalidateLocalizedPath("/inventory");
+            try {
+                await task();
+            } finally {
+                revalidateInventory();
+            }
         } catch (error) {
             console.error(`${label} failed:`, error);
         }
@@ -98,9 +99,7 @@ function scheduleR2Deletion(keys: string[]) {
 }
 
 function revalidateInventoryViews() {
-    revalidatePath("/admin/cars");
-    revalidateLocalizedPath("");
-    revalidateLocalizedPath("/inventory");
+    revalidateInventory();
 }
 
 function isAutoScoutManagedCar(car: { sourceOfTruth?: string | null } | null | undefined) {
@@ -130,6 +129,7 @@ export async function retryCarAutoscoutSync(id: string) {
 
         if (car.sold && !car.autoscoutListingId) {
             await prisma.car.update({
+                select: { id: true },
                 where: { id },
                 data: {
                     autoscoutSyncStatus: "deleted",
@@ -219,6 +219,7 @@ export async function toggleFeatured(id: string, featured: boolean) {
         }
 
         await prisma.car.update({
+            select: { id: true },
             where: { id },
             data: { featured },
         });
@@ -247,6 +248,7 @@ export async function updateCarStatus(id: string, status: "beschikbaar" | "geres
         }
 
         await prisma.car.update({
+            select: { id: true },
             where: { id },
             data: {
                 sold: status === "verkocht",
@@ -279,7 +281,11 @@ export async function deleteCar(id: string) {
     try {
         const car = await prisma.car.findUnique({
             where: { id },
-            include: { images: true },
+            select: {
+                id: true, sourceOfTruth: true, autoscoutCustomerId: true,
+                autoscoutListingId: true, crossReferenceId: true,
+                images: { select: { url: true } },
+            },
         });
 
         if (!car) {
@@ -302,6 +308,7 @@ export async function deleteCar(id: string) {
         );
 
         await prisma.car.delete({
+            select: { id: true },
             where: { id },
         });
 
@@ -624,6 +631,7 @@ export async function saveCar(data: unknown) {
 
             await prisma.$transaction([
                 prisma.car.update({
+                    select: { id: true },
                     where: { id },
                     data: {
                         ...dbData,
@@ -658,6 +666,7 @@ export async function saveCar(data: unknown) {
             }
         } else {
             const created = await prisma.car.create({
+                select: { id: true },
                 data: {
                     ...dbData,
                     sourceOfTruth: "website",

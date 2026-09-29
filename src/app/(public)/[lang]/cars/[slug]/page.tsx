@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Suspense, cache } from 'react';
-import prisma from '@/lib/prisma';
+import { getPublicCar as getCar } from '@/lib/cars/public-data';
 import ImageGallery from '@/components/ImageGallery';
 import RelatedVehicles from '@/components/RelatedVehicles';
 import MobileContactBar from '@/components/MobileContactBar';
@@ -14,7 +14,6 @@ import { ShieldCheck } from 'lucide-react';
 import CarContactPanel from '@/components/CarContactPanel';
 import CarWhatsAppButton from '@/components/CarWhatsAppButton';
 import DeferredMap from '@/components/DeferredMap';
-import CarDetailAnalyticsTracker from '@/components/analytics/CarDetailAnalyticsTracker';
 import carpassImg from '@/assets/carpass.webp';
 import { getDictionary } from '@/lib/dictionaries';
 import { isValidLocale, type Locale } from '@/lib/i18n';
@@ -35,14 +34,6 @@ type SeoCarMetadataInput = {
 };
 
 const SEO_DESCRIPTION_MAX_LENGTH = 160;
-
-// Deduplicate the car query between generateMetadata and the page component
-const getCar = cache(async (slug: string) => {
-    return prisma.car.findUnique({
-        where: { slug },
-        include: { images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] } },
-    });
-});
 
 const getLocalizedCar = cache(async (slug: string, locale: Locale) => {
     const car = await getCar(slug);
@@ -74,7 +65,7 @@ function buildCarMetaDescription(car: SeoCarMetadataInput, locale: Locale) {
 }
 
 // ISR: car data changes when admin edits — revalidatePath is called on mutations
-export const revalidate = 60;
+export const revalidate = 300;
 
 export async function generateMetadata(
     props: { params: Promise<{ lang: string; slug: string }> }
@@ -222,7 +213,6 @@ export default async function CarDetailPage(
 
     return (
         <div className="min-h-screen theme-bg">
-            <CarDetailAnalyticsTracker carId={car.id} locale={locale} path={`/${locale}/cars/${car.slug}`} />
             <script
                 type="application/ld+json"
                 suppressHydrationWarning

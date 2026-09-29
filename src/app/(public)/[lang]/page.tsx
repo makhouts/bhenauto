@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import LatestOccasionsCarousel from "@/components/LatestOccasionsCarousel";
 import ScrollReveal from "@/components/ScrollReveal";
 import WhyChooseUs from "@/components/WhyChooseUs";
-import prisma from "@/lib/prisma";
+import { getFeaturedCars } from "@/lib/cars/public-data";
 import heroBg from "@/assets/wallpaper.webp";
 import { getDictionary, type Dictionary } from "@/lib/dictionaries";
 import { getImageUrl, getImageVariantUrl } from "@/lib/image-url";
@@ -14,9 +14,7 @@ import { localizeCarsForPublic } from "@/lib/autoscout24/public-presentation";
 import { businessJsonLd, jsonLdScriptContent } from "@/lib/business-schema";
 import { buildPageSocialMetadata, localizedAlternates, localizedUrl, SITE_URL } from "@/lib/site-seo";
 
-const HOMEPAGE_CAROUSEL_LIMIT = 12;
-
-export const revalidate = 60;
+export const revalidate = 300;
 
 const homepageTitles: Record<Locale, string> = {
   nl: "BhenAuto Asse | Premium Tweedehandswagens & Garage",
@@ -53,25 +51,7 @@ export async function generateMetadata({
 // Async server component — runs its Prisma queries independently so the hero
 // renders immediately while this streams in behind a Suspense boundary.
 async function FeaturedCarsSection({ dict, locale }: { dict: Dictionary; locale: Locale }) {
-  const [featuredDb, fillDb] = await Promise.all([
-    prisma.car.findMany({
-      where: { featured: true },
-      orderBy: { createdAt: "desc" },
-      take: HOMEPAGE_CAROUSEL_LIMIT,
-      include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
-    }),
-    prisma.car.findMany({
-      where: { featured: false },
-      orderBy: { createdAt: "desc" },
-      take: HOMEPAGE_CAROUSEL_LIMIT,
-      include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }], take: 1 } },
-    }),
-  ]);
-
-  const displayCarsDb =
-    featuredDb.length >= HOMEPAGE_CAROUSEL_LIMIT
-      ? featuredDb
-      : [...featuredDb, ...fillDb.slice(0, HOMEPAGE_CAROUSEL_LIMIT - featuredDb.length)];
+  const displayCarsDb = await getFeaturedCars();
   const localizedCars = await localizeCarsForPublic(displayCarsDb, locale);
 
   const carouselData = localizedCars.map((c) => ({

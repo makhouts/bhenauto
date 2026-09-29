@@ -1,6 +1,6 @@
 import "server-only";
 
-import prisma from "@/lib/prisma";
+import { getPublicReferences } from "./public-references";
 import type { Locale } from "@/lib/i18n";
 
 function normalizeLabel(value: string) {
@@ -47,18 +47,9 @@ export async function getTranslatedEquipmentOptions(
 
   if (codes.length === 0) return fallback;
 
-  const references = await prisma.autoScoutReference.findMany({
-    where: {
-      referenceType: "Equipment",
-      referenceId: { in: codes },
-    },
-    select: {
-      referenceId: true,
-      nameNl: true,
-      nameFr: true,
-      nameEn: true,
-    },
-  });
+  const codeSet = new Set(codes);
+  const references = (await getPublicReferences()).filter((reference) =>
+    reference.referenceType === "Equipment" && codeSet.has(reference.referenceId));
 
   const referencesById = new Map(references.map((reference) => [reference.referenceId, reference]));
   const knownReferenceLabels = new Set<string>();

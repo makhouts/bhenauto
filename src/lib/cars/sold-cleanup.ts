@@ -28,7 +28,7 @@ export async function cleanupSoldCars(options: SoldCarCleanupOptions = {}): Prom
       sold: true,
       soldAt: { lte: cutoff },
     },
-    include: { images: true },
+    select: { id: true, title: true, images: { select: { url: true } } },
   });
 
   const summary: SoldCarCleanupSummary = {

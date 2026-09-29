@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cleanupSoldCars } from "@/lib/cars/sold-cleanup";
+import { revalidateInventory } from "@/lib/revalidate";
 import { requireCronAuth } from "@/lib/cron-auth";
 
 export const runtime = "nodejs";
@@ -13,6 +14,8 @@ async function handleCleanup(request: NextRequest) {
     apply: true,
     retentionDays: 2,
   });
+
+  if (summary.carsDeleted > 0) revalidateInventory();
 
   return NextResponse.json({
     ok: true,
